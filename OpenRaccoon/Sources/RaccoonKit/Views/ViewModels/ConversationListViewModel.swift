@@ -2,7 +2,7 @@ import SwiftUI
 
 @MainActor
 @Observable
-public final class ConversationListViewModel: Sendable {
+public final class ConversationListViewModel {
     public var conversations: [Conversation] = []
     public var isLoading = false
     public var error: String?

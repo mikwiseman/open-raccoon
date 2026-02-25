@@ -16,6 +16,7 @@ public struct AgentChatView: View {
     @State private var pendingApproval: PendingApproval?
     @State private var toolExecutions: [ToolExecutionLog.ToolExecution] = []
     @State private var showToolLog = false
+    @State private var streamingResetTask: Task<Void, Never>?
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -32,7 +33,17 @@ public struct AgentChatView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            if let viewModel {
+            if appState.currentUserID == nil {
+                VStack(spacing: RaccoonSpacing.space3) {
+                    Image(systemName: "person.crop.circle.badge.exclamationmark")
+                        .font(.system(size: 36))
+                        .foregroundStyle(RaccoonColors.Semantic.error)
+                    Text("Please log in to use the agent.")
+                        .font(RaccoonTypography.textSm)
+                        .foregroundStyle(textPrimary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let viewModel {
                 // Messages area
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -47,7 +58,7 @@ public struct AgentChatView: View {
                                         message: message,
                                         isFirstInGroup: message.id == group.messages.first?.id,
                                         isLastInGroup: message.id == group.messages.last?.id,
-                                        currentUserID: appState.currentUserID ?? ""
+                                        currentUserID: appState.currentUserID!
                                     )
                                     .id(message.id)
                                 }
@@ -131,6 +142,18 @@ public struct AgentChatView: View {
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
 
+                // Error display
+                if let error = viewModel.error {
+                    VStack(spacing: RaccoonSpacing.space3) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(RaccoonColors.Semantic.error)
+                        Text(error)
+                            .font(RaccoonTypography.textSm)
+                            .foregroundStyle(textPrimary)
+                    }
+                    .padding(RaccoonSpacing.space3)
+                }
+
                 Divider()
                     .foregroundStyle(borderPrimary)
 
@@ -164,12 +187,23 @@ public struct AgentChatView: View {
             }
         }
         .background(bgPrimary)
+        .onChange(of: streamingText) {
+            guard isAgentStreaming else { return }
+            streamingResetTask?.cancel()
+            streamingResetTask = Task {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard !Task.isCancelled else { return }
+                isAgentStreaming = false
+                agentStatus = ""
+            }
+        }
         .task {
+            guard let currentUserID = appState.currentUserID else { return }
             if viewModel == nil {
                 let vm = ConversationDetailViewModel(
                     conversationID: conversationID,
                     apiClient: appState.apiClient,
-                    currentUserID: appState.currentUserID ?? ""
+                    currentUserID: currentUserID
                 )
                 viewModel = vm
                 await vm.loadMessages()

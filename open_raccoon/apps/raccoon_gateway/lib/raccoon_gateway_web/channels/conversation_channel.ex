@@ -54,10 +54,16 @@ defmodule RaccoonGatewayWeb.ConversationChannel do
   end
 
   # Handle PubSub broadcasts from Delivery pipeline
+  # This handles messages from other sources (REST API, bridge workers)
   @impl true
-  def handle_info({:new_message, _message}, socket) do
-    # Already broadcast by the channel's broadcast! call in handle_in
-    # This handles messages from other sources (REST API, bridge workers)
+  def handle_info({:new_message, message}, socket) do
+    push(socket, "new_message", %{message: message})
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:message_updated, message}, socket) do
+    push(socket, "message_updated", %{message: message})
     {:noreply, socket}
   end
 

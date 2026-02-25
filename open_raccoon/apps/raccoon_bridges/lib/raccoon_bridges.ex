@@ -90,7 +90,7 @@ defmodule RaccoonBridges do
 
     with {:ok, bridge} <- find_bridge_for_platform(platform, envelope.sender.id),
          {:ok, conversation} <- find_or_create_bridge_conversation(bridge, envelope) do
-      sender_id = bridge.user_id
+      sender_id = bridge.id
 
       message_params = %{
         "sender_type" => "bridge",
@@ -98,6 +98,8 @@ defmodule RaccoonBridges do
         "content" => envelope_content_to_map(envelope.content),
         "metadata" => %{
           "bridge_source" => bridge_source,
+          "bridge_connection_id" => bridge.id,
+          "bridge_owner_id" => bridge.user_id,
           "bridge_sender_id" => envelope.sender.id,
           "bridge_sender_name" => envelope.sender.display_name,
           "reply_to" => get_in_metadata(envelope, :reply_to)

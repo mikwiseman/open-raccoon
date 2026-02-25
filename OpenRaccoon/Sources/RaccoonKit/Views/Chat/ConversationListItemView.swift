@@ -52,7 +52,8 @@ public struct ConversationListItemView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(conversation.title ?? "Untitled")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(RaccoonTypography.textBase)
+                        .fontWeight(.medium)
                         .foregroundStyle(textPrimary)
                         .lineLimit(1)
 

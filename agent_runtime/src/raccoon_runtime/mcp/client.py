@@ -4,6 +4,7 @@ Connects to MCP servers and discovers/executes tools on behalf of agents.
 Tool call deadline: 20s default, 120s max for explicitly long-running tools.
 """
 
+import json
 import uuid
 from typing import Any
 
@@ -99,7 +100,10 @@ class MCPClient:
                     headers=headers,
                 )
                 response.raise_for_status()
-                result = response.json()
+                try:
+                    result = response.json()
+                except json.JSONDecodeError as e:
+                    raise RuntimeError(f"MCP server returned invalid JSON: {e}")
 
             # Parse JSON-RPC response
             if "error" in result:
@@ -166,7 +170,10 @@ class MCPClient:
                 headers=headers,
             )
             response.raise_for_status()
-            result = response.json()
+            try:
+                result = response.json()
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"MCP server returned invalid JSON: {e}")
 
         # Parse JSON-RPC response
         if "error" in result:

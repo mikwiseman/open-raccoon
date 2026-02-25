@@ -22,16 +22,14 @@ defmodule RaccoonGatewayWeb.MessageController do
   def create(conn, %{"conversation_id" => conversation_id} = params) do
     user_id = conn.assigns.user_id
 
-    attrs = %{
-      "conversation_id" => conversation_id,
-      "sender_id" => user_id,
+    message_params = %{
       "sender_type" => "human",
       "type" => params["type"] || "text",
       "content" => params["content"],
       "metadata" => params["metadata"] || %{}
     }
 
-    with {:ok, message} <- RaccoonChat.send_message(attrs) do
+    with {:ok, message} <- RaccoonChat.send_message(conversation_id, user_id, message_params) do
       # Store idempotency result
       if idempotency_key = conn.assigns[:idempotency_key] do
         response = %{message: message_json(message)}

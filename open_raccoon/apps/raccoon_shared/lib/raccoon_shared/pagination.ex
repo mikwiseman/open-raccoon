@@ -47,4 +47,5 @@ defmodule RaccoonShared.Pagination do
 
   defp to_integer(v) when is_integer(v), do: v
   defp to_integer(v) when is_binary(v), do: String.to_integer(v)
+  defp to_integer(_), do: nil
 end

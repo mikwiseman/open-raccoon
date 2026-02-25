@@ -149,7 +149,7 @@ class E2BSandboxManager:
             yield output_queue.get_nowait()
 
         # Get the execution result
-        execution = execution_task.result()
+        execution = await execution_task
 
         if execution.error:
             yield {

@@ -11,6 +11,7 @@ defmodule RaccoonGateway.Application do
       RaccoonGatewayWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:raccoon_gateway, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: RaccoonGateway.PubSub},
+      {Oban, Application.fetch_env!(:raccoon_shared, Oban)},
       {RaccoonGateway.RateLimiter, clean_period: :timer.minutes(1)},
       RaccoonGatewayWeb.Presence,
       # Start to serve requests, typically the last entry

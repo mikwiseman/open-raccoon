@@ -79,7 +79,8 @@ public struct MessageContentView: View {
             VStack(alignment: .leading, spacing: RaccoonSpacing.space1) {
                 if let title = embed.title {
                     Text(title)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(RaccoonTypography.textBase)
+                        .fontWeight(.medium)
                         .foregroundStyle(RaccoonColors.accentPrimary)
                 }
                 if let description = embed.description {

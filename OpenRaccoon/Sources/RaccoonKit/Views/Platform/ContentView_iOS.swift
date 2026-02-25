@@ -3,7 +3,6 @@ import SwiftUI
 #if os(iOS)
 public struct ContentView_iOS: View {
     @Environment(AppState.self) private var appState
-    @Environment(\.colorScheme) private var colorScheme
 
     public init() {}
 
@@ -18,7 +17,7 @@ public struct ContentView_iOS: View {
             }
 
             NavigationStack {
-                feedPlaceholder
+                FeedView()
                     .navigationTitle("Feed")
             }
             .tabItem {
@@ -26,7 +25,7 @@ public struct ContentView_iOS: View {
             }
 
             NavigationStack {
-                marketplacePlaceholder
+                MarketplaceView()
                     .navigationTitle("Marketplace")
             }
             .tabItem {
@@ -34,8 +33,7 @@ public struct ContentView_iOS: View {
             }
 
             NavigationStack {
-                settingsPlaceholder
-                    .navigationTitle("Settings")
+                SettingsView()
             }
             .tabItem {
                 Label("Settings", systemImage: "gear")
@@ -44,48 +42,5 @@ public struct ContentView_iOS: View {
         .tint(RaccoonColors.accentPrimary)
     }
 
-    private var feedPlaceholder: some View {
-        VStack(spacing: RaccoonSpacing.space4) {
-            Image(systemName: "square.grid.2x2")
-                .font(.system(size: 36))
-                .foregroundStyle(textTertiary)
-            Text("Feed coming soon")
-                .font(RaccoonTypography.textLg)
-                .foregroundStyle(textSecondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var marketplacePlaceholder: some View {
-        VStack(spacing: RaccoonSpacing.space4) {
-            Image(systemName: "storefront")
-                .font(.system(size: 36))
-                .foregroundStyle(textTertiary)
-            Text("Marketplace coming soon")
-                .font(RaccoonTypography.textLg)
-                .foregroundStyle(textSecondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var settingsPlaceholder: some View {
-        VStack(spacing: RaccoonSpacing.space4) {
-            Image(systemName: "gear")
-                .font(.system(size: 36))
-                .foregroundStyle(textTertiary)
-            Text("Settings coming soon")
-                .font(RaccoonTypography.textLg)
-                .foregroundStyle(textSecondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var textSecondary: Color {
-        colorScheme == .dark ? RaccoonColors.Dark.textSecondary : RaccoonColors.Light.textSecondary
-    }
-
-    private var textTertiary: Color {
-        colorScheme == .dark ? RaccoonColors.Dark.textTertiary : RaccoonColors.Light.textTertiary
-    }
 }
 #endif

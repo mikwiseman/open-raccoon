@@ -74,7 +74,7 @@ public struct InputBarView: View {
         } label: {
             Image(systemName: "arrow.up")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(RaccoonColors.Light.textInverse)
+                .foregroundStyle(textInverse)
                 .frame(width: 32, height: 32)
                 .background(RaccoonColors.accentPrimary)
                 .clipShape(Circle())
@@ -89,7 +89,7 @@ public struct InputBarView: View {
         } label: {
             Image(systemName: "stop.fill")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(RaccoonColors.Light.textInverse)
+                .foregroundStyle(textInverse)
                 .frame(width: 32, height: 32)
                 .background(RaccoonColors.Semantic.error)
                 .clipShape(Circle())
@@ -122,5 +122,9 @@ public struct InputBarView: View {
 
     private var textSecondary: Color {
         colorScheme == .dark ? RaccoonColors.Dark.textSecondary : RaccoonColors.Light.textSecondary
+    }
+
+    private var textInverse: Color {
+        colorScheme == .dark ? RaccoonColors.Dark.textInverse : RaccoonColors.Light.textInverse
     }
 }

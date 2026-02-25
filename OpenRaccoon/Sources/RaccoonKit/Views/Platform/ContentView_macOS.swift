@@ -58,7 +58,8 @@ struct SidebarView: View {
                     sidebarItem(icon: "storefront", label: "Marketplace")
                 } header: {
                     Text("RECENT")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(RaccoonTypography.textXs)
+                        .fontWeight(.semibold)
                         .foregroundStyle(textTertiary)
                 }
 
@@ -68,7 +69,8 @@ struct SidebarView: View {
                     sidebarItem(icon: "magnifyingglass", label: "Research Agent")
                 } header: {
                     Text("AGENTS")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(RaccoonTypography.textXs)
+                        .fontWeight(.semibold)
                         .foregroundStyle(textTertiary)
                 }
             }
@@ -80,7 +82,7 @@ struct SidebarView: View {
             HStack {
                 Button(action: {}) {
                     Image(systemName: "gear")
-                        .font(.system(size: 14))
+                        .font(RaccoonTypography.textBase)
                         .foregroundStyle(textSecondary)
                 }
                 .buttonStyle(.plain)
@@ -89,7 +91,7 @@ struct SidebarView: View {
 
                 Button(action: {}) {
                     Image(systemName: "plus.message")
-                        .font(.system(size: 14))
+                        .font(RaccoonTypography.textBase)
                         .foregroundStyle(RaccoonColors.accentPrimary)
                 }
                 .buttonStyle(.plain)
@@ -103,11 +105,12 @@ struct SidebarView: View {
     private func sidebarItem(icon: String, label: String) -> some View {
         Label {
             Text(label)
-                .font(.system(size: 12, weight: .medium))
+                .font(RaccoonTypography.textSm)
+                .fontWeight(.medium)
                 .foregroundStyle(textPrimary)
         } icon: {
             Image(systemName: icon)
-                .font(.system(size: 14))
+                .font(RaccoonTypography.textBase)
                 .foregroundStyle(textSecondary)
                 .frame(width: 24)
         }

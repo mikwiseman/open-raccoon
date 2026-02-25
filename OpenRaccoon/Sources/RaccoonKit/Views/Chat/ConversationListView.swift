@@ -14,6 +14,15 @@ public struct ConversationListView: View {
             if let vm = viewModel {
                 if vm.isLoading && vm.conversations.isEmpty {
                     LoadingView()
+                } else if let error = vm.error {
+                    VStack(spacing: RaccoonSpacing.space3) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(RaccoonColors.Semantic.error)
+                        Text(error)
+                            .font(RaccoonTypography.textSm)
+                            .foregroundStyle(textSecondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if filteredConversations.isEmpty {
                     emptyState
                 } else {

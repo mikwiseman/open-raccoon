@@ -137,7 +137,9 @@ class LLMOrchestrator:
                                 in_code_block = True
                                 code_buffer = lang_line[1] if len(lang_line) > 1 else ""
                         elif "```" in code_buffer and in_code_block:
-                            code_content = code_buffer.split("```")[0]
+                            parts = code_buffer.split("```", 1)
+                            code_content = parts[0]
+                            remaining = parts[1] if len(parts) > 1 else ""
                             yield {
                                 "type": "code_block",
                                 "language": code_language,
@@ -145,7 +147,7 @@ class LLMOrchestrator:
                                 "filename": "",
                             }
                             in_code_block = False
-                            code_buffer = ""
+                            code_buffer = remaining
 
                         yield {"type": "token", "text": text}
 
@@ -194,18 +196,18 @@ class LLMOrchestrator:
                             approval_event = asyncio.Event()
                             decision: dict[str, Any] = {"approved": False, "scope": ""}
                             self._pending_approvals[request_id] = (approval_event, decision)
+                            try:
+                                # Signal caller that we are paused waiting for approval
+                                yield {
+                                    "type": "awaiting_approval",
+                                    "request_id": request_id,
+                                }
 
-                            # Signal caller that we are paused waiting for approval
-                            yield {
-                                "type": "awaiting_approval",
-                                "request_id": request_id,
-                            }
-
-                            # Block here until submit_approval_decision() is called
-                            await approval_event.wait()
-
-                            # Clean up
-                            del self._pending_approvals[request_id]
+                                # Block here until submit_approval_decision() is called
+                                await approval_event.wait()
+                            finally:
+                                # Clean up even if timeout or cancellation occurs
+                                self._pending_approvals.pop(request_id, None)
 
                             # If not approved, skip tool execution
                             if not decision.get("approved", False):

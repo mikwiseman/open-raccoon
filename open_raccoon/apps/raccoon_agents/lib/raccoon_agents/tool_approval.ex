@@ -49,8 +49,8 @@ defmodule RaccoonAgents.ToolApproval do
       scope: entry.scope
     )
 
-    # In production, persist to database:
-    # Repo.insert(%ToolApprovalLog{...})
+    # Persist to ETS for fast in-memory lookups
+    RaccoonAgents.ToolApproval.Store.insert(entry)
 
     {:ok, entry}
   end
@@ -62,29 +62,13 @@ defmodule RaccoonAgents.ToolApproval do
   if a matching remembered approval exists, otherwise `:not_found`.
   """
   def check_remembered_approval(user_id, agent_id, tool_name) do
-    # In production, query from database:
-    # from(a in ToolApprovalLog,
-    #   where: a.actor_user_id == ^user_id
-    #     and a.agent_id == ^agent_id
-    #     and a.tool_name == ^tool_name
-    #     and a.scope == :always_for_agent_tool
-    #     and a.decision == :approved,
-    #   order_by: [desc: a.decided_at],
-    #   limit: 1
-    # )
-    # |> Repo.one()
-    # |> case do
-    #   nil -> :not_found
-    #   _entry -> :approved
-    # end
-
     Logger.debug("Checking remembered approval",
       user_id: user_id,
       agent_id: agent_id,
       tool: tool_name
     )
 
-    :not_found
+    RaccoonAgents.ToolApproval.Store.lookup(user_id, agent_id, tool_name)
   end
 
   @doc """
@@ -100,15 +84,8 @@ defmodule RaccoonAgents.ToolApproval do
       tool: tool_name
     )
 
-    # In production, update database and record revocation:
-    # from(a in ToolApprovalLog,
-    #   where: a.actor_user_id == ^user_id
-    #     and a.agent_id == ^agent_id
-    #     and a.tool_name == ^tool_name
-    #     and a.scope == :always_for_agent_tool
-    #     and a.decision == :approved
-    # )
-    # |> Repo.update_all(set: [decision: :revoked, decided_at: DateTime.utc_now()])
+    # Remove remembered approval from ETS
+    RaccoonAgents.ToolApproval.Store.delete(user_id, agent_id, tool_name)
 
     # Record the revocation itself for audit
     record_decision(%{

@@ -41,6 +41,15 @@ public struct MarketplaceView: View {
                 if vm.isLoading && vm.agents.isEmpty {
                     LoadingView()
                         .frame(maxHeight: .infinity)
+                } else if let error = vm.error {
+                    VStack(spacing: RaccoonSpacing.space3) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(RaccoonColors.Semantic.error)
+                        Text(error)
+                            .font(RaccoonTypography.textSm)
+                            .foregroundStyle(textSecondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if filteredAgents.isEmpty {
                     emptyState
                 } else {

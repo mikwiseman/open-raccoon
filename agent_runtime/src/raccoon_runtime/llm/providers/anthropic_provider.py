@@ -109,7 +109,7 @@ class AnthropicProvider(BaseLLMProvider):
                         # Check if the just-stopped block is a tool_use block
                         # content_block_stop has an index, match it to the block
                         for tool_id, block in tool_use_blocks.items():
-                            if tool_id not in emitted_tool_ids and block["input_json"]:
+                            if tool_id not in emitted_tool_ids:
                                 parsed_input: dict[str, Any] = {}
                                 raw_json = block["input_json"]
                                 if raw_json:

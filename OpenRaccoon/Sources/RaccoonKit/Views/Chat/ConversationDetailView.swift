@@ -4,6 +4,7 @@ public struct ConversationDetailView: View {
     public let conversationID: String
     @State private var viewModel: ConversationDetailViewModel?
     @State private var showScrollToBottom = false
+    @State private var typingResetTask: Task<Void, Never>?
 
     @Environment(AppState.self) private var appState
     @Environment(\.colorScheme) private var colorScheme
@@ -14,7 +15,17 @@ public struct ConversationDetailView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            if let viewModel {
+            if appState.currentUserID == nil {
+                VStack(spacing: RaccoonSpacing.space3) {
+                    Image(systemName: "person.crop.circle.badge.exclamationmark")
+                        .font(.system(size: 36))
+                        .foregroundStyle(RaccoonColors.Semantic.error)
+                    Text("Please log in to view this conversation.")
+                        .font(RaccoonTypography.textSm)
+                        .foregroundStyle(textPrimary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let viewModel {
                 // Messages
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -29,7 +40,7 @@ public struct ConversationDetailView: View {
                                         message: message,
                                         isFirstInGroup: message.id == group.messages.first?.id,
                                         isLastInGroup: message.id == group.messages.last?.id,
-                                        currentUserID: appState.currentUserID ?? ""
+                                        currentUserID: appState.currentUserID!
                                     )
                                     .id(message.id)
                                 }
@@ -38,6 +49,14 @@ public struct ConversationDetailView: View {
                             if viewModel.isTyping {
                                 TypingIndicatorView()
                                     .padding(.top, RaccoonSpacing.space2)
+                                    .onAppear {
+                                        typingResetTask?.cancel()
+                                        typingResetTask = Task {
+                                            try? await Task.sleep(nanoseconds: 3_000_000_000)
+                                            guard !Task.isCancelled else { return }
+                                            viewModel.isTyping = false
+                                        }
+                                    }
                             }
                         }
                         .padding(.vertical, RaccoonSpacing.space2)
@@ -63,6 +82,18 @@ public struct ConversationDetailView: View {
                     }
                 }
 
+                // Error display
+                if let error = viewModel.error {
+                    VStack(spacing: RaccoonSpacing.space3) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(RaccoonColors.Semantic.error)
+                        Text(error)
+                            .font(RaccoonTypography.textSm)
+                            .foregroundStyle(textPrimary)
+                    }
+                    .padding(RaccoonSpacing.space3)
+                }
+
                 Divider()
                     .foregroundStyle(borderPrimary)
 
@@ -80,11 +111,12 @@ public struct ConversationDetailView: View {
         }
         .background(bgPrimary)
         .task {
+            guard let currentUserID = appState.currentUserID else { return }
             if viewModel == nil {
                 let vm = ConversationDetailViewModel(
                     conversationID: conversationID,
                     apiClient: appState.apiClient,
-                    currentUserID: appState.currentUserID ?? ""
+                    currentUserID: currentUserID
                 )
                 viewModel = vm
                 await vm.loadMessages()
@@ -94,12 +126,17 @@ public struct ConversationDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text(conversationID)
-                    .font(.system(size: 16, weight: .semibold))
+                Text(conversationTitle)
+                    .font(RaccoonTypography.textLg)
+                    .fontWeight(.semibold)
                     .foregroundStyle(textPrimary)
             }
         }
         #endif
+    }
+
+    private var conversationTitle: String {
+        appState.conversationStore.conversation(byID: conversationID)?.title ?? "Conversation"
     }
 
     private var bgPrimary: Color {

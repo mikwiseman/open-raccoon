@@ -40,11 +40,13 @@ defmodule RaccoonChat do
 
   # --- Messages ---
 
-  def send_message(attrs) do
-    %Message{}
-    |> Message.changeset(attrs)
-    |> Repo.insert()
-  end
+  @doc """
+  Send a message through the delivery pipeline.
+
+  Delegates to `RaccoonChat.Delivery.send_message/3` which handles validation,
+  persistence, broadcasting, and notification.
+  """
+  defdelegate send_message(conversation_id, sender_id, params), to: RaccoonChat.Delivery
 
   def get_messages(conversation_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)

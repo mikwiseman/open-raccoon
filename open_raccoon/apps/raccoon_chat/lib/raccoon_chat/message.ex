@@ -26,7 +26,7 @@ defmodule RaccoonChat.Message do
   def changeset(message, attrs) do
     message
     |> cast(attrs, [:conversation_id, :sender_id, :sender_type, :type, :content, :metadata, :edited_at, :deleted_at])
-    |> validate_required([:conversation_id, :sender_type, :type, :content])
+    |> validate_required([:conversation_id, :sender_id, :sender_type, :type, :content])
     |> validate_inclusion(:sender_type, [:human, :agent, :bridge, :system])
     |> validate_inclusion(:type, [:text, :media, :code, :embed, :system, :agent_status])
     |> foreign_key_constraint(:conversation_id)

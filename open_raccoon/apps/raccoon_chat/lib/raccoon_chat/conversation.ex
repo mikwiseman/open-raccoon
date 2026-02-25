@@ -29,7 +29,7 @@ defmodule RaccoonChat.Conversation do
   def changeset(conversation, attrs) do
     conversation
     |> cast(attrs, [:type, :title, :avatar_url, :creator_id, :agent_id, :bridge_id, :metadata, :last_message_at])
-    |> validate_required([:type])
+    |> validate_required([:type, :creator_id])
     |> validate_length(:title, max: 255)
     |> validate_inclusion(:type, [:dm, :group, :agent, :bridge])
     |> validate_type_constraints()
