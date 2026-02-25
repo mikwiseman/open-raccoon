@@ -60,7 +60,7 @@ defmodule RaccoonGatewayWeb.MessageController do
       metadata: message.metadata,
       edited_at: message.edited_at,
       deleted_at: message.deleted_at,
-      created_at: message.inserted_at
+      created_at: message.created_at
     }
   end
 end

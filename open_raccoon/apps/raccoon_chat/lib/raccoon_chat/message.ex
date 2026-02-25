@@ -20,7 +20,9 @@ defmodule RaccoonChat.Message do
 
     has_many :reactions, RaccoonChat.MessageReaction
 
-    timestamps(type: :utc_datetime_usec, updated_at: false)
+    # The migration creates `created_at` (not `inserted_at`) because the table
+    # is range-partitioned by created_at.  Tell Ecto to use that column name.
+    timestamps(type: :utc_datetime_usec, inserted_at: :created_at, updated_at: false)
   end
 
   def changeset(message, attrs) do

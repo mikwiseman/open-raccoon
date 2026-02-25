@@ -29,6 +29,8 @@ struct SidebarView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.colorScheme) private var colorScheme
     @State private var searchText = ""
+    @State private var showSettings = false
+    @State private var showNewConversation = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -80,7 +82,7 @@ struct SidebarView: View {
 
             // Bottom bar - 48px
             HStack {
-                Button(action: {}) {
+                Button(action: { showSettings = true }) {
                     Image(systemName: "gear")
                         .font(RaccoonTypography.textBase)
                         .foregroundStyle(textSecondary)
@@ -89,7 +91,7 @@ struct SidebarView: View {
 
                 Spacer()
 
-                Button(action: {}) {
+                Button(action: { showNewConversation = true }) {
                     Image(systemName: "plus.message")
                         .font(RaccoonTypography.textBase)
                         .foregroundStyle(RaccoonColors.accentPrimary)
@@ -100,6 +102,34 @@ struct SidebarView: View {
             .frame(height: 48)
         }
         .background(bgSecondary)
+        .sheet(isPresented: $showSettings) {
+            VStack(spacing: RaccoonSpacing.space4) {
+                Text("Settings")
+                    .font(RaccoonTypography.textLg)
+                    .fontWeight(.semibold)
+                Text("Settings will be available in a future update.")
+                    .font(RaccoonTypography.textSm)
+                    .foregroundStyle(textSecondary)
+                Button("Close") { showSettings = false }
+                    .keyboardShortcut(.cancelAction)
+            }
+            .padding(RaccoonSpacing.space6)
+            .frame(minWidth: 300, minHeight: 200)
+        }
+        .sheet(isPresented: $showNewConversation) {
+            VStack(spacing: RaccoonSpacing.space4) {
+                Text("New Conversation")
+                    .font(RaccoonTypography.textLg)
+                    .fontWeight(.semibold)
+                Text("Start a new conversation with an agent.")
+                    .font(RaccoonTypography.textSm)
+                    .foregroundStyle(textSecondary)
+                Button("Close") { showNewConversation = false }
+                    .keyboardShortcut(.cancelAction)
+            }
+            .padding(RaccoonSpacing.space6)
+            .frame(minWidth: 300, minHeight: 200)
+        }
     }
 
     private func sidebarItem(icon: String, label: String) -> some View {

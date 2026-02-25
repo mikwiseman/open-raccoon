@@ -1,5 +1,7 @@
 """Tool discovery, validation, and execution registry."""
 
+import asyncio
+import inspect
 from typing import Any
 
 import structlog
@@ -21,6 +23,8 @@ class ToolRegistry:
         handler: Any = None,
     ) -> None:
         """Register a tool with its schema and optional handler."""
+        if handler is not None and not callable(handler):
+            raise TypeError(f"Handler for tool '{name}' must be callable")
         self._tools[name] = schema
         if handler:
             self._handlers[name] = handler
@@ -86,7 +90,10 @@ class ToolRegistry:
             raise NotImplementedError(f"No handler registered for tool: {name}")
 
         logger.info("executing_tool", tool=name, args_keys=list(arguments.keys()))
-        result = await handler(arguments)
+        if asyncio.iscoroutinefunction(handler):
+            result = await handler(arguments)
+        else:
+            result = handler(arguments)
         return result
 
     def get_available_tools(self) -> list[dict[str, Any]]:

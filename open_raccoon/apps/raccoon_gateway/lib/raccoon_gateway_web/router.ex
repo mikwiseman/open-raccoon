@@ -76,8 +76,9 @@ defmodule RaccoonGatewayWeb.Router do
     delete "/bridges/:id", BridgeController, :disconnect
     get "/bridges/:id/status", BridgeController, :status
 
-    # Feed (idempotency enforced via plug in controller for fork)
+    # Feed (idempotency enforced via plug in controller for create/fork)
     get "/feed", FeedController, :index
+    post "/feed", FeedController, :create
     get "/feed/trending", FeedController, :trending
     get "/feed/new", FeedController, :new_items
     post "/feed/:id/like", FeedController, :like

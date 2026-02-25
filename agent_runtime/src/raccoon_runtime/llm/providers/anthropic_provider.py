@@ -113,7 +113,15 @@ class AnthropicProvider(BaseLLMProvider):
                                 parsed_input: dict[str, Any] = {}
                                 raw_json = block["input_json"]
                                 if raw_json:
-                                    parsed_input = json.loads(raw_json)
+                                    try:
+                                        parsed_input = json.loads(raw_json)
+                                    except json.JSONDecodeError:
+                                        logger.error(
+                                            "malformed_tool_json",
+                                            tool_id=tool_id,
+                                            raw_json=raw_json[:200],
+                                        )
+                                        parsed_input = {}
                                 yield {
                                     "type": "tool_use",
                                     "id": block["id"],
