@@ -20,8 +20,6 @@ defmodule RaccoonShared.Repo.Migrations.CreateUsers do
 
     create unique_index(:users, [:username])
     create unique_index(:users, [:email])
-    create index(:users, [:username])
-    create index(:users, [:email])
 
     execute "ALTER TABLE users ADD CHECK (status IN ('active', 'suspended', 'deleted'))", ""
     execute "ALTER TABLE users ADD CHECK (role IN ('user', 'admin', 'moderator'))", ""

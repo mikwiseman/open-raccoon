@@ -35,6 +35,21 @@ defmodule RaccoonShared.Repo.Migrations.CreateMessages do
       FOR VALUES FROM ('2026-03-01') TO ('2026-04-01');
     """, "DROP TABLE IF EXISTS messages_2026_03;"
 
+    execute """
+    CREATE TABLE messages_2026_04 PARTITION OF messages
+      FOR VALUES FROM ('2026-04-01') TO ('2026-05-01');
+    """, "DROP TABLE IF EXISTS messages_2026_04;"
+
+    execute """
+    CREATE TABLE messages_2026_05 PARTITION OF messages
+      FOR VALUES FROM ('2026-05-01') TO ('2026-06-01');
+    """, "DROP TABLE IF EXISTS messages_2026_05;"
+
+    execute """
+    CREATE TABLE messages_2026_06 PARTITION OF messages
+      FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');
+    """, "DROP TABLE IF EXISTS messages_2026_06;"
+
     execute "CREATE INDEX idx_messages_conversation ON messages (conversation_id, created_at DESC);", ""
     execute "CREATE INDEX idx_messages_sender ON messages (sender_id);", ""
   end
