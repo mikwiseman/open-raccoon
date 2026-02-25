@@ -10,7 +10,6 @@ import structlog
 
 from raccoon_runtime.config import Settings
 from raccoon_runtime.llm.orchestrator import LLMOrchestrator
-from raccoon_runtime.mcp.tool_registry import ToolRegistry
 
 logger = structlog.get_logger()
 
@@ -86,7 +85,6 @@ class AgentServiceServicer:
     async def ValidateTools(self, request: Any, context: Any) -> Any:  # noqa: N802
         """Validate tool configurations."""
         tool_configs = getattr(request, "tools", [])
-        registry = ToolRegistry()
         errors: list[dict[str, str]] = []
 
         for tool in tool_configs:

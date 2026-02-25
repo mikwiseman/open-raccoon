@@ -55,7 +55,7 @@ defmodule RaccoonAgents.AgentExecutor do
   end
 
   @impl true
-  def handle_cast({:execute, messages, config}, state) do
+  def handle_cast({:execute, _messages, _config}, state) do
     Logger.info("Starting agent execution",
       conversation_id: state.conversation_id,
       agent_id: state.agent_id
