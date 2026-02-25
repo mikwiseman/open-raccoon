@@ -1,0 +1,40 @@
+# Elixir
+open_raccoon/_build/
+open_raccoon/deps/
+open_raccoon/.fetch
+open_raccoon/erl_crash.dump
+open_raccoon/*.ez
+*.beam
+
+# Python
+agent_runtime/.venv/
+agent_runtime/__pycache__/
+agent_runtime/src/**/__pycache__/
+agent_runtime/tests/__pycache__/
+agent_runtime/*.egg-info/
+agent_runtime/.mypy_cache/
+agent_runtime/.ruff_cache/
+agent_runtime/.pytest_cache/
+*.pyc
+*.pyo
+
+# Swift
+OpenRaccoon/.build/
+OpenRaccoon/.swiftpm/
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
