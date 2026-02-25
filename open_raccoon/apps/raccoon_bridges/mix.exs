@@ -17,7 +17,8 @@ defmodule RaccoonBridges.MixProject do
 
   def application do
     [
-      extra_applications: [:logger]
+      mod: {RaccoonBridges.Application, []},
+      extra_applications: [:logger, :inets, :ssl]
     ]
   end
 

@@ -1,37 +1,68 @@
 defmodule RaccoonFeed do
   @moduledoc """
-  Feed context: feed items, likes, follows, trending.
+  Feed context: feed items, likes, follows, trending, quality scoring, ranking.
   """
 
   alias RaccoonShared.Repo
-  alias RaccoonFeed.{FeedItem, FeedItemReference, FeedLike, UserFollow}
+  alias RaccoonFeed.{FeedItem, FeedLike, UserFollow}
+  alias RaccoonFeed.{SubmissionPipeline, Trending, Ranking}
   import Ecto.Query
 
-  # --- Feed Items ---
+  # --- Feed Items (Pipeline-based submission) ---
 
-  def submit_item(attrs) do
-    Repo.transaction(fn ->
-      {:ok, _ref} =
-        %FeedItemReference{}
-        |> FeedItemReference.changeset(%{
-          reference_id: attrs[:reference_id] || attrs["reference_id"],
-          reference_type: attrs[:reference_type] || attrs["reference_type"]
-        })
-        |> Repo.insert(on_conflict: :nothing, conflict_target: [:reference_id, :reference_type])
-
-      %FeedItem{}
-      |> FeedItem.changeset(attrs)
-      |> Repo.insert()
-    end)
+  @doc """
+  Submit a feed item through the full quality pipeline.
+  Runs rate limit check, duplicate detection, and quality scoring.
+  """
+  def submit_item(attrs, opts \\ []) do
+    SubmissionPipeline.submit(attrs, opts)
   end
 
   def get_feed_item(id), do: Repo.get(FeedItem, id)
+
+  @doc """
+  Get personalized "For You" feed for a user.
+  Delegates to the Ranking module.
+  """
+  def get_feed(user_id, opts \\ []) do
+    Ranking.personalized_feed(user_id, opts)
+  end
+
+  @doc """
+  Get trending feed items. Delegates to the Trending module.
+  """
+  def get_trending(opts \\ []) do
+    limit = Keyword.get(opts, :limit, 50)
+    Trending.top_trending(limit)
+  end
+
+  @doc """
+  Get newest feed items.
+  """
+  def get_new(opts \\ []) do
+    limit = Keyword.get(opts, :limit, 50)
+
+    from(fi in FeedItem,
+      where: fi.quality_score >= 0.3,
+      order_by: [desc: fi.inserted_at],
+      limit: ^limit
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Recalculate trending scores for all recent items.
+  Should be called periodically (every 15 minutes via Oban).
+  """
+  def recalculate_trending, do: Trending.recalculate_all()
+
+  # Legacy list functions (kept for backward compatibility)
 
   def list_feed(opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
 
     from(fi in FeedItem,
-      order_by: [desc: fi.quality_score, desc: fi.created_at],
+      order_by: [desc: fi.quality_score, desc: fi.inserted_at],
       limit: ^limit
     )
     |> Repo.all()
@@ -51,7 +82,7 @@ defmodule RaccoonFeed do
     limit = Keyword.get(opts, :limit, 50)
 
     from(fi in FeedItem,
-      order_by: [desc: fi.created_at],
+      order_by: [desc: fi.inserted_at],
       limit: ^limit
     )
     |> Repo.all()
