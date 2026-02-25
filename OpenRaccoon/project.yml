@@ -1,0 +1,66 @@
+name: OpenRaccoon
+options:
+  bundleIdPrefix: com.openraccoon
+  deploymentTarget:
+    macOS: "14.0"
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  RaccoonKitPackage:
+    path: "."
+
+targets:
+  OpenRaccoon-macOS:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/OpenRaccoonApp
+    dependencies:
+      - package: RaccoonKitPackage
+        product: RaccoonKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.openraccoon.app
+        PRODUCT_NAME: Open Raccoon
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Open Raccoon
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.social-networking"
+        INFOPLIST_KEY_NSMainStoryboardFile: ""
+        SWIFT_STRICT_CONCURRENCY: complete
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: -O
+
+  OpenRaccoon-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - Sources/OpenRaccoonApp
+    dependencies:
+      - package: RaccoonKitPackage
+        product: RaccoonKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.openraccoon.app
+        PRODUCT_NAME: Open Raccoon
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Open Raccoon
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        SWIFT_STRICT_CONCURRENCY: complete
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+      configs:
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: -Onone
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: -O
