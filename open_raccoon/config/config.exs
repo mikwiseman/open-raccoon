@@ -45,6 +45,8 @@ config :raccoon_accounts, RaccoonAccounts.Guardian,
   secret_key: "dev-guardian-secret-key-change-in-prod"
 
 # Swoosh Mailer config (Resend in prod, overridden in dev/test)
+config :swoosh, :api_client, Swoosh.ApiClient.Req
+
 config :raccoon_shared, RaccoonShared.Mailer,
   adapter: Swoosh.Adapters.Resend
 
