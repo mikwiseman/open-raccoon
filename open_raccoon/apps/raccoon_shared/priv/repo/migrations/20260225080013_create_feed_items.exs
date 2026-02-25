@@ -21,9 +21,9 @@ defmodule RaccoonShared.Repo.Migrations.CreateFeedItems do
     end
 
     create index(:feed_items, [:creator_id])
-    create index(:feed_items, [:trending_score], order: :desc, name: :idx_feed_trending)
-    create index(:feed_items, [:quality_score], order: :desc, name: :idx_feed_quality)
-    create index(:feed_items, [:created_at], order: :desc, name: :idx_feed_created)
+    execute "CREATE INDEX idx_feed_trending ON feed_items (trending_score DESC);", "DROP INDEX IF EXISTS idx_feed_trending;"
+    execute "CREATE INDEX idx_feed_quality ON feed_items (quality_score DESC);", "DROP INDEX IF EXISTS idx_feed_quality;"
+    execute "CREATE INDEX idx_feed_created ON feed_items (inserted_at DESC);", "DROP INDEX IF EXISTS idx_feed_created;"
 
     execute """
     ALTER TABLE feed_items ADD CHECK (type IN ('agent_showcase', 'page_showcase', 'tool_showcase', 'remix', 'creation'))
