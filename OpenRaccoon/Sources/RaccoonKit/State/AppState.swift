@@ -16,7 +16,7 @@ public final class AppState {
     public let apiClient: APIClient
     public var webSocketClient: WebSocketClient?
 
-    public init(baseURL: URL = URL(string: "https://api.openraccoon.com")!) {
+    public init(baseURL: URL = URL(string: "http://45.55.219.10")!) {
         self.conversationStore = ConversationStore()
         self.messageStore = MessageStore()
         self.authStore = AuthStore()
@@ -27,7 +27,7 @@ public final class AppState {
 
     /// Sets up the WebSocket connection after authentication.
     public func connectWebSocket(accessToken: String) {
-        guard let baseURL = URL(string: "https://api.openraccoon.com") else { return }
+        guard let baseURL = URL(string: "http://45.55.219.10") else { return }
         webSocketClient = WebSocketClient(
             baseURL: baseURL.absoluteString,
             accessToken: accessToken
