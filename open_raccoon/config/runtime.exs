@@ -58,4 +58,10 @@ if config_env() == :prod do
       feed: 10,
       maintenance: 2
     ]
+
+  config :raccoon_shared, RaccoonShared.Mailer,
+    api_key: System.fetch_env!("RESEND_API_KEY")
+
+  config :raccoon_gateway, :base_url,
+    System.get_env("BASE_URL", "http://45.55.219.10:4000")
 end

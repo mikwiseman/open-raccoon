@@ -11,6 +11,10 @@ public struct TokenResponse: Codable, Sendable {
     public let expiresIn: TimeInterval
 }
 
+public struct MagicLinkResponse: Codable, Sendable {
+    public let message: String
+}
+
 // MARK: - Single-resource response wrappers
 
 /// Wraps `{"user": {...}}` responses from GET /users/me, etc.

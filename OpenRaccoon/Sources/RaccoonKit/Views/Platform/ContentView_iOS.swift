@@ -69,6 +69,24 @@ public struct ContentView_iOS: View {
                         }
                     }
                 },
+                onMagicLinkRequest: { email in
+                    Task {
+                        do {
+                            try await appState.requestMagicLink(email: email)
+                        } catch {
+                            // Error is surfaced via authStore.magicLinkError
+                        }
+                    }
+                },
+                onMagicLinkVerify: { token in
+                    Task {
+                        do {
+                            try await appState.verifyMagicLink(token: token)
+                        } catch {
+                            // Error is surfaced via authStore.magicLinkError
+                        }
+                    }
+                },
                 onNavigateToRegister: {
                     showRegister = true
                 },

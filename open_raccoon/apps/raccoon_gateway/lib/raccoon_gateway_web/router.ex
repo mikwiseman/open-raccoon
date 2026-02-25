@@ -28,6 +28,8 @@ defmodule RaccoonGatewayWeb.Router do
     post "/register", AuthController, :register
     post "/login", AuthController, :login
     post "/refresh", AuthController, :refresh
+    post "/magic-link", AuthController, :magic_link
+    post "/magic-link/verify", AuthController, :verify_magic_link
   end
 
   # Authenticated endpoints

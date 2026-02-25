@@ -44,6 +44,13 @@ config :raccoon_accounts, RaccoonAccounts.Guardian,
   issuer: "raccoon",
   secret_key: "dev-guardian-secret-key-change-in-prod"
 
+# Swoosh Mailer config (Resend in prod, overridden in dev/test)
+config :raccoon_shared, RaccoonShared.Mailer,
+  adapter: Swoosh.Adapters.Resend
+
+# Base URL for magic links and email callbacks
+config :raccoon_gateway, :base_url, "http://45.55.219.10:4000"
+
 # JSON library
 config :phoenix, :json_library, Jason
 

@@ -43,6 +43,19 @@ public final class AppState {
         connectWebSocket(accessToken: token)
     }
 
+    /// Sends a magic link to the given email address.
+    public func requestMagicLink(email: String) async throws {
+        try await authStore.requestMagicLink(email: email)
+    }
+
+    /// Verifies a magic link token, sets currentUser, and connects WebSocket.
+    public func verifyMagicLink(token: String) async throws {
+        let user = try await authStore.verifyMagicLink(token: token)
+        currentUser = user
+        let accessToken = try await authStore.validAccessToken()
+        connectWebSocket(accessToken: accessToken)
+    }
+
     /// Clears tokens, disconnects WebSocket, and clears currentUser.
     public func logout() async {
         disconnectWebSocket()

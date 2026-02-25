@@ -29,7 +29,9 @@ defmodule RaccoonShared.MixProject do
       {:jason, "~> 1.4"},
       {:oban, "~> 2.20"},
       {:ex_aws, "~> 2.5"},
-      {:ex_aws_s3, "~> 2.5"}
+      {:ex_aws_s3, "~> 2.5"},
+      {:swoosh, "~> 1.17"},
+      {:req, "~> 0.5"}
     ]
   end
 end

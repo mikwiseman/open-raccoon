@@ -1,15 +1,25 @@
 import SwiftUI
 
-/// Login view with email + password fields, "Log In" button,
+/// Login view with email + password fields, magic link option,
 /// "Don't have an account? Register" link, and OAuth buttons.
 /// Clean, centered layout with generous spacing.
 public struct LoginView: View {
+    private enum LoginMode: String, CaseIterable {
+        case password = "Password"
+        case magicLink = "Magic Link"
+    }
+
     @State private var email = ""
     @State private var password = ""
+    @State private var magicLinkToken = ""
+    @State private var loginMode: LoginMode = .password
+    @State private var isVerifyingToken = false
 
     @Environment(AppState.self) private var appState
 
     public let onLogin: (String, String) -> Void
+    public let onMagicLinkRequest: (String) -> Void
+    public let onMagicLinkVerify: (String) -> Void
     public let onNavigateToRegister: () -> Void
     public let onOAuthGoogle: () -> Void
     public let onOAuthApple: () -> Void
@@ -19,12 +29,16 @@ public struct LoginView: View {
 
     public init(
         onLogin: @escaping (String, String) -> Void,
+        onMagicLinkRequest: @escaping (String) -> Void,
+        onMagicLinkVerify: @escaping (String) -> Void,
         onNavigateToRegister: @escaping () -> Void,
         onOAuthGoogle: @escaping () -> Void,
         onOAuthApple: @escaping () -> Void,
         onOAuthGitHub: @escaping () -> Void
     ) {
         self.onLogin = onLogin
+        self.onMagicLinkRequest = onMagicLinkRequest
+        self.onMagicLinkVerify = onMagicLinkVerify
         self.onNavigateToRegister = onNavigateToRegister
         self.onOAuthGoogle = onOAuthGoogle
         self.onOAuthApple = onOAuthApple
@@ -52,8 +66,20 @@ public struct LoginView: View {
                         .foregroundStyle(textSecondary)
                 }
 
-                // Error message
-                if let errorMessage = appState.authStore.loginError {
+                // Login mode picker
+                Picker("Login method", selection: $loginMode) {
+                    ForEach(LoginMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: loginMode) {
+                    appState.authStore.loginError = nil
+                    appState.authStore.resetMagicLinkState()
+                }
+
+                // Error messages
+                if loginMode == .password, let errorMessage = appState.authStore.loginError {
                     Text(errorMessage)
                         .font(RaccoonTypography.bodySmall)
                         .foregroundStyle(RaccoonColors.Semantic.error)
@@ -61,49 +87,21 @@ public struct LoginView: View {
                         .padding(.horizontal, RaccoonSpacing.space4)
                 }
 
-                // Email + Password fields
-                VStack(spacing: RaccoonSpacing.space3) {
-                    inputField(
-                        placeholder: "Email",
-                        text: $email,
-                        icon: "envelope"
-                    )
-                    .textContentType(.emailAddress)
-                    #if os(iOS)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    #endif
-
-                    inputField(
-                        placeholder: "Password",
-                        text: $password,
-                        icon: "lock",
-                        isSecure: true
-                    )
-                    .textContentType(.password)
+                if loginMode == .magicLink, let errorMessage = appState.authStore.magicLinkError {
+                    Text(errorMessage)
+                        .font(RaccoonTypography.bodySmall)
+                        .foregroundStyle(RaccoonColors.Semantic.error)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, RaccoonSpacing.space4)
                 }
 
-                // Log In button
-                Button {
-                    onLogin(email, password)
-                } label: {
-                    Group {
-                        if appState.authStore.isLoggingIn {
-                            ProgressView()
-                                .tint(RaccoonColors.Light.textInverse)
-                        } else {
-                            Text("Log In")
-                                .font(RaccoonTypography.textLg)
-                        }
-                    }
-                    .foregroundStyle(RaccoonColors.Light.textInverse)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(RaccoonColors.accentPrimary)
-                    .clipShape(RoundedRectangle(cornerRadius: RaccoonRadius.xl))
+                // Login form content
+                switch loginMode {
+                case .password:
+                    passwordLoginContent
+                case .magicLink:
+                    magicLinkContent
                 }
-                .buttonStyle(.plain)
-                .disabled(email.isEmpty || password.isEmpty || appState.authStore.isLoggingIn)
 
                 // Divider
                 HStack {
@@ -147,6 +145,181 @@ public struct LoginView: View {
         .background(bgPrimary)
     }
 
+    // MARK: - Password Login
+
+    private var passwordLoginContent: some View {
+        VStack(spacing: RaccoonSpacing.space3) {
+            // Email + Password fields
+            VStack(spacing: RaccoonSpacing.space3) {
+                inputField(
+                    placeholder: "Email",
+                    text: $email,
+                    icon: "envelope"
+                )
+                .textContentType(.emailAddress)
+                #if os(iOS)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+                #endif
+
+                inputField(
+                    placeholder: "Password",
+                    text: $password,
+                    icon: "lock",
+                    isSecure: true
+                )
+                .textContentType(.password)
+            }
+
+            // Log In button
+            Button {
+                onLogin(email, password)
+            } label: {
+                Group {
+                    if appState.authStore.isLoggingIn {
+                        ProgressView()
+                            .tint(RaccoonColors.Light.textInverse)
+                    } else {
+                        Text("Log In")
+                            .font(RaccoonTypography.textLg)
+                    }
+                }
+                .foregroundStyle(RaccoonColors.Light.textInverse)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(RaccoonColors.accentPrimary)
+                .clipShape(RoundedRectangle(cornerRadius: RaccoonRadius.xl))
+            }
+            .buttonStyle(.plain)
+            .disabled(email.isEmpty || password.isEmpty || appState.authStore.isLoggingIn)
+        }
+    }
+
+    // MARK: - Magic Link Login
+
+    @ViewBuilder
+    private var magicLinkContent: some View {
+        if appState.authStore.magicLinkSent {
+            magicLinkSentContent
+        } else {
+            magicLinkRequestContent
+        }
+    }
+
+    private var magicLinkRequestContent: some View {
+        VStack(spacing: RaccoonSpacing.space3) {
+            inputField(
+                placeholder: "Email",
+                text: $email,
+                icon: "envelope"
+            )
+            .textContentType(.emailAddress)
+            #if os(iOS)
+            .keyboardType(.emailAddress)
+            .textInputAutocapitalization(.never)
+            #endif
+
+            // Send Magic Link button
+            Button {
+                onMagicLinkRequest(email)
+            } label: {
+                Group {
+                    if appState.authStore.isSendingMagicLink {
+                        ProgressView()
+                            .tint(RaccoonColors.Light.textInverse)
+                    } else {
+                        HStack(spacing: RaccoonSpacing.space2) {
+                            Image(systemName: "wand.and.stars")
+                                .font(.system(size: 14))
+                            Text("Send Magic Link")
+                                .font(RaccoonTypography.textLg)
+                        }
+                    }
+                }
+                .foregroundStyle(RaccoonColors.Light.textInverse)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(RaccoonColors.accentPrimary)
+                .clipShape(RoundedRectangle(cornerRadius: RaccoonRadius.xl))
+            }
+            .buttonStyle(.plain)
+            .disabled(email.isEmpty || appState.authStore.isSendingMagicLink)
+        }
+    }
+
+    private var magicLinkSentContent: some View {
+        VStack(spacing: RaccoonSpacing.space4) {
+            // Success message
+            VStack(spacing: RaccoonSpacing.space2) {
+                Image(systemName: "envelope.badge.shield.half.filled")
+                    .font(.system(size: 32))
+                    .foregroundStyle(RaccoonColors.Semantic.success)
+
+                Text("Check your email!")
+                    .font(RaccoonTypography.textLg)
+                    .foregroundStyle(textPrimary)
+
+                Text("We sent a login link to \(email)")
+                    .font(RaccoonTypography.bodySmall)
+                    .foregroundStyle(textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.vertical, RaccoonSpacing.space3)
+
+            // Token input for manual entry
+            VStack(spacing: RaccoonSpacing.space2) {
+                Text("Or paste your token below")
+                    .font(RaccoonTypography.caption)
+                    .foregroundStyle(textTertiary)
+
+                inputField(
+                    placeholder: "Paste token",
+                    text: $magicLinkToken,
+                    icon: "key"
+                )
+                #if os(iOS)
+                .textInputAutocapitalization(.never)
+                #endif
+                .autocorrectionDisabled()
+            }
+
+            // Verify button
+            Button {
+                isVerifyingToken = true
+                onMagicLinkVerify(magicLinkToken)
+            } label: {
+                Group {
+                    if isVerifyingToken {
+                        ProgressView()
+                            .tint(RaccoonColors.Light.textInverse)
+                    } else {
+                        Text("Verify Token")
+                            .font(RaccoonTypography.textLg)
+                    }
+                }
+                .foregroundStyle(RaccoonColors.Light.textInverse)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(RaccoonColors.accentPrimary)
+                .clipShape(RoundedRectangle(cornerRadius: RaccoonRadius.xl))
+            }
+            .buttonStyle(.plain)
+            .disabled(magicLinkToken.isEmpty || isVerifyingToken)
+
+            // Send again link
+            Button {
+                appState.authStore.resetMagicLinkState()
+            } label: {
+                Text("Send a new link")
+                    .font(RaccoonTypography.bodySmall)
+                    .foregroundStyle(RaccoonColors.accentPrimary)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Shared Components
+
     @ViewBuilder
     private func inputField(
         placeholder: String,
@@ -181,6 +354,8 @@ public struct LoginView: View {
                 .strokeBorder(borderPrimary, lineWidth: 1)
         }
     }
+
+    // MARK: - Theme Colors
 
     private var bgPrimary: Color {
         colorScheme == .dark ? RaccoonColors.Dark.bgPrimary : RaccoonColors.Light.bgPrimary

@@ -6,6 +6,8 @@ public enum APIEndpoint: Sendable {
     case login(email: String, password: String)
     case refresh(refreshToken: String)
     case logout
+    case requestMagicLink(email: String)
+    case verifyMagicLink(token: String)
 
     // MARK: - Users
     case me
@@ -69,7 +71,8 @@ public enum APIEndpoint: Sendable {
         case .register, .login, .refresh, .sendMessage, .createConversation,
              .addMember, .createAgent, .startAgentConversation, .createPage,
              .deployPage, .forkPage, .connectTelegram, .connectWhatsApp,
-             .likeFeedItem, .forkFeedItem, .rateAgent:
+             .likeFeedItem, .forkFeedItem, .rateAgent,
+             .requestMagicLink, .verifyMagicLink:
             return "POST"
         case .updateMe, .updateConversation, .updateAgent, .updatePage:
             return "PATCH"
@@ -87,6 +90,8 @@ public enum APIEndpoint: Sendable {
         case .login: return "/auth/login"
         case .refresh: return "/auth/refresh"
         case .logout: return "/auth/logout"
+        case .requestMagicLink: return "/auth/magic-link"
+        case .verifyMagicLink: return "/auth/magic-link/verify"
 
         case .me, .updateMe: return "/users/me"
         case .userProfile(let username): return "/users/\(username)"
@@ -135,7 +140,7 @@ public enum APIEndpoint: Sendable {
 
     public var requiresAuth: Bool {
         switch self {
-        case .register, .login, .refresh:
+        case .register, .login, .refresh, .requestMagicLink, .verifyMagicLink:
             return false
         default:
             return true
@@ -209,6 +214,10 @@ public enum APIEndpoint: Sendable {
             return try? encoder.encode(["email": email, "password": password])
         case .refresh(let refreshToken):
             return try? encoder.encode(["refreshToken": refreshToken])
+        case .requestMagicLink(let email):
+            return try? encoder.encode(["email": email])
+        case .verifyMagicLink(let token):
+            return try? encoder.encode(["token": token])
         case .createConversation(let type, let title, let agentID):
             var body: [String: String] = ["type": type]
             if let title { body["title"] = title }

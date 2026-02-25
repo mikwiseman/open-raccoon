@@ -21,6 +21,10 @@ config :raccoon_gateway, RaccoonGatewayWeb.Endpoint,
 
 config :raccoon_gateway, dev_routes: true
 
+# Use local adapter for dev (emails logged to console)
+config :raccoon_shared, RaccoonShared.Mailer,
+  adapter: Swoosh.Adapters.Local
+
 config :logger, :default_formatter, format: "[$level] $message\n"
 
 config :phoenix, :stacktrace_depth, 20

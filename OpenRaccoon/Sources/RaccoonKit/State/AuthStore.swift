@@ -6,6 +6,9 @@ public final class AuthStore {
     public var isLoggingIn = false
     public var isRegistering = false
     public var loginError: String?
+    public var isSendingMagicLink = false
+    public var magicLinkSent = false
+    public var magicLinkError: String?
 
     private let apiClient: APIClient
     private let authManager: AuthManager
@@ -80,6 +83,38 @@ public final class AuthStore {
     /// Returns the current access token if valid (may trigger a refresh).
     public func validAccessToken() async throws -> String {
         try await authManager.validAccessToken()
+    }
+
+    /// Sends a magic link email to the given address.
+    public func requestMagicLink(email: String) async throws {
+        isSendingMagicLink = true
+        magicLinkError = nil
+        defer { isSendingMagicLink = false }
+
+        do {
+            let _: MagicLinkResponse = try await apiClient.request(.requestMagicLink(email: email))
+            magicLinkSent = true
+        } catch {
+            magicLinkError = Self.readableError(error)
+            throw error
+        }
+    }
+
+    /// Verifies a magic link token, stores tokens, and returns the authenticated User.
+    public func verifyMagicLink(token: String) async throws -> User {
+        let response: AuthResponse = try await apiClient.request(.verifyMagicLink(token: token))
+        try await authManager.setTokens(
+            access: response.tokens.accessToken,
+            refresh: response.tokens.refreshToken,
+            expiresIn: response.tokens.expiresIn
+        )
+        return response.user
+    }
+
+    /// Resets magic link state for a fresh attempt.
+    public func resetMagicLinkState() {
+        magicLinkSent = false
+        magicLinkError = nil
     }
 
     // MARK: - Private
