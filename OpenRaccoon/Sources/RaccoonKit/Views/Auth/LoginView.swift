@@ -6,7 +6,8 @@ import SwiftUI
 public struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
-    @State private var isLoading = false
+
+    @Environment(AppState.self) private var appState
 
     public let onLogin: (String, String) -> Void
     public let onNavigateToRegister: () -> Void
@@ -51,6 +52,15 @@ public struct LoginView: View {
                         .foregroundStyle(textSecondary)
                 }
 
+                // Error message
+                if let errorMessage = appState.authStore.loginError {
+                    Text(errorMessage)
+                        .font(RaccoonTypography.bodySmall)
+                        .foregroundStyle(RaccoonColors.Semantic.error)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, RaccoonSpacing.space4)
+                }
+
                 // Email + Password fields
                 VStack(spacing: RaccoonSpacing.space3) {
                     inputField(
@@ -75,11 +85,10 @@ public struct LoginView: View {
 
                 // Log In button
                 Button {
-                    isLoading = true
                     onLogin(email, password)
                 } label: {
                     Group {
-                        if isLoading {
+                        if appState.authStore.isLoggingIn {
                             ProgressView()
                                 .tint(RaccoonColors.Light.textInverse)
                         } else {
@@ -94,7 +103,7 @@ public struct LoginView: View {
                     .clipShape(RoundedRectangle(cornerRadius: RaccoonRadius.xl))
                 }
                 .buttonStyle(.plain)
-                .disabled(email.isEmpty || password.isEmpty)
+                .disabled(email.isEmpty || password.isEmpty || appState.authStore.isLoggingIn)
 
                 // Divider
                 HStack {

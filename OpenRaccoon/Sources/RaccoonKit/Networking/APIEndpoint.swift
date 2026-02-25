@@ -178,8 +178,9 @@ public enum APIEndpoint: Sendable {
     }
 
     public func urlRequest(baseURL: URL) throws -> URLRequest {
+        let fullPath = "/api/v1" + path
         var components = URLComponents(
-            url: baseURL.appendingPathComponent("/api/v1").appendingPathComponent(path),
+            url: baseURL.appendingPathComponent(fullPath),
             resolvingAgainstBaseURL: false
         )
         components?.queryItems = queryItems
@@ -214,7 +215,11 @@ public enum APIEndpoint: Sendable {
             if let agentID { body["agentId"] = agentID }
             return try? encoder.encode(body)
         case .sendMessage(_, let content, _):
-            return try? encoder.encode(content)
+            struct SendMessageBody: Encodable {
+                let content: MessageContent
+                let type: String
+            }
+            return try? encoder.encode(SendMessageBody(content: content, type: "text"))
         case .addMember(_, let userID):
             return try? encoder.encode(["userId": userID])
         case .createAgent(let name, let systemPrompt, let model):
@@ -226,6 +231,23 @@ public enum APIEndpoint: Sendable {
         case .rateAgent(_, let rating, let review):
             var body: [String: AnyCodable] = ["rating": AnyCodable(rating)]
             if let review { body["review"] = AnyCodable(review) }
+            return try? encoder.encode(body)
+        case .updateMe(let displayName, let bio, let avatarURL):
+            var body: [String: String] = [:]
+            if let displayName { body["displayName"] = displayName }
+            if let bio { body["bio"] = bio }
+            if let avatarURL { body["avatarUrl"] = avatarURL }
+            return try? encoder.encode(body)
+        case .updateConversation(_, let title):
+            var body: [String: String] = [:]
+            if let title { body["title"] = title }
+            return try? encoder.encode(body)
+        case .updateAgent(_, let params):
+            return try? encoder.encode(params)
+        case .updatePage(_, let title, let description):
+            var body: [String: String] = [:]
+            if let title { body["title"] = title }
+            if let description { body["description"] = description }
             return try? encoder.encode(body)
         default:
             return nil

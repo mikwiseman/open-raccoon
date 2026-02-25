@@ -8,7 +8,8 @@ public struct RegisterView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
-    @State private var isLoading = false
+
+    @Environment(AppState.self) private var appState
 
     public let onRegister: (String, String, String) -> Void
     public let onNavigateToLogin: () -> Void
@@ -44,10 +45,19 @@ public struct RegisterView: View {
                         .foregroundStyle(textSecondary)
                 }
 
+                // Error message
+                if let errorMessage = appState.authStore.loginError {
+                    Text(errorMessage)
+                        .font(RaccoonTypography.bodySmall)
+                        .foregroundStyle(RaccoonColors.Semantic.error)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, RaccoonSpacing.space4)
+                }
+
                 // Form fields
                 VStack(spacing: RaccoonSpacing.space3) {
-                    inputField(placeholder: "Display Name", text: $displayName, icon: "person")
-                        .textContentType(.name)
+                    inputField(placeholder: "Username", text: $displayName, icon: "person")
+                        .textContentType(.username)
 
                     inputField(placeholder: "Email", text: $email, icon: "envelope")
                         .textContentType(.emailAddress)
@@ -78,11 +88,10 @@ public struct RegisterView: View {
 
                 // Create Account button
                 Button {
-                    isLoading = true
                     onRegister(displayName, email, password)
                 } label: {
                     Group {
-                        if isLoading {
+                        if appState.authStore.isRegistering {
                             ProgressView()
                                 .tint(RaccoonColors.Light.textInverse)
                         } else {
@@ -97,7 +106,7 @@ public struct RegisterView: View {
                     .clipShape(RoundedRectangle(cornerRadius: RaccoonRadius.xl))
                 }
                 .buttonStyle(.plain)
-                .disabled(!isFormValid)
+                .disabled(!isFormValid || appState.authStore.isRegistering)
 
                 // Login link
                 Button(action: onNavigateToLogin) {

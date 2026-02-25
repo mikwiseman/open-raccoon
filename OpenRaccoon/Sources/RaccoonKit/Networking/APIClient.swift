@@ -38,6 +38,7 @@ public actor APIClient {
 
         guard (200...299).contains(httpResponse.statusCode) else {
             if httpResponse.statusCode == 401 {
+                try? await authManager.clearTokens()
                 throw APIError.unauthorized
             }
             let errorResponse = try? JSONDecoder.raccoon.decode(APIErrorResponse.self, from: data)
@@ -77,6 +78,7 @@ public actor APIClient {
 
         guard (200...299).contains(httpResponse.statusCode) else {
             if httpResponse.statusCode == 401 {
+                try? await authManager.clearTokens()
                 throw APIError.unauthorized
             }
             let errorResponse = try? JSONDecoder.raccoon.decode(APIErrorResponse.self, from: data)

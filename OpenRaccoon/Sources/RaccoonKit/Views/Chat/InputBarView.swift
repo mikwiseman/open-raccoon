@@ -9,6 +9,7 @@ import SwiftUI
 /// - Stop button (error circle, white square) when agent generating
 public struct InputBarView: View {
     public let onSend: (String) -> Void
+    public var onTyping: (() -> Void)?
     public var isAgentGenerating: Bool
 
     @State private var text = ""
@@ -16,8 +17,13 @@ public struct InputBarView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    public init(onSend: @escaping (String) -> Void, isAgentGenerating: Bool = false) {
+    public init(
+        onSend: @escaping (String) -> Void,
+        onTyping: (() -> Void)? = nil,
+        isAgentGenerating: Bool = false
+    ) {
         self.onSend = onSend
+        self.onTyping = onTyping
         self.isAgentGenerating = isAgentGenerating
     }
 
@@ -61,6 +67,9 @@ public struct InputBarView: View {
             .background(bgInput)
             .clipShape(RoundedRectangle(cornerRadius: isMultiLine ? RaccoonRadius.xl : RaccoonRadius.lg))
             .focused($isFocused)
+            .onChange(of: text) {
+                onTyping?()
+            }
             .onSubmit {
                 #if os(macOS)
                 performSend()

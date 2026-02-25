@@ -8,6 +8,9 @@ public final class WebSocketClient {
     private let socket: Socket
     private let baseURL: String
 
+    /// Tracks active channels by topic (e.g. "conversation:abc123") so we can push events to them.
+    private var activeChannels: [String: Channel] = [:]
+
     // MARK: - Conversation Channel Handlers
 
     public var onNewMessage: ((_ payload: Message) -> Void)?
@@ -50,8 +53,10 @@ public final class WebSocketClient {
     }
 
     /// Join a conversation channel to receive real-time message events.
+    @discardableResult
     public func joinConversation(id: String) -> Channel {
-        let channel = socket.channel("conversation:\(id)")
+        let topic = "conversation:\(id)"
+        let channel = socket.channel(topic)
 
         channel.on(ConversationServerEvent.newMessage.rawValue) { [weak self] message in
             guard let self else { return }
@@ -94,12 +99,15 @@ public final class WebSocketClient {
         }
 
         channel.join()
+        activeChannels[topic] = channel
         return channel
     }
 
     /// Join an agent channel to receive streaming AI response events.
+    @discardableResult
     public func joinAgentChannel(conversationID: String) -> Channel {
-        let channel = socket.channel("agent:\(conversationID)")
+        let topic = "agent:\(conversationID)"
+        let channel = socket.channel(topic)
 
         channel.on(AgentServerEvent.token.rawValue) { [weak self] message in
             guard let self else { return }
@@ -166,12 +174,15 @@ public final class WebSocketClient {
         }
 
         channel.join()
+        activeChannels[topic] = channel
         return channel
     }
 
     /// Join the user channel for notifications, bridge status, and conversation updates.
+    @discardableResult
     public func joinUserChannel(userID: String) -> Channel {
-        let channel = socket.channel("user:\(userID)")
+        let topic = "user:\(userID)"
+        let channel = socket.channel(topic)
 
         channel.on(UserServerEvent.notification.rawValue) { [weak self] message in
             guard let self else { return }
@@ -198,11 +209,88 @@ public final class WebSocketClient {
         }
 
         channel.join()
+        activeChannels[topic] = channel
         return channel
+    }
+
+    // MARK: - Push Methods (Client → Server)
+
+    /// Push a new message event to the conversation channel.
+    @discardableResult
+    public func sendMessage(conversationID: String, content: String, type: String = "text") -> Push? {
+        let topic = "conversation:\(conversationID)"
+        guard let channel = activeChannels[topic] else { return nil }
+        return channel.push(
+            ConversationClientEvent.newMessage.rawValue,
+            payload: ["content": content, "type": type]
+        )
+    }
+
+    /// Push a typing indicator event to the conversation channel.
+    @discardableResult
+    public func sendTyping(conversationID: String, isTyping: Bool) -> Push? {
+        let topic = "conversation:\(conversationID)"
+        guard let channel = activeChannels[topic] else { return nil }
+        return channel.push(
+            ConversationClientEvent.typing.rawValue,
+            payload: ["is_typing": isTyping]
+        )
+    }
+
+    /// Push a read receipt event to the conversation channel.
+    @discardableResult
+    public func sendRead(conversationID: String, messageID: String) -> Push? {
+        let topic = "conversation:\(conversationID)"
+        guard let channel = activeChannels[topic] else { return nil }
+        return channel.push(
+            ConversationClientEvent.read.rawValue,
+            payload: ["message_id": messageID]
+        )
+    }
+
+    /// Push a reaction event to the conversation channel.
+    @discardableResult
+    public func sendReaction(conversationID: String, messageID: String, emoji: String) -> Push? {
+        let topic = "conversation:\(conversationID)"
+        guard let channel = activeChannels[topic] else { return nil }
+        return channel.push(
+            ConversationClientEvent.react.rawValue,
+            payload: ["message_id": messageID, "emoji": emoji]
+        )
+    }
+
+    /// Push an approval decision event to the agent channel.
+    @discardableResult
+    public func sendApprovalDecision(
+        conversationID: String,
+        requestID: String,
+        decision: String,
+        scope: String
+    ) -> Push? {
+        let topic = "agent:\(conversationID)"
+        guard let channel = activeChannels[topic] else { return nil }
+        return channel.push(
+            AgentClientEvent.approvalDecision.rawValue,
+            payload: ["request_id": requestID, "decision": decision, "scope": scope]
+        )
+    }
+
+    // MARK: - Channel Lifecycle
+
+    /// Leave a conversation channel and remove it from tracked channels.
+    public func leaveConversation(id: String) {
+        let topic = "conversation:\(id)"
+        if let channel = activeChannels.removeValue(forKey: topic) {
+            channel.leave()
+        }
     }
 
     /// Leave a channel.
     public func leave(_ channel: Channel) {
+        // Remove from tracked channels if present
+        if let topic = activeChannels.first(where: { $0.value === channel })?.key {
+            activeChannels.removeValue(forKey: topic)
+        }
         channel.leave()
     }
 

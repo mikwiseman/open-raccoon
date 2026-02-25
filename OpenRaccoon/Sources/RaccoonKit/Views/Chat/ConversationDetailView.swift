@@ -102,6 +102,9 @@ public struct ConversationDetailView: View {
                     onSend: { content in
                         viewModel.sendMessage(content: content)
                     },
+                    onTyping: {
+                        viewModel.userDidType()
+                    },
                     isAgentGenerating: viewModel.isAgentGenerating
                 )
             } else {
@@ -116,11 +119,16 @@ public struct ConversationDetailView: View {
                 let vm = ConversationDetailViewModel(
                     conversationID: conversationID,
                     apiClient: appState.apiClient,
-                    currentUserID: currentUserID
+                    currentUserID: currentUserID,
+                    webSocketClient: appState.webSocketClient
                 )
                 viewModel = vm
                 await vm.loadMessages()
+                vm.subscribeToChannel()
             }
+        }
+        .onDisappear {
+            viewModel?.unsubscribeFromChannel()
         }
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)

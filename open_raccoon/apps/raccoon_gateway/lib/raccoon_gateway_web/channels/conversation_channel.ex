@@ -57,13 +57,13 @@ defmodule RaccoonGatewayWeb.ConversationChannel do
   # This handles messages from other sources (REST API, bridge workers)
   @impl true
   def handle_info({:new_message, message}, socket) do
-    push(socket, "new_message", %{message: message})
+    push(socket, "new_message", %{message: message_json(message)})
     {:noreply, socket}
   end
 
   @impl true
   def handle_info({:message_updated, message}, socket) do
-    push(socket, "message_updated", %{message: message})
+    push(socket, "message_updated", %{message: message_json(message)})
     {:noreply, socket}
   end
 
@@ -75,7 +75,8 @@ defmodule RaccoonGatewayWeb.ConversationChannel do
 
     case Delivery.send_message(conversation_id, user_id, payload) do
       {:ok, message} ->
-        broadcast!(socket, "new_message", message_json(message))
+        # Note: Delivery.send_message/3 already broadcasts via PubSub,
+        # so we only reply to the sender here (no broadcast! to avoid duplicates).
         {:reply, {:ok, message_json(message)}, socket}
 
       {:error, reason} ->

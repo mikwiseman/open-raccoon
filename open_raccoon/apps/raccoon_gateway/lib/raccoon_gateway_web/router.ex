@@ -14,6 +14,13 @@ defmodule RaccoonGatewayWeb.Router do
     plug RaccoonGatewayWeb.Plugs.RateLimit, category: :auth
   end
 
+  # Public health check (no auth required)
+  scope "/api/v1", RaccoonGatewayWeb do
+    pipe_through :api
+
+    get "/health", HealthController, :index
+  end
+
   # Public auth endpoints (rate limited by IP)
   scope "/api/v1/auth", RaccoonGatewayWeb do
     pipe_through [:api, :auth_rate_limited]
