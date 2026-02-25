@@ -1,5 +1,6 @@
 """Anthropic Claude LLM provider with streaming and tool use."""
 
+import json
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -67,33 +68,73 @@ class AnthropicProvider(BaseLLMProvider):
             tool_count=len(anthropic_tools),
         )
 
+        # Track tool use blocks being assembled during streaming
+        tool_use_blocks: dict[str, dict[str, Any]] = {}
+        # Track which tool_use IDs have already been fully emitted
+        emitted_tool_ids: set[str] = set()
+
         async with self.client.messages.stream(**kwargs) as stream:
             async for event in stream:
-                if event.type == "content_block_delta":
+                if event.type == "content_block_start":
+                    if event.content_block.type == "tool_use":
+                        tool_id = event.content_block.id
+                        tool_name = event.content_block.name
+                        tool_use_blocks[tool_id] = {
+                            "id": tool_id,
+                            "name": tool_name,
+                            "input_json": "",
+                        }
+                        yield {
+                            "type": "tool_use_start",
+                            "id": tool_id,
+                            "name": tool_name,
+                        }
+
+                elif event.type == "content_block_delta":
                     if hasattr(event.delta, "text"):
                         yield {"type": "token", "text": event.delta.text}
                     elif hasattr(event.delta, "partial_json"):
                         yield {"type": "tool_input_delta", "text": event.delta.partial_json}
-                elif event.type == "content_block_start":
-                    if event.content_block.type == "tool_use":
-                        yield {
-                            "type": "tool_use_start",
-                            "id": event.content_block.id,
-                            "name": event.content_block.name,
-                        }
+                        # Accumulate the partial JSON for the current tool block
+                        # Find the tool block this delta belongs to (most recent one)
+                        if tool_use_blocks:
+                            # The delta belongs to the last started block
+                            last_id = list(tool_use_blocks.keys())[-1]
+                            tool_use_blocks[last_id]["input_json"] += event.delta.partial_json
 
-            # Get final message for usage and tool use blocks
+                elif event.type == "content_block_stop":
+                    # When a tool_use content block finishes, emit the complete tool_use event
+                    # immediately rather than waiting for the final_message
+                    if tool_use_blocks:
+                        # Check if the just-stopped block is a tool_use block
+                        # content_block_stop has an index, match it to the block
+                        for tool_id, block in tool_use_blocks.items():
+                            if tool_id not in emitted_tool_ids and block["input_json"]:
+                                parsed_input: dict[str, Any] = {}
+                                raw_json = block["input_json"]
+                                if raw_json:
+                                    parsed_input = json.loads(raw_json)
+                                yield {
+                                    "type": "tool_use",
+                                    "id": block["id"],
+                                    "name": block["name"],
+                                    "input": parsed_input,
+                                }
+                                emitted_tool_ids.add(tool_id)
+
+            # Get final message for usage and any tool use blocks that may not have
+            # been emitted during streaming (e.g., tool blocks with empty input)
             final_message = await stream.get_final_message()
 
-            # Emit complete tool_use events with parsed input
             for block in final_message.content:
-                if block.type == "tool_use":
+                if block.type == "tool_use" and block.id not in emitted_tool_ids:
                     yield {
                         "type": "tool_use",
                         "id": block.id,
                         "name": block.name,
                         "input": block.input,
                     }
+                    emitted_tool_ids.add(block.id)
 
             yield {
                 "type": "complete",

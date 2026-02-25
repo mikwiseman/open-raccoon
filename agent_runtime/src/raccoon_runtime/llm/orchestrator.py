@@ -28,6 +28,8 @@ class LLMOrchestrator:
         self.status_bank = StatusMessageBank()
         self.tool_registry = ToolRegistry()
         self._providers: dict[str, BaseLLMProvider] = {}
+        # Approval flow: maps request_id -> (event, decision)
+        self._pending_approvals: dict[str, tuple[asyncio.Event, dict[str, Any]]] = {}
 
     def get_provider(self, model: str) -> BaseLLMProvider:
         """Get or create a provider for the given model.
@@ -54,6 +56,27 @@ class LLMOrchestrator:
         else:
             raise ValueError(f"Unknown model: {model}")
 
+    def submit_approval_decision(
+        self,
+        request_id: str,
+        approved: bool,
+        scope: str = "allow_once",
+    ) -> None:
+        """Submit an approval decision for a pending tool execution.
+
+        Args:
+            request_id: The request_id from the approval_requested event.
+            approved: Whether the tool execution is approved.
+            scope: Approval scope ("allow_once", "allow_for_session", "always_for_agent_tool").
+        """
+        if request_id not in self._pending_approvals:
+            raise ValueError(f"No pending approval for request_id: {request_id}")
+
+        event, decision = self._pending_approvals[request_id]
+        decision["approved"] = approved
+        decision["scope"] = scope
+        event.set()
+
     async def execute(
         self,
         messages: list[dict[str, str]],
@@ -69,6 +92,7 @@ class LLMOrchestrator:
         - {"type": "tool_result", "request_id": "...", "result": "...", "is_error": bool}
         - {"type": "code_block", "language": "...", "code": "...", "filename": "..."}
         - {"type": "approval_requested", ...}
+        - {"type": "awaiting_approval", "request_id": "..."}
         - {"type": "complete", "total_tokens": int, "prompt_tokens": int,
            "completion_tokens": int}
         - {"type": "error", "code": "...", "message": "...", "retryable": bool}
@@ -164,9 +188,35 @@ class LLMOrchestrator:
                                     "always_for_agent_tool",
                                 ],
                             }
-                            # In a full implementation, the orchestrator would pause here
-                            # and wait for an approval decision from the Elixir side
-                            # before proceeding with tool execution.
+
+                            # Create an asyncio.Event to pause execution until
+                            # an approval decision is submitted
+                            approval_event = asyncio.Event()
+                            decision: dict[str, Any] = {"approved": False, "scope": ""}
+                            self._pending_approvals[request_id] = (approval_event, decision)
+
+                            # Signal caller that we are paused waiting for approval
+                            yield {
+                                "type": "awaiting_approval",
+                                "request_id": request_id,
+                            }
+
+                            # Block here until submit_approval_decision() is called
+                            await approval_event.wait()
+
+                            # Clean up
+                            del self._pending_approvals[request_id]
+
+                            # If not approved, skip tool execution
+                            if not decision.get("approved", False):
+                                yield {
+                                    "type": "tool_result",
+                                    "request_id": request_id,
+                                    "tool_name": tool_name,
+                                    "result": "Tool execution denied by user",
+                                    "is_error": True,
+                                }
+                                continue
 
                         yield {
                             "type": "tool_call",

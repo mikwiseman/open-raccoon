@@ -2,77 +2,94 @@ import SwiftUI
 
 public struct ConversationDetailView: View {
     public let conversationID: String
-    @State private var viewModel: ConversationDetailViewModel
+    @State private var viewModel: ConversationDetailViewModel?
     @State private var showScrollToBottom = false
 
+    @Environment(AppState.self) private var appState
     @Environment(\.colorScheme) private var colorScheme
 
     public init(conversationID: String) {
         self.conversationID = conversationID
-        self._viewModel = State(initialValue: ConversationDetailViewModel(conversationID: conversationID))
     }
 
     public var body: some View {
         VStack(spacing: 0) {
-            // Messages
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(viewModel.groupedMessages) { group in
-                            if group.showDateSeparator {
-                                DateSeparatorView(date: group.date)
+            if let viewModel {
+                // Messages
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(viewModel.groupedMessages) { group in
+                                if group.showDateSeparator {
+                                    DateSeparatorView(date: group.date)
+                                }
+
+                                ForEach(group.messages) { message in
+                                    MessageBubbleView(
+                                        message: message,
+                                        isFirstInGroup: message.id == group.messages.first?.id,
+                                        isLastInGroup: message.id == group.messages.last?.id,
+                                        currentUserID: appState.currentUserID ?? ""
+                                    )
+                                    .id(message.id)
+                                }
                             }
 
-                            ForEach(group.messages) { message in
-                                MessageBubbleView(
-                                    message: message,
-                                    isFirstInGroup: message.id == group.messages.first?.id,
-                                    isLastInGroup: message.id == group.messages.last?.id
-                                )
-                                .id(message.id)
+                            if viewModel.isTyping {
+                                TypingIndicatorView()
+                                    .padding(.top, RaccoonSpacing.space2)
                             }
                         }
-
-                        if viewModel.isTyping {
-                            TypingIndicatorView()
-                                .padding(.top, RaccoonSpacing.space2)
-                        }
+                        .padding(.vertical, RaccoonSpacing.space2)
                     }
-                    .padding(.vertical, RaccoonSpacing.space2)
-                }
-                .onChange(of: viewModel.messages.count) {
-                    if !showScrollToBottom {
-                        withAnimation(RaccoonMotion.easeOut) {
-                            proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom)
-                        }
-                    }
-                }
-                .overlay(alignment: .bottom) {
-                    if showScrollToBottom {
-                        ScrollToBottomPill {
+                    .onChange(of: viewModel.messages.count) {
+                        if !showScrollToBottom {
                             withAnimation(RaccoonMotion.easeOut) {
                                 proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom)
-                                showScrollToBottom = false
                             }
                         }
-                        .padding(.bottom, RaccoonSpacing.space4)
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    }
+                    .overlay(alignment: .bottom) {
+                        if showScrollToBottom {
+                            ScrollToBottomPill {
+                                withAnimation(RaccoonMotion.easeOut) {
+                                    proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom)
+                                    showScrollToBottom = false
+                                }
+                            }
+                            .padding(.bottom, RaccoonSpacing.space4)
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        }
                     }
                 }
+
+                Divider()
+                    .foregroundStyle(borderPrimary)
+
+                // Input bar
+                InputBarView(
+                    onSend: { content in
+                        viewModel.sendMessage(content: content)
+                    },
+                    isAgentGenerating: viewModel.isAgentGenerating
+                )
+            } else {
+                LoadingView()
+                    .frame(maxHeight: .infinity)
             }
-
-            Divider()
-                .foregroundStyle(borderPrimary)
-
-            // Input bar
-            InputBarView(
-                onSend: { content in
-                    viewModel.sendMessage(content: content)
-                },
-                isAgentGenerating: viewModel.isAgentGenerating
-            )
         }
         .background(bgPrimary)
+        .task {
+            if viewModel == nil {
+                let vm = ConversationDetailViewModel(
+                    conversationID: conversationID,
+                    apiClient: appState.apiClient,
+                    currentUserID: appState.currentUserID ?? ""
+                )
+                viewModel = vm
+                await vm.loadMessages()
+            }
+        }
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

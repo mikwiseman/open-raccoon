@@ -7,9 +7,12 @@ Deadline policy: 45s per execution chunk.
 import asyncio
 from typing import Any
 
+import grpc
 import structlog
+from google.protobuf import empty_pb2
 
 from raccoon_runtime.config import Settings
+from raccoon_runtime.generated.raccoon.agent.v1 import agent_service_pb2 as pb2
 from raccoon_runtime.sandbox.e2b_manager import E2BSandboxManager
 
 logger = structlog.get_logger()
@@ -22,20 +25,22 @@ class SandboxServiceServicer:
         self.settings = settings
         self.sandbox_manager = E2BSandboxManager(settings)
 
-    async def CreateSandbox(self, request: Any, context: Any) -> Any:  # noqa: N802
+    async def CreateSandbox(  # noqa: N802
+        self,
+        request: pb2.CreateSandboxRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> pb2.SandboxInfo:
         """Provision a new E2B sandbox for a conversation."""
-        conversation_id = getattr(request, "conversation_id", "")
-        template = getattr(request, "template", "python") or "python"
+        conversation_id = request.conversation_id
+        template = request.template or "python"
 
-        limits_proto = getattr(request, "limits", None)
+        limits_proto = request.limits if request.HasField("limits") else None
         limits: dict[str, Any] | None = None
         if limits_proto:
             limits = {
-                "cpu_count": getattr(limits_proto, "max_cpu", 2),
-                "memory_mb": getattr(limits_proto, "max_memory_mb", 512),
-                "timeout_seconds": getattr(
-                    limits_proto, "timeout_seconds", self.settings.sandbox_timeout
-                ),
+                "cpu_count": limits_proto.max_cpu or 2,
+                "memory_mb": limits_proto.max_memory_mb or 512,
+                "timeout_seconds": limits_proto.timeout_seconds or self.settings.sandbox_timeout,
             }
 
         logger.info(
@@ -50,18 +55,35 @@ class SandboxServiceServicer:
             limits=limits,
         )
 
-        # In full implementation, return a SandboxInfo protobuf message
-        return sandbox_info
+        # Build SandboxLimits protobuf if limits are available
+        limits_data = sandbox_info.get("limits", {})
+        sandbox_limits = pb2.SandboxLimits(
+            max_cpu=limits_data.get("cpu_count", 2),
+            max_memory_mb=limits_data.get("memory_mb", 512),
+            timeout_seconds=limits_data.get("timeout_seconds", self.settings.sandbox_timeout),
+        )
 
-    async def ExecuteCode(self, request: Any, context: Any) -> Any:  # noqa: N802
+        return pb2.SandboxInfo(
+            sandbox_id=sandbox_info["sandbox_id"],
+            conversation_id=sandbox_info["conversation_id"],
+            template=sandbox_info["template"],
+            status=sandbox_info["status"],
+            limits=sandbox_limits,
+        )
+
+    async def ExecuteCode(  # noqa: N802
+        self,
+        request: pb2.ExecuteCodeRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> Any:
         """Run code inside a sandbox with streaming output.
 
         Default deadline: 45s per execution chunk.
         """
-        sandbox_id = getattr(request, "sandbox_id", "")
-        code = getattr(request, "code", "")
-        language = getattr(request, "language", "python") or "python"
-        timeout = getattr(request, "timeout_seconds", 0) or self.settings.code_execution_deadline
+        sandbox_id = request.sandbox_id
+        code = request.code
+        language = request.language or "python"
+        timeout = request.timeout_seconds or self.settings.code_execution_deadline
 
         logger.info(
             "execute_code_request",
@@ -77,20 +99,55 @@ class SandboxServiceServicer:
                     code=code,
                     language=language,
                 ):
-                    # In full implementation, convert to ExecutionOutput protobuf
-                    yield output_event
-        except TimeoutError:
-            yield {
-                "type": "error",
-                "code": "execution_timeout",
-                "message": f"Code execution exceeded {timeout}s deadline",
-            }
+                    event_type = output_event.get("type")
 
-    async def UploadFile(self, request: Any, context: Any) -> Any:  # noqa: N802
+                    if event_type == "stdout":
+                        yield pb2.ExecutionOutput(stdout=output_event["text"])
+
+                    elif event_type == "stderr":
+                        yield pb2.ExecutionOutput(stderr=output_event["text"])
+
+                    elif event_type == "result":
+                        output_files = []
+                        for f in output_event.get("files", []):
+                            output_files.append(pb2.OutputFile(
+                                path=f.get("path", ""),
+                                mime_type=f.get("mime_type", ""),
+                                data=f.get("data", b""),
+                            ))
+                        yield pb2.ExecutionOutput(
+                            result=pb2.ExecutionResult(
+                                exit_code=output_event.get("exit_code", 0),
+                                output=output_event.get("output", ""),
+                                files=output_files,
+                            )
+                        )
+
+                    elif event_type == "error":
+                        yield pb2.ExecutionOutput(
+                            error=pb2.ExecutionError(
+                                code=output_event.get("code", "execution_error"),
+                                message=output_event.get("message", ""),
+                            )
+                        )
+
+        except TimeoutError:
+            yield pb2.ExecutionOutput(
+                error=pb2.ExecutionError(
+                    code="execution_timeout",
+                    message=f"Code execution exceeded {timeout}s deadline",
+                )
+            )
+
+    async def UploadFile(  # noqa: N802
+        self,
+        request: pb2.UploadFileRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> pb2.UploadFileResponse:
         """Upload a file into a sandbox."""
-        sandbox_id = getattr(request, "sandbox_id", "")
-        path = getattr(request, "path", "")
-        data = getattr(request, "data", b"")
+        sandbox_id = request.sandbox_id
+        path = request.path
+        data = request.data
 
         logger.info(
             "upload_file_request",
@@ -105,15 +162,20 @@ class SandboxServiceServicer:
             content=data,
         )
 
-        # In full implementation, return UploadFileResponse protobuf
-        return result
+        return pb2.UploadFileResponse(
+            path=result["path"],
+            size_bytes=result["size_bytes"],
+        )
 
-    async def DestroySandbox(self, request: Any, context: Any) -> Any:  # noqa: N802
+    async def DestroySandbox(  # noqa: N802
+        self,
+        request: pb2.DestroySandboxRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> empty_pb2.Empty:
         """Tear down a sandbox and release resources."""
-        sandbox_id = getattr(request, "sandbox_id", "")
+        sandbox_id = request.sandbox_id
 
         logger.info("destroy_sandbox_request", sandbox_id=sandbox_id)
         await self.sandbox_manager.destroy_sandbox(sandbox_id)
 
-        # Return empty response (google.protobuf.Empty equivalent)
-        return {}
+        return empty_pb2.Empty()

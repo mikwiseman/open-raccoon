@@ -8,6 +8,15 @@ public final class ConversationDetailViewModel {
     public var isTyping = false
     public var isAgentGenerating = false
     public var inputText = ""
+    public var isLoading = false
+    public var error: String?
+
+    private let apiClient: APIClient
+    private let currentUserID: String
+
+    private var nextCursor: String?
+    private var hasMore: Bool = true
+    private var isLoadingMore: Bool = false
 
     public struct MessageGroup: Identifiable, Sendable {
         public let id: String
@@ -74,23 +83,86 @@ public final class ConversationDetailViewModel {
         return groups
     }
 
-    public init(conversationID: String) {
+    public init(conversationID: String, apiClient: APIClient, currentUserID: String) {
         self.conversationID = conversationID
+        self.apiClient = apiClient
+        self.currentUserID = currentUserID
+    }
+
+    public func loadMessages() async {
+        isLoading = true
+        error = nil
+
+        do {
+            let response: PaginatedResponse<Message> = try await apiClient.request(
+                .listMessages(conversationID: conversationID, cursor: nil, limit: 50)
+            )
+            messages = response.items
+            nextCursor = response.pageInfo.nextCursor
+            hasMore = response.pageInfo.hasMore
+        } catch {
+            self.error = String(describing: error)
+        }
+
+        isLoading = false
+    }
+
+    public func loadMoreMessages() async {
+        guard hasMore, !isLoadingMore, let cursor = nextCursor else { return }
+        isLoadingMore = true
+
+        do {
+            let response: PaginatedResponse<Message> = try await apiClient.request(
+                .listMessages(conversationID: conversationID, cursor: cursor, limit: 50)
+            )
+            // Prepend older messages to the front
+            messages.insert(contentsOf: response.items, at: 0)
+            nextCursor = response.pageInfo.nextCursor
+            hasMore = response.pageInfo.hasMore
+        } catch {
+            self.error = String(describing: error)
+        }
+
+        isLoadingMore = false
     }
 
     public func sendMessage(content: String) {
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        let message = Message(
-            id: UUID().uuidString,
+        let idempotencyKey = UUID().uuidString
+        let messageContent = MessageContent(text: trimmed)
+
+        // Optimistic local append
+        let localMessage = Message(
+            id: idempotencyKey,
             conversationID: conversationID,
-            senderID: "current_user",
+            senderID: currentUserID,
             senderType: .human,
             type: .text,
-            content: MessageContent(text: trimmed),
+            content: messageContent,
             createdAt: Date()
         )
-        messages.append(message)
+        messages.append(localMessage)
+
+        Task {
+            do {
+                let serverMessage: Message = try await apiClient.request(
+                    .sendMessage(
+                        conversationID: conversationID,
+                        content: messageContent,
+                        idempotencyKey: idempotencyKey
+                    )
+                )
+                // Replace optimistic message with server response
+                if let index = messages.firstIndex(where: { $0.id == idempotencyKey }) {
+                    messages[index] = serverMessage
+                }
+            } catch {
+                self.error = String(describing: error)
+                // Remove optimistic message on failure
+                messages.removeAll { $0.id == idempotencyKey }
+            }
+        }
     }
 }

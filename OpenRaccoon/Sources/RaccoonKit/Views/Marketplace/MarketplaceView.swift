@@ -3,10 +3,11 @@ import SwiftUI
 /// Browse AI agents with category filter pills, search bar,
 /// and grid of agent cards.
 public struct MarketplaceView: View {
+    @Environment(AppState.self) private var appState
+    @State private var viewModel: MarketplaceViewModel?
     @State private var searchText = ""
     @State private var selectedCategory: String?
-    @State private var agents: [Agent] = []
-    @State private var isLoading = false
+    @State private var searchTask: Task<Void, Never>?
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -23,21 +24,41 @@ public struct MarketplaceView: View {
             SearchBarView(text: $searchText, placeholder: "Search agents...")
                 .padding(.horizontal, RaccoonSpacing.space4)
                 .padding(.top, RaccoonSpacing.space3)
+                .onChange(of: searchText) {
+                    searchTask?.cancel()
+                    searchTask = Task {
+                        try? await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
+                        guard !Task.isCancelled else { return }
+                        await viewModel?.searchAgents(query: searchText)
+                    }
+                }
 
             // Category pills
             categoryPills
 
             // Agent grid
-            if isLoading {
+            if let vm = viewModel {
+                if vm.isLoading && vm.agents.isEmpty {
+                    LoadingView()
+                        .frame(maxHeight: .infinity)
+                } else if filteredAgents.isEmpty {
+                    emptyState
+                } else {
+                    agentGrid
+                }
+            } else {
                 LoadingView()
                     .frame(maxHeight: .infinity)
-            } else if filteredAgents.isEmpty {
-                emptyState
-            } else {
-                agentGrid
             }
         }
         .background(bgPrimary)
+        .task {
+            if viewModel == nil {
+                let vm = MarketplaceViewModel(apiClient: appState.apiClient)
+                viewModel = vm
+                await vm.loadAgents()
+            }
+        }
     }
 
     private var categoryPills: some View {
@@ -162,15 +183,9 @@ public struct MarketplaceView: View {
     }
 
     private var filteredAgents: [Agent] {
-        var result = agents
+        var result = viewModel?.agents ?? []
         if let category = selectedCategory {
             result = result.filter { $0.category == category }
-        }
-        if !searchText.isEmpty {
-            result = result.filter {
-                $0.name.localizedCaseInsensitiveContains(searchText) ||
-                ($0.description?.localizedCaseInsensitiveContains(searchText) ?? false)
-            }
         }
         return result
     }

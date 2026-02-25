@@ -7,6 +7,7 @@ import grpc
 import structlog
 
 from raccoon_runtime.config import Settings
+from raccoon_runtime.generated.raccoon.agent.v1 import agent_service_pb2_grpc
 from raccoon_runtime.services.agent_service import AgentServiceServicer
 from raccoon_runtime.services.sandbox_service import SandboxServiceServicer
 
@@ -27,21 +28,17 @@ async def serve(settings: Settings) -> None:
     agent_service = AgentServiceServicer(settings)
     sandbox_service = SandboxServiceServicer(settings)
 
-    # NOTE: In production, these would be registered via the generated
-    # protobuf service descriptors:
-    #
-    #   from raccoon_runtime.generated import agent_service_pb2_grpc
-    #   agent_service_pb2_grpc.add_AgentServiceServicer_to_server(agent_service, server)
-    #   agent_service_pb2_grpc.add_SandboxServiceServicer_to_server(sandbox_service, server)
-    #
-    # For now, log that services are initialized and ready.
+    # Register services with the gRPC server via generated protobuf descriptors
+    agent_service_pb2_grpc.add_AgentServiceServicer_to_server(agent_service, server)
+    agent_service_pb2_grpc.add_SandboxServiceServicer_to_server(sandbox_service, server)
+
     logger.info(
         "services_registered",
         agent_service=type(agent_service).__name__,
         sandbox_service=type(sandbox_service).__name__,
     )
 
-    listen_addr = f"[::]:{settings.grpc_port}"
+    listen_addr = f"0.0.0.0:{settings.grpc_port}"
     server.add_insecure_port(listen_addr)
 
     logger.info("starting_grpc_server", address=listen_addr)

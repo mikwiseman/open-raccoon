@@ -20,11 +20,13 @@ defmodule RaccoonAgents.AgentExecutor do
   use GenServer
   require Logger
 
-  alias RaccoonAgents.{CostTracker, ToolApproval}
+  alias RaccoonAgents.{CostTracker, GRPCClient, ToolApproval}
 
   defstruct [:conversation_id, :agent_id, :user_id, :channel_pid]
 
-  # ── Public API ──────────────────────────────────────────────────────
+  @stream_timeout 120_000
+
+  # -- Public API ------------------------------------------------------------
 
   @doc """
   Start agent execution for a conversation.
@@ -47,7 +49,7 @@ defmodule RaccoonAgents.AgentExecutor do
     GenServer.start_link(__MODULE__, opts)
   end
 
-  # ── Callbacks ───────────────────────────────────────────────────────
+  # -- Callbacks -------------------------------------------------------------
 
   @impl true
   def init(opts) do
@@ -55,7 +57,7 @@ defmodule RaccoonAgents.AgentExecutor do
   end
 
   @impl true
-  def handle_cast({:execute, _messages, _config}, state) do
+  def handle_cast({:execute, messages, config}, state) do
     Logger.info("Starting agent execution",
       conversation_id: state.conversation_id,
       agent_id: state.agent_id
@@ -63,38 +65,81 @@ defmodule RaccoonAgents.AgentExecutor do
 
     topic = "agent:#{state.conversation_id}"
 
-    # In production this opens a gRPC stream to the Python sidecar:
-    #
-    #   {:ok, stream} = RaccoonAgents.GRPCClient.execute_agent(%{
-    #     conversation_id: state.conversation_id,
-    #     agent_id: state.agent_id,
-    #     messages: messages,
-    #     config: config,
-    #     user_api_key: ""
-    #   })
-    #
-    #   Enum.each(stream, fn event ->
-    #     broadcast_event(topic, event, state)
-    #   end)
-    #
-    # For now, emit a thinking status so the channel wiring can be tested.
-
     broadcast(topic, "status", %{
-      message: "thinking about this...",
+      message: "connecting to agent runtime...",
       category: "thinking"
     })
 
-    # After gRPC stream completes, record token usage
-    # CostTracker.record_usage(state.user_id, state.agent_id, %{
-    #   input_tokens: complete_event.input_tokens,
-    #   output_tokens: complete_event.output_tokens,
-    #   model: complete_event.model
-    # })
+    request_params = %{
+      conversation_id: state.conversation_id,
+      agent_id: state.agent_id,
+      messages: messages,
+      config: config,
+      user_api_key: ""
+    }
+
+    case GRPCClient.execute_agent(request_params) do
+      {:ok, event_stream, channel} ->
+        consume_stream(event_stream, topic, state)
+        GRPC.Stub.disconnect(channel)
+
+      {:error, reason} ->
+        Logger.error("gRPC connection failed",
+          conversation_id: state.conversation_id,
+          error: inspect(reason)
+        )
+
+        broadcast(topic, "error", %{
+          code: "sidecar_unavailable",
+          message: "Agent runtime is not reachable: #{inspect(reason)}"
+        })
+    end
 
     {:stop, :normal, state}
   end
 
-  # ── Helpers ─────────────────────────────────────────────────────────
+  # -- Private ---------------------------------------------------------------
+
+  defp consume_stream(event_stream, topic, state) do
+    task =
+      Task.async(fn ->
+        event_stream
+        |> Stream.each(fn
+          {:ok, response} ->
+            event = GRPCClient.response_to_event(response)
+            broadcast_event(topic, event, state)
+
+          {:error, error} ->
+            Logger.error("gRPC stream error",
+              conversation_id: state.conversation_id,
+              error: inspect(error)
+            )
+
+            broadcast(topic, "error", %{
+              code: "stream_error",
+              message: "Agent stream error: #{inspect(error)}"
+            })
+        end)
+        |> Stream.run()
+      end)
+
+    case Task.yield(task, @stream_timeout) || Task.shutdown(task) do
+      {:ok, _result} ->
+        :ok
+
+      nil ->
+        Logger.error("Agent execution timed out",
+          conversation_id: state.conversation_id
+        )
+
+        broadcast(topic, "error", %{
+          code: "deadline_exceeded",
+          message: "Agent execution timed out after #{div(@stream_timeout, 1_000)}s"
+        })
+    end
+  end
+
+  # -- Helpers ---------------------------------------------------------------
 
   defp broadcast(topic, event_name, payload) do
     Phoenix.PubSub.broadcast(
@@ -132,7 +177,6 @@ defmodule RaccoonAgents.AgentExecutor do
         broadcast(topic, "code_block", %{language: lang, code: code})
 
       %{type: "approval_requested"} = approval ->
-        # Record that approval was requested (audit trail)
         ToolApproval.record_decision(%{
           actor_user_id: state.user_id,
           agent_id: state.agent_id,
@@ -151,7 +195,6 @@ defmodule RaccoonAgents.AgentExecutor do
         })
 
       %{type: "complete"} = complete ->
-        # Record token usage with cost tracker
         CostTracker.record_usage(state.user_id, state.agent_id, %{
           input_tokens: Map.get(complete, :prompt_tokens, 0),
           output_tokens: Map.get(complete, :completion_tokens, 0),

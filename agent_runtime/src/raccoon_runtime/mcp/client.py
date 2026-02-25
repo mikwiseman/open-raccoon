@@ -4,11 +4,16 @@ Connects to MCP servers and discovers/executes tools on behalf of agents.
 Tool call deadline: 20s default, 120s max for explicitly long-running tools.
 """
 
+import uuid
 from typing import Any
 
+import httpx
 import structlog
 
 logger = structlog.get_logger()
+
+# Default timeout for MCP tool execution requests (seconds)
+MCP_TOOL_TIMEOUT = 20.0
 
 
 class MCPClient:
@@ -72,9 +77,40 @@ class MCPClient:
         )
 
         for name, conn in servers.items():
-            # In production, this would call the MCP server's tools/list endpoint
-            # via the MCP protocol. For now, return cached tool list.
-            for tool in conn.get("tools", []):
+            server_url = conn["url"]
+            auth = conn.get("auth", {})
+
+            headers: dict[str, str] = {"Content-Type": "application/json"}
+            if auth.get("token"):
+                headers["Authorization"] = f"Bearer {auth['token']}"
+
+            # Send JSON-RPC request to discover tools via MCP tools/list
+            request_body = {
+                "jsonrpc": "2.0",
+                "id": str(uuid.uuid4()),
+                "method": "tools/list",
+                "params": {},
+            }
+
+            async with httpx.AsyncClient(timeout=MCP_TOOL_TIMEOUT) as client:
+                response = await client.post(
+                    server_url,
+                    json=request_body,
+                    headers=headers,
+                )
+                response.raise_for_status()
+                result = response.json()
+
+            # Parse JSON-RPC response
+            if "error" in result:
+                raise RuntimeError(
+                    f"MCP server {name} returned error: {result['error']}"
+                )
+
+            server_tools = result.get("result", {}).get("tools", [])
+            # Cache tools on the connection
+            conn["tools"] = server_tools
+            for tool in server_tools:
                 tools.append({**tool, "server": name})
 
         return tools
@@ -93,23 +129,52 @@ class MCPClient:
             arguments: Tool arguments as a dict.
 
         Returns:
-            Tool execution result.
+            Tool execution result dict.
 
         Raises:
             ValueError: If not connected to the specified server.
-            NotImplementedError: MCP protocol execution is not yet wired.
+            RuntimeError: If the MCP server returns an error.
         """
         if server_name not in self._connections:
             raise ValueError(f"Not connected to server: {server_name}")
 
+        conn = self._connections[server_name]
+        server_url = conn["url"]
+        auth = conn.get("auth", {})
+
+        headers: dict[str, str] = {"Content-Type": "application/json"}
+        if auth.get("token"):
+            headers["Authorization"] = f"Bearer {auth['token']}"
+
         logger.info("mcp_execute_tool", server=server_name, tool=tool_name)
-        # In production, this would:
-        # 1. Serialize the arguments per MCP protocol
-        # 2. Send tools/call request to the MCP server
-        # 3. Await and return the result
-        raise NotImplementedError(
-            f"MCP tool execution not yet implemented for {server_name}/{tool_name}"
-        )
+
+        # Send JSON-RPC request to execute the tool via MCP tools/call
+        request_body = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": "tools/call",
+            "params": {
+                "name": tool_name,
+                "arguments": arguments,
+            },
+        }
+
+        async with httpx.AsyncClient(timeout=MCP_TOOL_TIMEOUT) as client:
+            response = await client.post(
+                server_url,
+                json=request_body,
+                headers=headers,
+            )
+            response.raise_for_status()
+            result = response.json()
+
+        # Parse JSON-RPC response
+        if "error" in result:
+            raise RuntimeError(
+                f"MCP tool execution error for {server_name}/{tool_name}: {result['error']}"
+            )
+
+        return result.get("result", {})
 
     @property
     def connected_servers(self) -> list[str]:

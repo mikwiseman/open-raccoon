@@ -2,7 +2,7 @@ import SwiftUI
 
 public struct ConversationListView: View {
     @Environment(AppState.self) private var appState
-    @State private var viewModel = ConversationListViewModel()
+    @State private var viewModel: ConversationListViewModel?
     @State private var searchText = ""
 
     @Environment(\.colorScheme) private var colorScheme
@@ -11,12 +11,23 @@ public struct ConversationListView: View {
 
     public var body: some View {
         Group {
-            if viewModel.isLoading {
-                LoadingView()
-            } else if filteredConversations.isEmpty {
-                emptyState
+            if let vm = viewModel {
+                if vm.isLoading && vm.conversations.isEmpty {
+                    LoadingView()
+                } else if filteredConversations.isEmpty {
+                    emptyState
+                } else {
+                    conversationList
+                }
             } else {
-                conversationList
+                LoadingView()
+            }
+        }
+        .task {
+            if viewModel == nil {
+                let vm = ConversationListViewModel(apiClient: appState.apiClient)
+                viewModel = vm
+                await vm.loadConversations()
             }
         }
         #if os(iOS)
@@ -66,7 +77,7 @@ public struct ConversationListView: View {
     }
 
     private var filteredConversations: [Conversation] {
-        let conversations = appState.conversationStore.conversations
+        let conversations = viewModel?.conversations ?? appState.conversationStore.conversations
         guard !searchText.isEmpty else { return conversations }
         return conversations.filter { conversation in
             conversation.title?.localizedCaseInsensitiveContains(searchText) ?? false

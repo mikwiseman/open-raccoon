@@ -5,10 +5,12 @@ Sandbox timeout: configurable (default 300s).
 Code execution deadline: 45s per chunk.
 """
 
+import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
 
 import structlog
+from e2b_code_interpreter import AsyncSandbox
 
 from raccoon_runtime.config import Settings
 
@@ -57,21 +59,22 @@ class E2BSandboxManager:
             template=template,
         )
 
-        # In production with a real E2B API key:
-        # from e2b_code_interpreter import AsyncSandbox
-        # sandbox = await AsyncSandbox.create(
-        #     template=template,
-        #     api_key=self.settings.e2b_api_key,
-        # )
-        # sandbox_id = sandbox.sandbox_id
+        timeout = sandbox_limits.get("timeout_seconds", self.settings.sandbox_timeout)
 
-        sandbox_id = f"sbx_{conversation_id[:8]}"
+        sandbox = await AsyncSandbox.create(
+            template=template,
+            timeout=timeout,
+            api_key=self.settings.e2b_api_key,
+        )
+
+        sandbox_id = sandbox.sandbox_id
         sandbox_info: dict[str, Any] = {
             "sandbox_id": sandbox_id,
             "status": "ready",
             "template": template,
             "conversation_id": conversation_id,
             "limits": sandbox_limits,
+            "instance": sandbox,
         }
         self._active_sandboxes[sandbox_id] = sandbox_info
 
@@ -96,6 +99,7 @@ class E2BSandboxManager:
             - {"type": "stdout", "text": "..."}
             - {"type": "stderr", "text": "..."}
             - {"type": "result", "output": "...", "files": [...], "exit_code": int}
+            - {"type": "error", "code": "...", "message": "..."}
 
         Raises:
             ValueError: If sandbox not found.
@@ -110,25 +114,58 @@ class E2BSandboxManager:
             code_length=len(code),
         )
 
-        # In production with a real sandbox instance:
-        # sandbox = self._active_sandboxes[sandbox_id]["instance"]
-        # execution = await sandbox.run_code(code)
-        # for line in execution.logs.stdout:
-        #     yield {"type": "stdout", "text": line}
-        # for line in execution.logs.stderr:
-        #     yield {"type": "stderr", "text": line}
+        sandbox_entry = self._active_sandboxes[sandbox_id]
+        sandbox: AsyncSandbox = sandbox_entry["instance"]
 
-        yield {
-            "type": "stdout",
-            "text": f"[Sandbox {sandbox_id}] Code execution placeholder\n",
-        }
-        yield {
-            "type": "result",
-            "output": "Execution completed (stub)",
-            "files": [],
-            "exit_code": 0,
-            "duration_ms": 0.0,
-        }
+        # Collect stdout/stderr via callbacks using asyncio.Queue
+        output_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+
+        def on_stdout(msg: Any) -> None:
+            output_queue.put_nowait({"type": "stdout", "text": str(msg)})
+
+        def on_stderr(msg: Any) -> None:
+            output_queue.put_nowait({"type": "stderr", "text": str(msg)})
+
+        # Run code execution in a task so we can yield output as it arrives
+        execution_task = asyncio.create_task(
+            sandbox.run_code(
+                code,
+                language=language,
+                on_stdout=on_stdout,
+                on_stderr=on_stderr,
+            )
+        )
+
+        # Yield output events as they arrive
+        while not execution_task.done():
+            try:
+                event = await asyncio.wait_for(output_queue.get(), timeout=0.1)
+                yield event
+            except TimeoutError:
+                continue
+
+        # Drain any remaining events in the queue
+        while not output_queue.empty():
+            yield output_queue.get_nowait()
+
+        # Get the execution result
+        execution = execution_task.result()
+
+        if execution.error:
+            yield {
+                "type": "error",
+                "code": execution.error.name,
+                "message": f"{execution.error.value}\n{execution.error.traceback}",
+            }
+        else:
+            # Gather result text from all results
+            result_text = execution.text or ""
+            yield {
+                "type": "result",
+                "output": result_text,
+                "files": [],
+                "exit_code": 0,
+            }
 
     async def upload_file(
         self,
@@ -159,9 +196,10 @@ class E2BSandboxManager:
             size_bytes=len(content),
         )
 
-        # In production:
-        # sandbox = self._active_sandboxes[sandbox_id]["instance"]
-        # await sandbox.files.write(path, content)
+        sandbox_entry = self._active_sandboxes[sandbox_id]
+        sandbox: AsyncSandbox = sandbox_entry["instance"]
+
+        await sandbox.files.write(path, content)
 
         return {"path": path, "size_bytes": len(content)}
 
@@ -173,9 +211,9 @@ class E2BSandboxManager:
         """
         if sandbox_id in self._active_sandboxes:
             logger.info("destroying_sandbox", sandbox_id=sandbox_id)
-            # In production:
-            # sandbox = self._active_sandboxes[sandbox_id]["instance"]
-            # await sandbox.close()
+            sandbox_entry = self._active_sandboxes[sandbox_id]
+            sandbox: AsyncSandbox = sandbox_entry["instance"]
+            await sandbox.kill()
             del self._active_sandboxes[sandbox_id]
 
     async def destroy_all(self) -> None:

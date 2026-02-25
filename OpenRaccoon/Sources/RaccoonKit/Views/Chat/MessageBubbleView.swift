@@ -12,18 +12,20 @@ public struct MessageBubbleView: View {
     public let message: Message
     public let isFirstInGroup: Bool
     public let isLastInGroup: Bool
+    public let currentUserID: String
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isSent: Bool {
-        message.senderType == .human && message.senderID == "current_user"
+        message.senderType == .human && message.senderID == currentUserID
     }
 
-    public init(message: Message, isFirstInGroup: Bool, isLastInGroup: Bool) {
+    public init(message: Message, isFirstInGroup: Bool, isLastInGroup: Bool, currentUserID: String) {
         self.message = message
         self.isFirstInGroup = isFirstInGroup
         self.isLastInGroup = isLastInGroup
+        self.currentUserID = currentUserID
     }
 
     public var body: some View {

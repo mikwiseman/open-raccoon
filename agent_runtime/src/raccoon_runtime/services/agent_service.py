@@ -6,12 +6,22 @@ Deadline policy: 60s per turn (configurable by deployment).
 
 from typing import Any
 
+import grpc
 import structlog
+from google.protobuf import struct_pb2
 
 from raccoon_runtime.config import Settings
+from raccoon_runtime.generated.raccoon.agent.v1 import agent_service_pb2 as pb2
 from raccoon_runtime.llm.orchestrator import LLMOrchestrator
 
 logger = structlog.get_logger()
+
+
+def _dict_to_struct(d: dict[str, Any]) -> struct_pb2.Struct:
+    """Convert a Python dict to a google.protobuf.Struct."""
+    s = struct_pb2.Struct()
+    s.update(d)
+    return s
 
 
 class AgentServiceServicer:
@@ -21,17 +31,21 @@ class AgentServiceServicer:
         self.settings = settings
         self.orchestrator = LLMOrchestrator(settings)
 
-    async def ExecuteAgent(self, request: Any, context: Any) -> Any:  # noqa: N802
+    async def ExecuteAgent(  # noqa: N802
+        self,
+        request: pb2.AgentRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> Any:
         """Execute an agent with streaming response.
 
         Streams AgentResponse events (tokens, status, tool calls, etc.)
         back to the Elixir client. Default deadline: 60s per turn.
         """
-        conversation_id = getattr(request, "conversation_id", "")
-        agent_id = getattr(request, "agent_id", "")
-        messages = getattr(request, "messages", [])
-        config = getattr(request, "config", None)
-        user_api_key = getattr(request, "user_api_key", "")
+        conversation_id = request.conversation_id
+        agent_id = request.agent_id
+        messages = request.messages
+        config = request.config
+        user_api_key = request.user_api_key
 
         logger.info(
             "execute_agent",
@@ -58,38 +72,124 @@ class AgentServiceServicer:
                 "deadline_seconds": self.settings.agent_turn_deadline,
             }
             # Convert proto ToolConfig repeated field to list of dicts
-            if hasattr(config, "tools"):
-                for tool in config.tools:
-                    config_dict["tools"].append({
-                        "name": tool.name,
-                        "description": getattr(tool, "description", ""),
-                        "input_schema": dict(getattr(tool, "input_schema", {})),
-                        "requires_approval": getattr(tool, "requires_approval", False),
-                    })
+            for tool in config.tools:
+                config_dict["tools"].append({
+                    "name": tool.name,
+                    "description": tool.description,
+                    "input_schema": dict(tool.input_schema) if tool.HasField("input_schema") else {},
+                    "requires_approval": tool.requires_approval,
+                })
 
-        # Stream events from orchestrator
+        # Stream events from orchestrator, converting each to a protobuf AgentResponse
         async for event in self.orchestrator.execute(
             messages=msg_dicts,
             config=config_dict,
             api_key=user_api_key or None,
         ):
-            # In a full implementation, each event dict would be converted
-            # to the corresponding protobuf AgentResponse message type.
-            # For now, yield the raw event dicts.
-            yield event
+            event_type = event.get("type")
 
-    async def GetAgentConfig(self, request: Any, context: Any) -> Any:  # noqa: N802
+            if event_type == "token":
+                yield pb2.AgentResponse(
+                    token=pb2.TokenEvent(text=event["text"])
+                )
+
+            elif event_type == "status":
+                yield pb2.AgentResponse(
+                    status=pb2.StatusEvent(
+                        message=event["message"],
+                        category=event.get("category", ""),
+                    )
+                )
+
+            elif event_type == "tool_call":
+                yield pb2.AgentResponse(
+                    tool_call=pb2.ToolCallEvent(
+                        tool_call_id=event.get("request_id", ""),
+                        tool_name=event["tool_name"],
+                        arguments=_dict_to_struct(event.get("arguments", {})),
+                    )
+                )
+
+            elif event_type == "tool_result":
+                yield pb2.AgentResponse(
+                    tool_result=pb2.ToolResultEvent(
+                        tool_call_id=event.get("request_id", ""),
+                        tool_name=event.get("tool_name", ""),
+                        success=not event.get("is_error", False),
+                        output=event.get("result", ""),
+                        error_message=event.get("result", "") if event.get("is_error") else "",
+                    )
+                )
+
+            elif event_type == "code_block":
+                yield pb2.AgentResponse(
+                    code_block=pb2.CodeBlockEvent(
+                        language=event.get("language", ""),
+                        code=event.get("code", ""),
+                        filename=event.get("filename", ""),
+                    )
+                )
+
+            elif event_type == "error":
+                yield pb2.AgentResponse(
+                    error=pb2.ErrorEvent(
+                        code=event.get("code", ""),
+                        message=event.get("message", ""),
+                        recoverable=event.get("retryable", False),
+                    )
+                )
+
+            elif event_type == "approval_requested":
+                yield pb2.AgentResponse(
+                    approval_request=pb2.ApprovalRequestEvent(
+                        approval_id=event.get("request_id", ""),
+                        tool_name=event.get("tool_name", ""),
+                        arguments=_dict_to_struct(event.get("arguments_preview", {})),
+                        reason=event.get("reason", "Tool requires approval before execution"),
+                    )
+                )
+
+            elif event_type == "awaiting_approval":
+                # The orchestrator is paused waiting for approval.
+                # The caller should submit an approval decision via
+                # orchestrator.submit_approval_decision() to resume.
+                pass
+
+            elif event_type == "complete":
+                yield pb2.AgentResponse(
+                    complete=pb2.CompleteEvent(
+                        input_tokens=event.get("prompt_tokens", 0),
+                        output_tokens=event.get("completion_tokens", 0),
+                        model=event.get("model", ""),
+                        stop_reason=event.get("stop_reason", "end_turn"),
+                    )
+                )
+
+    async def GetAgentConfig(  # noqa: N802
+        self,
+        request: pb2.AgentConfigRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> pb2.AgentConfig:
         """Get agent configuration."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("GetAgentConfig not yet implemented")
         raise NotImplementedError("GetAgentConfig not yet implemented")
 
-    async def ValidateTools(self, request: Any, context: Any) -> Any:  # noqa: N802
+    async def ValidateTools(  # noqa: N802
+        self,
+        request: pb2.ValidateToolsRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> pb2.ValidateToolsResponse:
         """Validate tool configurations."""
-        tool_configs = getattr(request, "tools", [])
-        errors: list[dict[str, str]] = []
+        errors: list[pb2.ToolValidationError] = []
 
-        for tool in tool_configs:
-            tool_name = getattr(tool, "name", "")
-            if not tool_name:
-                errors.append({"tool_name": "", "error": "Tool name is required"})
+        for tool in request.tools:
+            if not tool.name:
+                errors.append(
+                    pb2.ToolValidationError(tool_name="", error="Tool name is required")
+                )
 
-        return {"valid": len(errors) == 0, "errors": errors}
+        return pb2.ValidateToolsResponse(
+            valid=len(errors) == 0,
+            errors=errors,
+        )

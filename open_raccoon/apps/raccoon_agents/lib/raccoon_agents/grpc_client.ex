@@ -1,0 +1,210 @@
+defmodule RaccoonAgents.GRPCClient do
+  @moduledoc """
+  Manages the gRPC channel to the Python agent sidecar and provides
+  a streaming interface for agent execution.
+
+  The sidecar address defaults to `localhost:50051` and can be
+  overridden with the `AGENT_SIDECAR_ADDR` environment variable.
+  """
+
+  require Logger
+
+  alias Raccoon.Agent.V1.{AgentRequest, AgentConfig, Message, AgentService}
+
+  @default_addr "localhost:50051"
+  @connect_timeout 5_000
+
+  @doc """
+  Connect to the agent sidecar and return a gRPC channel.
+  """
+  @spec connect() :: {:ok, GRPC.Channel.t()} | {:error, term()}
+  def connect do
+    addr = System.get_env("AGENT_SIDECAR_ADDR", @default_addr)
+    GRPC.Stub.connect(addr, timeout: @connect_timeout)
+  end
+
+  @doc """
+  Execute an agent request and return a stream of `Raccoon.Agent.V1.AgentResponse` events.
+
+  `params` is a map with:
+    - `:conversation_id` - string
+    - `:agent_id` - string
+    - `:messages` - list of maps with `:role` and `:content`
+    - `:config` - map with agent config fields (optional)
+    - `:user_api_key` - string (optional, empty for platform credits)
+    - `:request_id` - idempotency key (optional)
+
+  Returns `{:ok, event_stream, channel}` on success where `event_stream`
+  is an `Enumerable` of `{:ok, AgentResponse}` tuples, or `{:error, reason}`.
+  """
+  @spec execute_agent(map()) :: {:ok, Enumerable.t(), GRPC.Channel.t()} | {:error, term()}
+  def execute_agent(params) do
+    with {:ok, channel} <- connect() do
+      request = build_request(params)
+
+      case AgentService.Stub.execute_agent(channel, request, timeout: :infinity) do
+        {:ok, stream} ->
+          {:ok, stream, channel}
+
+        {:error, %GRPC.RPCError{} = error} ->
+          GRPC.Stub.disconnect(channel)
+          {:error, {:grpc_error, error.status, error.message}}
+
+        {:error, reason} ->
+          GRPC.Stub.disconnect(channel)
+          {:error, reason}
+      end
+    end
+  end
+
+  @doc """
+  Convert a protobuf `AgentResponse` into a flat Elixir map suitable for
+  `AgentExecutor.broadcast_event/3`.
+  """
+  @spec response_to_event(Raccoon.Agent.V1.AgentResponse.t()) :: map()
+  def response_to_event(%{token: %{text: text}} = _resp) when text != nil do
+    %{type: "token", text: text}
+  end
+
+  def response_to_event(%{status: %{message: message, category: category}})
+      when message != nil do
+    %{type: "status", message: message, category: category}
+  end
+
+  def response_to_event(%{tool_call: %{tool_call_id: id, tool_name: name, arguments: args}})
+      when id != nil do
+    %{
+      type: "tool_call",
+      request_id: id,
+      tool_name: name,
+      arguments: struct_to_map(args)
+    }
+  end
+
+  def response_to_event(%{
+        tool_result: %{
+          tool_call_id: id,
+          tool_name: name,
+          success: success,
+          output: output,
+          error_message: error_msg
+        }
+      })
+      when id != nil do
+    %{
+      type: "tool_result",
+      request_id: id,
+      tool_name: name,
+      result: if(success, do: output, else: error_msg),
+      is_error: !success
+    }
+  end
+
+  def response_to_event(%{code_block: %{language: lang, code: code}}) when code != nil do
+    %{type: "code_block", language: lang, code: code}
+  end
+
+  def response_to_event(%{
+        approval_request: %{
+          approval_id: id,
+          tool_name: name,
+          arguments: args,
+          reason: _reason
+        }
+      })
+      when id != nil do
+    %{
+      type: "approval_requested",
+      request_id: id,
+      tool_name: name,
+      arguments_preview: struct_to_map(args),
+      available_scopes: []
+    }
+  end
+
+  def response_to_event(%{
+        complete: %{
+          input_tokens: input,
+          output_tokens: output,
+          model: model,
+          stop_reason: stop
+        }
+      })
+      when model != nil do
+    %{
+      type: "complete",
+      prompt_tokens: input,
+      completion_tokens: output,
+      model: model,
+      stop_reason: stop
+    }
+  end
+
+  def response_to_event(%{error: %{code: code, message: message}}) when code != nil do
+    %{type: "error", code: code, message: message}
+  end
+
+  def response_to_event(_other) do
+    %{type: "unknown"}
+  end
+
+  # -- Private ---------------------------------------------------------------
+
+  defp build_request(params) do
+    messages =
+      (params[:messages] || [])
+      |> Enum.map(fn msg ->
+        %Message{
+          role: Map.get(msg, :role, Map.get(msg, "role", "user")),
+          content: Map.get(msg, :content, Map.get(msg, "content", "")),
+          message_id: Map.get(msg, :message_id, Map.get(msg, "message_id", ""))
+        }
+      end)
+
+    config =
+      case params[:config] do
+        nil ->
+          nil
+
+        cfg when is_map(cfg) ->
+          %AgentConfig{
+            agent_id: Map.get(cfg, :agent_id, Map.get(cfg, "agent_id", "")),
+            system_prompt: Map.get(cfg, :system_prompt, Map.get(cfg, "system_prompt", "")),
+            model: Map.get(cfg, :model, Map.get(cfg, "model", "")),
+            temperature: Map.get(cfg, :temperature, Map.get(cfg, "temperature", 0.7)) / 1,
+            max_tokens: Map.get(cfg, :max_tokens, Map.get(cfg, "max_tokens", 4096)),
+            visibility: Map.get(cfg, :visibility, Map.get(cfg, "visibility", "private"))
+          }
+      end
+
+    %AgentRequest{
+      conversation_id: to_string(params[:conversation_id] || ""),
+      agent_id: to_string(params[:agent_id] || ""),
+      messages: messages,
+      config: config,
+      user_api_key: Map.get(params, :user_api_key, ""),
+      request_id: Map.get(params, :request_id, "")
+    }
+  end
+
+  defp struct_to_map(nil), do: %{}
+
+  defp struct_to_map(%Google.Protobuf.Struct{fields: fields}) when is_map(fields) do
+    Map.new(fields, fn {k, v} -> {k, protobuf_value_to_term(v)} end)
+  end
+
+  defp struct_to_map(_), do: %{}
+
+  defp protobuf_value_to_term(%Google.Protobuf.Value{kind: {:string_value, v}}), do: v
+  defp protobuf_value_to_term(%Google.Protobuf.Value{kind: {:number_value, v}}), do: v
+  defp protobuf_value_to_term(%Google.Protobuf.Value{kind: {:bool_value, v}}), do: v
+  defp protobuf_value_to_term(%Google.Protobuf.Value{kind: {:null_value, _}}), do: nil
+
+  defp protobuf_value_to_term(%Google.Protobuf.Value{kind: {:struct_value, s}}),
+    do: struct_to_map(s)
+
+  defp protobuf_value_to_term(%Google.Protobuf.Value{kind: {:list_value, %{values: vs}}}),
+    do: Enum.map(vs, &protobuf_value_to_term/1)
+
+  defp protobuf_value_to_term(_), do: nil
+end

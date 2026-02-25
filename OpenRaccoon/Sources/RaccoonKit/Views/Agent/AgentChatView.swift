@@ -7,7 +7,8 @@ public struct AgentChatView: View {
     public let conversationID: String
     public let agentName: String
 
-    @State private var viewModel: ConversationDetailViewModel
+    @Environment(AppState.self) private var appState
+    @State private var viewModel: ConversationDetailViewModel?
     @State private var showScrollToBottom = false
     @State private var agentStatus: String = ""
     @State private var isAgentStreaming = false
@@ -27,137 +28,153 @@ public struct AgentChatView: View {
     public init(conversationID: String, agentName: String) {
         self.conversationID = conversationID
         self.agentName = agentName
-        self._viewModel = State(initialValue: ConversationDetailViewModel(conversationID: conversationID))
     }
 
     public var body: some View {
         VStack(spacing: 0) {
-            // Messages area
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(viewModel.groupedMessages) { group in
-                            if group.showDateSeparator {
-                                DateSeparatorView(date: group.date)
-                            }
-
-                            ForEach(group.messages) { message in
-                                MessageBubbleView(
-                                    message: message,
-                                    isFirstInGroup: message.id == group.messages.first?.id,
-                                    isLastInGroup: message.id == group.messages.last?.id
-                                )
-                                .id(message.id)
-                            }
-                        }
-
-                        // Streaming response
-                        if isAgentStreaming, !streamingText.isEmpty {
-                            HStack(alignment: .top, spacing: RaccoonSpacing.space2) {
-                                AvatarView(
-                                    name: agentName,
-                                    size: 28,
-                                    isAgent: true
-                                )
-                                StreamingTextView(text: streamingText, isStreaming: true)
-                                    .padding(.vertical, 10)
-                                    .padding(.horizontal, 14)
-                                    .background(bgMessageReceived)
-                                    .clipShape(RoundedRectangle(cornerRadius: RaccoonRadius.xl))
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: RaccoonRadius.xl)
-                                            .strokeBorder(borderPrimary, lineWidth: 1)
-                                    }
-                                    .frame(maxWidth: 520, alignment: .leading)
-                                Spacer(minLength: 0)
-                            }
-                            .padding(.horizontal, RaccoonSpacing.space4)
-                            .padding(.top, RaccoonSpacing.space2)
-                        }
-
-                        // Tool approval card
-                        if let approval = pendingApproval {
-                            ToolApprovalCard(
-                                toolName: approval.toolName,
-                                toolDescription: approval.description,
-                                parametersPreview: approval.parametersPreview,
-                                onDecision: { _ in
-                                    pendingApproval = nil
+            if let viewModel {
+                // Messages area
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(viewModel.groupedMessages) { group in
+                                if group.showDateSeparator {
+                                    DateSeparatorView(date: group.date)
                                 }
-                            )
-                            .padding(.horizontal, RaccoonSpacing.space4)
-                            .padding(.top, RaccoonSpacing.space3)
-                            .transition(.opacity.combined(with: .move(edge: .bottom)))
-                        }
 
-                        // Agent status
-                        if !agentStatus.isEmpty {
-                            AgentStatusView(statusText: agentStatus, isActive: isAgentStreaming)
+                                ForEach(group.messages) { message in
+                                    MessageBubbleView(
+                                        message: message,
+                                        isFirstInGroup: message.id == group.messages.first?.id,
+                                        isLastInGroup: message.id == group.messages.last?.id,
+                                        currentUserID: appState.currentUserID ?? ""
+                                    )
+                                    .id(message.id)
+                                }
+                            }
+
+                            // Streaming response
+                            if isAgentStreaming, !streamingText.isEmpty {
+                                HStack(alignment: .top, spacing: RaccoonSpacing.space2) {
+                                    AvatarView(
+                                        name: agentName,
+                                        size: 28,
+                                        isAgent: true
+                                    )
+                                    StreamingTextView(text: streamingText, isStreaming: true)
+                                        .padding(.vertical, 10)
+                                        .padding(.horizontal, 14)
+                                        .background(bgMessageReceived)
+                                        .clipShape(RoundedRectangle(cornerRadius: RaccoonRadius.xl))
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: RaccoonRadius.xl)
+                                                .strokeBorder(borderPrimary, lineWidth: 1)
+                                        }
+                                        .frame(maxWidth: 520, alignment: .leading)
+                                    Spacer(minLength: 0)
+                                }
                                 .padding(.horizontal, RaccoonSpacing.space4)
                                 .padding(.top, RaccoonSpacing.space2)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                    .padding(.vertical, RaccoonSpacing.space2)
-                }
-                .onChange(of: viewModel.messages.count) {
-                    if !showScrollToBottom {
-                        withAnimation(RaccoonMotion.easeOut) {
-                            proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom)
-                        }
-                    }
-                }
-                .overlay(alignment: .bottom) {
-                    if showScrollToBottom {
-                        ScrollToBottomPill {
-                            withAnimation(RaccoonMotion.easeOut) {
-                                proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom)
-                                showScrollToBottom = false
+                            }
+
+                            // Tool approval card
+                            if let approval = pendingApproval {
+                                ToolApprovalCard(
+                                    toolName: approval.toolName,
+                                    toolDescription: approval.description,
+                                    parametersPreview: approval.parametersPreview,
+                                    onDecision: { _ in
+                                        pendingApproval = nil
+                                    }
+                                )
+                                .padding(.horizontal, RaccoonSpacing.space4)
+                                .padding(.top, RaccoonSpacing.space3)
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                            }
+
+                            // Agent status
+                            if !agentStatus.isEmpty {
+                                AgentStatusView(statusText: agentStatus, isActive: isAgentStreaming)
+                                    .padding(.horizontal, RaccoonSpacing.space4)
+                                    .padding(.top, RaccoonSpacing.space2)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
-                        .padding(.bottom, RaccoonSpacing.space4)
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        .padding(.vertical, RaccoonSpacing.space2)
                     }
-                }
-            }
-
-            // Tool execution log
-            if showToolLog, !toolExecutions.isEmpty {
-                ToolExecutionLog(executions: toolExecutions)
-                    .padding(.horizontal, RaccoonSpacing.space3)
-                    .padding(.bottom, RaccoonSpacing.space2)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-            }
-
-            Divider()
-                .foregroundStyle(borderPrimary)
-
-            // Input bar with tool log toggle
-            HStack(spacing: 0) {
-                InputBarView(
-                    onSend: { content in
-                        viewModel.sendMessage(content: content)
-                    },
-                    isAgentGenerating: isAgentStreaming
-                )
-
-                if !toolExecutions.isEmpty {
-                    Button {
-                        withAnimation(RaccoonMotion.easeDefault) {
-                            showToolLog.toggle()
+                    .onChange(of: viewModel.messages.count) {
+                        if !showScrollToBottom {
+                            withAnimation(RaccoonMotion.easeOut) {
+                                proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom)
+                            }
                         }
-                    } label: {
-                        Image(systemName: "terminal")
-                            .font(.system(size: 14))
-                            .foregroundStyle(textSecondary)
-                            .frame(width: 32, height: 32)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.trailing, RaccoonSpacing.space2)
+                    .overlay(alignment: .bottom) {
+                        if showScrollToBottom {
+                            ScrollToBottomPill {
+                                withAnimation(RaccoonMotion.easeOut) {
+                                    proxy.scrollTo(viewModel.messages.last?.id, anchor: .bottom)
+                                    showScrollToBottom = false
+                                }
+                            }
+                            .padding(.bottom, RaccoonSpacing.space4)
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        }
+                    }
                 }
+
+                // Tool execution log
+                if showToolLog, !toolExecutions.isEmpty {
+                    ToolExecutionLog(executions: toolExecutions)
+                        .padding(.horizontal, RaccoonSpacing.space3)
+                        .padding(.bottom, RaccoonSpacing.space2)
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
+
+                Divider()
+                    .foregroundStyle(borderPrimary)
+
+                // Input bar with tool log toggle
+                HStack(spacing: 0) {
+                    InputBarView(
+                        onSend: { content in
+                            viewModel.sendMessage(content: content)
+                        },
+                        isAgentGenerating: isAgentStreaming
+                    )
+
+                    if !toolExecutions.isEmpty {
+                        Button {
+                            withAnimation(RaccoonMotion.easeDefault) {
+                                showToolLog.toggle()
+                            }
+                        } label: {
+                            Image(systemName: "terminal")
+                                .font(.system(size: 14))
+                                .foregroundStyle(textSecondary)
+                                .frame(width: 32, height: 32)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.trailing, RaccoonSpacing.space2)
+                    }
+                }
+            } else {
+                LoadingView()
+                    .frame(maxHeight: .infinity)
             }
         }
         .background(bgPrimary)
+        .task {
+            if viewModel == nil {
+                let vm = ConversationDetailViewModel(
+                    conversationID: conversationID,
+                    apiClient: appState.apiClient,
+                    currentUserID: appState.currentUserID ?? ""
+                )
+                viewModel = vm
+                await vm.loadMessages()
+            }
+        }
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

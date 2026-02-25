@@ -4,19 +4,11 @@ import SwiftUI
 /// "For You", "Trending", "Following", "New".
 /// Pill-style tab selection indicator, pull to refresh, infinite scroll.
 public struct FeedView: View {
-    @State private var selectedTab: FeedTab = .forYou
-    @State private var feedItems: [FeedItem] = []
-    @State private var isLoading = false
-    @State private var isRefreshing = false
+    @Environment(AppState.self) private var appState
+    @State private var viewModel: FeedViewModel?
+    @State private var selectedTab: FeedViewModel.FeedTab = .forYou
 
     @Environment(\.colorScheme) private var colorScheme
-
-    enum FeedTab: String, CaseIterable, Sendable {
-        case forYou = "For You"
-        case trending = "Trending"
-        case following = "Following"
-        case new = "New"
-    }
 
     public init() {}
 
@@ -26,25 +18,40 @@ public struct FeedView: View {
             tabBar
 
             // Content
-            if isLoading && feedItems.isEmpty {
+            if let vm = viewModel {
+                if vm.isLoading && vm.feedItems.isEmpty {
+                    LoadingView()
+                        .frame(maxHeight: .infinity)
+                } else if vm.feedItems.isEmpty {
+                    emptyState
+                } else {
+                    feedContent(vm)
+                }
+            } else {
                 LoadingView()
                     .frame(maxHeight: .infinity)
-            } else if feedItems.isEmpty {
-                emptyState
-            } else {
-                feedContent
             }
         }
         .background(bgPrimary)
+        .task {
+            if viewModel == nil {
+                let vm = FeedViewModel(apiClient: appState.apiClient)
+                viewModel = vm
+                await vm.loadFeed(tab: selectedTab)
+            }
+        }
     }
 
     private var tabBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: RaccoonSpacing.space2) {
-                ForEach(FeedTab.allCases, id: \.rawValue) { tab in
+                ForEach(FeedViewModel.FeedTab.allCases, id: \.rawValue) { tab in
                     Button {
                         withAnimation(RaccoonMotion.easeDefault) {
                             selectedTab = tab
+                        }
+                        Task {
+                            await viewModel?.loadFeed(tab: tab)
                         }
                     } label: {
                         Text(tab.rawValue)
@@ -70,7 +77,7 @@ public struct FeedView: View {
         .background(bgSecondary)
     }
 
-    private var feedContent: some View {
+    private func feedContent(_ vm: FeedViewModel) -> some View {
         ScrollView {
             LazyVGrid(
                 columns: [
@@ -79,7 +86,7 @@ public struct FeedView: View {
                 ],
                 spacing: RaccoonSpacing.space4
             ) {
-                ForEach(feedItems) { item in
+                ForEach(vm.feedItems) { item in
                     FeedCardView(
                         item: item,
                         authorName: item.creatorID,
@@ -87,7 +94,9 @@ public struct FeedView: View {
                             // Navigate to detail
                         },
                         onLike: {
-                            // Like action
+                            Task {
+                                await vm.likeItem(id: item.id)
+                            }
                         }
                     )
                 }
@@ -96,18 +105,18 @@ public struct FeedView: View {
             .padding(.top, RaccoonSpacing.space3)
 
             // Infinite scroll trigger
-            if !feedItems.isEmpty {
+            if !vm.feedItems.isEmpty {
                 ProgressView()
                     .padding(.vertical, RaccoonSpacing.space6)
                     .onAppear {
-                        // Load more items
+                        Task {
+                            await vm.loadMore()
+                        }
                     }
             }
         }
         .refreshable {
-            isRefreshing = true
-            // Refresh feed
-            isRefreshing = false
+            await vm.refresh(tab: selectedTab)
         }
     }
 

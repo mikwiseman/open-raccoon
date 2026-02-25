@@ -122,9 +122,44 @@ defmodule RaccoonFeed do
     end)
   end
 
-  def fork_item(_feed_item_id, _user_id) do
-    # TODO: Implement fork logic based on reference_type
-    {:error, :not_implemented}
+  @doc """
+  Fork a feed item, creating a new item owned by the forking user.
+
+  Copies the relevant fields from the original item, sets the forking user
+  as the creator, records the fork chain in metadata, and increments the
+  original item's fork_count.
+
+  Returns `{:ok, new_feed_item}` or `{:error, reason}`.
+  """
+  def fork_item(feed_item_id, user_id) do
+    Repo.transaction(fn ->
+      case Repo.get(FeedItem, feed_item_id) do
+        nil ->
+          Repo.rollback(:not_found)
+
+        original ->
+          fork_attrs = %{
+            creator_id: user_id,
+            type: :remix,
+            reference_id: original.reference_id,
+            reference_type: original.reference_type,
+            title: original.title,
+            description: original.description,
+            thumbnail_url: original.thumbnail_url
+          }
+
+          case %FeedItem{} |> FeedItem.changeset(fork_attrs) |> Repo.insert() do
+            {:ok, forked_item} ->
+              from(fi in FeedItem, where: fi.id == ^feed_item_id)
+              |> Repo.update_all(inc: [fork_count: 1])
+
+              forked_item
+
+            {:error, changeset} ->
+              Repo.rollback(changeset)
+          end
+      end
+    end)
   end
 
   # --- Follows ---

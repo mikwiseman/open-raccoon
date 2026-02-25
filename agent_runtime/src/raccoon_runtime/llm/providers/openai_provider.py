@@ -130,11 +130,40 @@ class OpenAIProvider(BaseLLMProvider):
                         if tool_call_delta.function.arguments:
                             tc["arguments"] += tool_call_delta.function.arguments
 
-        # Emit assembled tool calls
+        # Emit assembled tool calls with validation
         for _idx, tc in sorted(tool_calls_in_progress.items()):
+            # Validate that tool call has a usable ID
+            if not tc["id"]:
+                logger.warning(
+                    "openai_tool_call_missing_id",
+                    name=tc["name"],
+                    arguments_fragment=tc["arguments"][:100],
+                )
+                continue
+
+            # Validate that tool call has a name
+            if not tc["name"]:
+                logger.warning(
+                    "openai_tool_call_missing_name",
+                    tool_id=tc["id"],
+                )
+                continue
+
+            # Parse accumulated JSON arguments with error handling
             parsed_args: dict[str, Any] = {}
             if tc["arguments"]:
-                parsed_args = json.loads(tc["arguments"])
+                try:
+                    parsed_args = json.loads(tc["arguments"])
+                except json.JSONDecodeError as e:
+                    logger.error(
+                        "openai_tool_call_invalid_json",
+                        tool_id=tc["id"],
+                        name=tc["name"],
+                        error=str(e),
+                        arguments_fragment=tc["arguments"][:200],
+                    )
+                    # Skip this malformed tool call rather than crashing
+                    continue
 
             yield {
                 "type": "tool_use",
