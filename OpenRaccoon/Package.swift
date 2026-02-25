@@ -9,6 +9,7 @@ let package = Package(
     ],
     products: [
         .library(name: "RaccoonKit", targets: ["RaccoonKit"]),
+        .executable(name: "OpenRaccoonApp", targets: ["OpenRaccoonApp"]),
     ],
     dependencies: [
         .package(url: "https://github.com/davidstump/SwiftPhoenixClient.git", from: "5.3.0"),
@@ -24,6 +25,11 @@ let package = Package(
                 .product(name: "KeychainAccess", package: "KeychainAccess"),
             ],
             path: "Sources/RaccoonKit"
+        ),
+        .executableTarget(
+            name: "OpenRaccoonApp",
+            dependencies: ["RaccoonKit"],
+            path: "Sources/OpenRaccoonApp"
         ),
         .testTarget(
             name: "RaccoonKitTests",
