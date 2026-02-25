@@ -278,7 +278,7 @@ Agents appear in the same conversation list as humans. Each agent conversation h
 
 - **Agent badge**: Small icon/badge distinguishing agent from human
 - **Agent avatar**: Custom avatar (set by creator) or generated geometric pattern
-- **Model indicator**: Small label showing which LLM (e.g., "Claude", "GPT-4")
+- **Model indicator**: Small label showing which LLM (e.g., "Claude", "GPT-5.2")
 
 #### AI Responses
 
@@ -1022,7 +1022,7 @@ Required alerts:
 | Provider | Role | Models |
 |----------|------|--------|
 | Anthropic (Claude) | Primary | Claude Sonnet (default), Claude Opus (premium) |
-| OpenAI | Secondary | GPT-4o, GPT-4o-mini |
+| OpenAI | Secondary | GPT-5.2, GPT-5.2-chat-latest |
 
 AI Gateway: Route through Bifrost or LiteLLM for unified API, failover, and cost tracking.
 

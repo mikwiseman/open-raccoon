@@ -13,7 +13,7 @@ logger = structlog.get_logger()
 
 
 class OpenAIProvider(BaseLLMProvider):
-    """LLM provider for OpenAI models (GPT-4o, etc.)."""
+    """LLM provider for OpenAI models (GPT-5.2, etc.)."""
 
     def __init__(self, api_key: str) -> None:
         self.client = openai.AsyncOpenAI(api_key=api_key)
@@ -30,7 +30,7 @@ class OpenAIProvider(BaseLLMProvider):
         - {"type": "tool_use", "id": "...", "name": "...", "input": {...}}
         - {"type": "complete", "usage": {...}, "stop_reason": "..."}
         """
-        model = config.get("model", "gpt-4o")
+        model = config.get("model", "gpt-5.2")
         system_prompt = config.get("system_prompt", "")
         tools = config.get("tools", [])
         max_tokens = config.get("max_tokens", 4096)

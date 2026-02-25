@@ -35,7 +35,7 @@ class LLMOrchestrator:
         """Get or create a provider for the given model.
 
         Args:
-            model: Model name (e.g. "claude-sonnet-4-6", "gpt-4o").
+            model: Model name (e.g. "claude-sonnet-4-6", "gpt-5.2").
 
         Returns:
             The appropriate LLM provider instance.

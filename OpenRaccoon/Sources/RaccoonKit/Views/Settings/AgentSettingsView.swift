@@ -13,7 +13,7 @@ public struct AgentSettingsView: View {
 
     private let providers = ["Anthropic", "OpenAI", "Custom (BYOK)"]
     private let anthropicModels = ["Claude Sonnet", "Claude Opus"]
-    private let openAIModels = ["GPT-4o", "GPT-4o mini"]
+    private let openAIModels = ["GPT-5.2", "GPT-5.2 Chat"]
 
     public init() {}
 

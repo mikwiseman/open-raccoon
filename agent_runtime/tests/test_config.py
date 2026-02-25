@@ -36,9 +36,9 @@ class TestSettings:
 
     def test_env_prefix(self, monkeypatch):
         """Verify RACCOON_ prefix is required for env vars."""
-        monkeypatch.setenv("RACCOON_DEFAULT_MODEL", "gpt-4o")
+        monkeypatch.setenv("RACCOON_DEFAULT_MODEL", "gpt-5.2")
         settings = Settings()
-        assert settings.default_model == "gpt-4o"
+        assert settings.default_model == "gpt-5.2"
 
     def test_observability_defaults(self):
         settings = Settings()

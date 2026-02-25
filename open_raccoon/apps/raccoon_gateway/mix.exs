@@ -59,7 +59,7 @@ defmodule RaccoonGateway.MixProject do
       {:raccoon_feed, in_umbrella: true},
       {:hammer, "~> 7.0"},
       {:cors_plug, "~> 3.0"},
-      {:oban, "~> 2.19"}
+      {:oban, "~> 2.20"}
     ]
   end
 

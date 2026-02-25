@@ -24,10 +24,10 @@ defmodule RaccoonShared.MixProject do
 
   defp deps do
     [
-      {:ecto_sql, "~> 3.12"},
-      {:postgrex, "~> 0.19"},
+      {:ecto_sql, "~> 3.13"},
+      {:postgrex, "~> 0.20"},
       {:jason, "~> 1.4"},
-      {:oban, "~> 2.19"},
+      {:oban, "~> 2.20"},
       {:ex_aws, "~> 2.5"},
       {:ex_aws_s3, "~> 2.5"}
     ]

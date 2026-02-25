@@ -25,10 +25,10 @@ class TestOrchestrator:
     def test_get_provider_openai(self):
         settings = Settings(openai_api_key="test-key")
         orch = LLMOrchestrator(settings)
-        provider = orch.get_provider("gpt-4o")
+        provider = orch.get_provider("gpt-5.2")
         assert provider is not None
         # Verify it is cached
-        provider2 = orch.get_provider("gpt-4o")
+        provider2 = orch.get_provider("gpt-5.2")
         assert provider is provider2
 
     def test_get_provider_unknown(self):
@@ -50,6 +50,6 @@ class TestOrchestrator:
         """All gpt-prefixed models should use the OpenAI provider."""
         settings = Settings(openai_api_key="test-key")
         orch = LLMOrchestrator(settings)
-        provider1 = orch.get_provider("gpt-4o")
-        provider2 = orch.get_provider("gpt-4o-mini")
+        provider1 = orch.get_provider("gpt-5.2")
+        provider2 = orch.get_provider("gpt-5.2-chat-latest")
         assert provider1 is provider2

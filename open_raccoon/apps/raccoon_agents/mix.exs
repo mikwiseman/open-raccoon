@@ -27,7 +27,7 @@ defmodule RaccoonAgents.MixProject do
       {:raccoon_shared, in_umbrella: true},
       {:raccoon_accounts, in_umbrella: true},
       {:grpc, "~> 0.9"},
-      {:protobuf, "~> 0.13"},
+      {:protobuf, "~> 0.14"},
       {:phoenix_pubsub, "~> 2.1"},
       {:jason, "~> 1.4"}
     ]

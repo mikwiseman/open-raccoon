@@ -12,6 +12,6 @@ class TestAgentServiceServicer:
         assert service.settings is settings
 
     def test_orchestrator_uses_settings(self):
-        settings = Settings(default_model="gpt-4o", anthropic_api_key="test")
+        settings = Settings(default_model="gpt-5.2", anthropic_api_key="test")
         service = AgentServiceServicer(settings)
-        assert service.orchestrator.settings.default_model == "gpt-4o"
+        assert service.orchestrator.settings.default_model == "gpt-5.2"
