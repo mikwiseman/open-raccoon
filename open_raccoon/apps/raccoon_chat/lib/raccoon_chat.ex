@@ -61,6 +61,11 @@ defmodule RaccoonChat do
 
   # --- Members ---
 
+  @doc "Get a specific membership record for a user in a conversation."
+  def get_membership(conversation_id, user_id) do
+    Repo.get_by(ConversationMember, conversation_id: conversation_id, user_id: user_id)
+  end
+
   def add_member(attrs) do
     %ConversationMember{}
     |> ConversationMember.changeset(attrs)

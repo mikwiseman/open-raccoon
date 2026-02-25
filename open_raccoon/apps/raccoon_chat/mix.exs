@@ -17,6 +17,7 @@ defmodule RaccoonChat.MixProject do
 
   def application do
     [
+      mod: {RaccoonChat.Application, []},
       extra_applications: [:logger]
     ]
   end
@@ -24,7 +25,8 @@ defmodule RaccoonChat.MixProject do
   defp deps do
     [
       {:raccoon_shared, in_umbrella: true},
-      {:raccoon_accounts, in_umbrella: true}
+      {:raccoon_accounts, in_umbrella: true},
+      {:phoenix_pubsub, "~> 2.1"}
     ]
   end
 end

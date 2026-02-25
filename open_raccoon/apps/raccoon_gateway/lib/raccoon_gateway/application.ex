@@ -11,8 +11,8 @@ defmodule RaccoonGateway.Application do
       RaccoonGatewayWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:raccoon_gateway, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: RaccoonGateway.PubSub},
-      # Start a worker by calling: RaccoonGateway.Worker.start_link(arg)
-      # {RaccoonGateway.Worker, arg},
+      {RaccoonGateway.RateLimiter, clean_period: :timer.minutes(1)},
+      RaccoonGatewayWeb.Presence,
       # Start to serve requests, typically the last entry
       RaccoonGatewayWeb.Endpoint
     ]

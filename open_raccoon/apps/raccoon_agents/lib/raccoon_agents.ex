@@ -45,6 +45,21 @@ defmodule RaccoonAgents do
     |> Repo.all()
   end
 
+  def search_public_agents(query, opts \\ []) do
+    limit = Keyword.get(opts, :limit, 50)
+    search_term = "%#{query}%"
+
+    from(a in Agent,
+      where:
+        a.visibility == :public and
+          (ilike(a.name, ^search_term) or ilike(a.description, ^search_term) or
+             ilike(a.category, ^search_term)),
+      order_by: [desc: a.usage_count],
+      limit: ^limit
+    )
+    |> Repo.all()
+  end
+
   # --- Ratings ---
 
   def rate_agent(attrs) do

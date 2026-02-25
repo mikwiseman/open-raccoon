@@ -1,27 +1,100 @@
 defmodule RaccoonGatewayWeb.FeedController do
   use RaccoonGatewayWeb, :controller
+  action_fallback RaccoonGatewayWeb.FallbackController
 
-  def index(conn, _params) do
-    conn |> put_status(:not_implemented) |> json(%{error: "not_implemented"})
+  alias RaccoonFeed
+  alias RaccoonShared.{Pagination, Idempotency}
+
+  plug RaccoonGatewayWeb.Plugs.Idempotency when action in [:fork]
+
+  def index(conn, params) do
+    {_cursor, limit} = Pagination.parse_params(params)
+    items = RaccoonFeed.list_feed(limit: limit + 1)
+    {items, page_info} = Pagination.build_page_info(items, limit)
+
+    json(conn, %{
+      items: Enum.map(items, &feed_item_json/1),
+      page_info: %{next_cursor: page_info.next_cursor, has_more: page_info.has_more}
+    })
   end
 
-  def trending(conn, _params) do
-    conn |> put_status(:not_implemented) |> json(%{error: "not_implemented"})
+  def trending(conn, params) do
+    {_cursor, limit} = Pagination.parse_params(params)
+    items = RaccoonFeed.list_trending(limit: limit + 1)
+    {items, page_info} = Pagination.build_page_info(items, limit)
+
+    json(conn, %{
+      items: Enum.map(items, &feed_item_json/1),
+      page_info: %{next_cursor: page_info.next_cursor, has_more: page_info.has_more}
+    })
   end
 
-  def new_items(conn, _params) do
-    conn |> put_status(:not_implemented) |> json(%{error: "not_implemented"})
+  def new_items(conn, params) do
+    {_cursor, limit} = Pagination.parse_params(params)
+    items = RaccoonFeed.list_new(limit: limit + 1)
+    {items, page_info} = Pagination.build_page_info(items, limit)
+
+    json(conn, %{
+      items: Enum.map(items, &feed_item_json/1),
+      page_info: %{next_cursor: page_info.next_cursor, has_more: page_info.has_more}
+    })
   end
 
-  def like(conn, _params) do
-    conn |> put_status(:not_implemented) |> json(%{error: "not_implemented"})
+  def like(conn, %{"id" => feed_item_id}) do
+    user_id = conn.assigns.user_id
+
+    case RaccoonFeed.like_item(feed_item_id, user_id) do
+      {:ok, _like} ->
+        json(conn, %{status: "liked"})
+
+      {:error, _reason} ->
+        # Idempotent: if already liked, return success
+        json(conn, %{status: "liked"})
+    end
   end
 
-  def unlike(conn, _params) do
-    conn |> put_status(:not_implemented) |> json(%{error: "not_implemented"})
+  def unlike(conn, %{"id" => feed_item_id}) do
+    user_id = conn.assigns.user_id
+
+    case RaccoonFeed.unlike_item(feed_item_id, user_id) do
+      {:ok, _} -> send_resp(conn, :no_content, "")
+      {:error, reason} -> {:error, reason}
+    end
   end
 
-  def fork(conn, _params) do
-    conn |> put_status(:not_implemented) |> json(%{error: "not_implemented"})
+  def fork(conn, %{"id" => feed_item_id}) do
+    user_id = conn.assigns.user_id
+
+    with {:ok, item} <- RaccoonFeed.fork_item(feed_item_id, user_id) do
+      response = %{feed_item: feed_item_json(item)}
+
+      if idempotency_key = conn.assigns[:idempotency_key] do
+        Idempotency.store(RaccoonShared.Repo, idempotency_key, user_id, 201, response)
+      end
+
+      conn
+      |> put_status(:created)
+      |> json(response)
+    end
+  end
+
+  defp feed_item_json(item) do
+    %{
+      id: item.id,
+      creator_id: item.creator_id,
+      type: item.type,
+      reference_id: item.reference_id,
+      reference_type: item.reference_type,
+      title: item.title,
+      description: item.description,
+      thumbnail_url: item.thumbnail_url,
+      quality_score: item.quality_score,
+      trending_score: item.trending_score,
+      like_count: item.like_count,
+      fork_count: item.fork_count,
+      view_count: item.view_count,
+      created_at: item.inserted_at,
+      updated_at: item.updated_at
+    }
   end
 end

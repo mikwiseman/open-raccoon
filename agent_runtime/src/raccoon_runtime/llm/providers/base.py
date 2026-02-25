@@ -9,6 +9,7 @@ class BaseLLMProvider(ABC):
     """Base class for LLM provider implementations.
 
     All providers must support streaming completions and token counting.
+    Streaming yields structured event dicts, not raw strings.
     """
 
     @abstractmethod
@@ -16,8 +17,16 @@ class BaseLLMProvider(ABC):
         self,
         messages: list[dict[str, str]],
         config: dict[str, Any],
-    ) -> AsyncIterator[str]:
-        """Stream completion tokens from the LLM."""
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Stream completion events from the LLM.
+
+        Yields dicts with keys:
+        - {"type": "token", "text": "..."}
+        - {"type": "tool_use_start", "id": "...", "name": "..."}
+        - {"type": "tool_input_delta", "text": "..."}
+        - {"type": "tool_use", "id": "...", "name": "...", "input": {...}}
+        - {"type": "complete", "usage": {...}, "stop_reason": "..."}
+        """
         ...
 
     @abstractmethod

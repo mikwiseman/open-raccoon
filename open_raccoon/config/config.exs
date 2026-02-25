@@ -39,6 +39,11 @@ config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
+# Guardian JWT config
+config :raccoon_accounts, RaccoonAccounts.Guardian,
+  issuer: "raccoon",
+  secret_key: "dev-guardian-secret-key-change-in-prod"
+
 # JSON library
 config :phoenix, :json_library, Jason
 

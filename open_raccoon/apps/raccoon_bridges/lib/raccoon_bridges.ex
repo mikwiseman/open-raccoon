@@ -42,4 +42,30 @@ defmodule RaccoonBridges do
     |> BridgeConnection.changeset(%{last_sync_at: DateTime.utc_now()})
     |> Repo.update()
   end
+
+  @doc """
+  Handle incoming Telegram webhook update.
+  Normalizes the message and routes it to the appropriate conversation.
+  """
+  def handle_telegram_webhook(_params) do
+    # TODO: Implement Telegram webhook processing
+    # 1. Verify signature
+    # 2. Normalize message to common envelope format
+    # 3. Find/create bridge conversation
+    # 4. Persist message and broadcast via PubSub
+    :ok
+  end
+
+  @doc """
+  Handle incoming WhatsApp Cloud API webhook message.
+  Normalizes the message and routes it to the appropriate conversation.
+  """
+  def handle_whatsapp_webhook(_params) do
+    # TODO: Implement WhatsApp webhook processing
+    # 1. Verify signature
+    # 2. Normalize message to common envelope format
+    # 3. Find/create bridge conversation
+    # 4. Persist message and broadcast via PubSub
+    :ok
+  end
 end

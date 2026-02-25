@@ -37,6 +37,16 @@ if config_env() == :prod do
     secret_key_base: secret_key_base,
     server: true
 
+  guardian_secret_key =
+    System.get_env("GUARDIAN_SECRET_KEY") ||
+      raise """
+      environment variable GUARDIAN_SECRET_KEY is missing.
+      You can generate one by calling: mix guardian.gen.secret
+      """
+
+  config :raccoon_accounts, RaccoonAccounts.Guardian,
+    secret_key: guardian_secret_key
+
   config :raccoon_shared, Oban,
     repo: RaccoonShared.Repo,
     queues: [

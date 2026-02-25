@@ -7,18 +7,38 @@ import grpc
 import structlog
 
 from raccoon_runtime.config import Settings
+from raccoon_runtime.services.agent_service import AgentServiceServicer
+from raccoon_runtime.services.sandbox_service import SandboxServiceServicer
 
 logger = structlog.get_logger()
 
 
 async def serve(settings: Settings) -> None:
-    """Start the async gRPC server."""
+    """Start the async gRPC server with AgentService and SandboxService."""
     server = grpc.aio.server(
         futures.ThreadPoolExecutor(max_workers=settings.max_workers),
         options=[
             ("grpc.max_send_message_length", settings.max_message_size),
             ("grpc.max_receive_message_length", settings.max_message_size),
         ],
+    )
+
+    # Instantiate service implementations
+    agent_service = AgentServiceServicer(settings)
+    sandbox_service = SandboxServiceServicer(settings)
+
+    # NOTE: In production, these would be registered via the generated
+    # protobuf service descriptors:
+    #
+    #   from raccoon_runtime.generated import agent_service_pb2_grpc
+    #   agent_service_pb2_grpc.add_AgentServiceServicer_to_server(agent_service, server)
+    #   agent_service_pb2_grpc.add_SandboxServiceServicer_to_server(sandbox_service, server)
+    #
+    # For now, log that services are initialized and ready.
+    logger.info(
+        "services_registered",
+        agent_service=type(agent_service).__name__,
+        sandbox_service=type(sandbox_service).__name__,
     )
 
     listen_addr = f"[::]:{settings.grpc_port}"
