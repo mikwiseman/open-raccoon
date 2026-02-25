@@ -11,7 +11,7 @@ defmodule RaccoonGateway.Application do
       RaccoonGatewayWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:raccoon_gateway, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: RaccoonGateway.PubSub},
-      {Oban, Application.fetch_env!(:raccoon_shared, Oban)},
+      {Oban, oban_config()},
       {RaccoonGateway.RateLimiter, clean_period: :timer.minutes(1)},
       RaccoonGatewayWeb.Presence,
       # Start to serve requests, typically the last entry
@@ -30,5 +30,10 @@ defmodule RaccoonGateway.Application do
   def config_change(changed, _new, removed) do
     RaccoonGatewayWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  defp oban_config do
+    Application.fetch_env!(:raccoon_shared, Oban)
+    |> Keyword.put(:name, Oban)
   end
 end
