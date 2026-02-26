@@ -21,6 +21,7 @@ agent_runtime/.pytest_cache/
 # Swift
 OpenRaccoon/.build/
 OpenRaccoon/.swiftpm/
+OpenRaccoon/build/
 *.xcodeproj
 *.xcworkspace
 xcuserdata/
