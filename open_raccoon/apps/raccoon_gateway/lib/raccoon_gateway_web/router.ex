@@ -105,6 +105,11 @@ defmodule RaccoonGatewayWeb.Router do
     get "/marketplace/search", MarketplaceController, :search
   end
 
+  # Magic link trampoline — browser GET redirects to app's custom URL scheme
+  scope "/auth", RaccoonGatewayWeb do
+    get "/magic-link/verify", AuthController, :magic_link_trampoline
+  end
+
   # Webhook endpoints (no auth, verified by platform signature)
   scope "/api/v1/webhooks", RaccoonGatewayWeb do
     pipe_through :api

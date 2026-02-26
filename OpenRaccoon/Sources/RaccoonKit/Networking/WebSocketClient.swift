@@ -69,17 +69,21 @@ public final class WebSocketClient {
         onConnectionStateChanged?(.connecting)
 
         socket.onOpen { [weak self] in
-            self?.onConnectionStateChanged?(.connected)
+            Task { @MainActor in
+                self?.onConnectionStateChanged?(.connected)
+            }
         }
 
         socket.onClose { [weak self] in
-            self?.onConnectionStateChanged?(.disconnected)
+            Task { @MainActor in
+                self?.onConnectionStateChanged?(.disconnected)
+            }
         }
 
         socket.onError { [weak self] _ in
-            guard let self, !self.isReconnecting else { return }
-            self.onConnectionStateChanged?(.disconnected)
             Task { @MainActor in
+                guard let self, !self.isReconnecting else { return }
+                self.onConnectionStateChanged?(.disconnected)
                 await self.handleAuthFailure()
             }
         }
@@ -111,17 +115,21 @@ public final class WebSocketClient {
 
             // Re-register socket lifecycle handlers on the new socket
             socket.onOpen { [weak self] in
-                self?.onConnectionStateChanged?(.connected)
+                Task { @MainActor in
+                    self?.onConnectionStateChanged?(.connected)
+                }
             }
 
             socket.onClose { [weak self] in
-                self?.onConnectionStateChanged?(.disconnected)
+                Task { @MainActor in
+                    self?.onConnectionStateChanged?(.disconnected)
+                }
             }
 
             socket.onError { [weak self] _ in
-                guard let self, !self.isReconnecting else { return }
-                self.onConnectionStateChanged?(.disconnected)
                 Task { @MainActor in
+                    guard let self, !self.isReconnecting else { return }
+                    self.onConnectionStateChanged?(.disconnected)
                     await self.handleAuthFailure()
                 }
             }

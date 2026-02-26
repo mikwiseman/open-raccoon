@@ -87,6 +87,44 @@ defmodule RaccoonGatewayWeb.AuthController do
     |> json(%{error: %{code: "validation_failed", message: "email is required"}})
   end
 
+  @doc """
+  GET /auth/magic-link/verify?token=...
+  Serves an HTML trampoline page that redirects the browser to the app via
+  the `openraccoon://` custom URL scheme.
+  """
+  def magic_link_trampoline(conn, %{"token" => token}) do
+    app_url = "openraccoon://auth/magic-link/verify?token=#{URI.encode_www_form(token)}"
+
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <title>Open Raccoon</title>
+      <script>window.location.href = #{inspect(app_url)};</script>
+    </head>
+    <body style="margin:0;padding:0;background:#111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;">
+      <div style="text-align:center;color:#fff;">
+        <h1 style="font-size:24px;margin-bottom:16px;">Opening Open Raccoon…</h1>
+        <p style="color:#888;margin-bottom:24px;">If the app didn't open automatically:</p>
+        <a href="#{app_url}" style="display:inline-block;background:#6E56CF;color:#fff;text-decoration:none;font-size:16px;font-weight:600;padding:14px 32px;border-radius:8px;">Open in App</a>
+      </div>
+    </body>
+    </html>
+    """
+
+    conn
+    |> put_resp_content_type("text/html")
+    |> send_resp(200, html)
+  end
+
+  def magic_link_trampoline(conn, _params) do
+    conn
+    |> put_resp_content_type("text/html")
+    |> send_resp(400, "<html><body><p>Missing token parameter.</p></body></html>")
+  end
+
   def verify_magic_link(conn, %{"token" => token}) do
     with {:ok, email} <- MagicLinkToken.verify_token(token),
          {:ok, user} <- find_or_create_user(email),
