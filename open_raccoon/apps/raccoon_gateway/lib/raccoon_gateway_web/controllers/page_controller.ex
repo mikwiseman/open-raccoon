@@ -46,7 +46,15 @@ defmodule RaccoonGatewayWeb.PageController do
         {:error, :not_found}
 
       %{creator_id: ^user_id} = page ->
-        allowed_keys = ["title", "slug", "description", "thumbnail_url", "visibility", "custom_domain"]
+        allowed_keys = [
+          "title",
+          "slug",
+          "description",
+          "thumbnail_url",
+          "visibility",
+          "custom_domain"
+        ]
+
         update_params = Map.take(params, allowed_keys)
 
         with {:ok, updated} <- RaccoonPages.update_page(page, update_params) do

@@ -20,12 +20,12 @@ public final class MessageStore {
 
     public func loadMessages(conversationID: String, apiClient: APIClient) async throws {
         isLoading = true
+        defer { isLoading = false }
         let response: PaginatedResponse<Message> = try await apiClient.request(
             .listMessages(conversationID: conversationID, cursor: nil, limit: 50)
         )
         messages[conversationID] = response.items
         pageInfos[conversationID] = response.pageInfo
-        isLoading = false
     }
 
     public func loadMoreMessages(conversationID: String, apiClient: APIClient) async throws {
@@ -35,6 +35,7 @@ public final class MessageStore {
               !isLoadingMore else { return }
 
         isLoadingMore = true
+        defer { isLoadingMore = false }
         let response: PaginatedResponse<Message> = try await apiClient.request(
             .listMessages(conversationID: conversationID, cursor: cursor, limit: 50)
         )
@@ -42,7 +43,6 @@ public final class MessageStore {
         existing.append(contentsOf: response.items)
         messages[conversationID] = existing
         pageInfos[conversationID] = response.pageInfo
-        isLoadingMore = false
     }
 
     public func appendMessage(_ message: Message, to conversationID: String) {

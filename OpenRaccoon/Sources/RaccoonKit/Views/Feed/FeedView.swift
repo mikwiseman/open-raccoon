@@ -100,7 +100,8 @@ public struct FeedView: View {
                         item: item,
                         authorName: item.creatorID,
                         onTap: {
-                            // Navigate to detail
+                            appState.selectedFeedItemID = item.id
+                            appState.selectedFeedItem = item
                         },
                         onLike: {
                             Task {

@@ -227,11 +227,13 @@ defmodule RaccoonAgents.GRPCClient do
 
   defp to_float(val) when is_float(val), do: val
   defp to_float(val) when is_integer(val), do: val * 1.0
+
   defp to_float(val) when is_binary(val) do
     case Float.parse(val) do
       {f, _} -> f
       :error -> 0.7
     end
   end
+
   defp to_float(_), do: 0.7
 end

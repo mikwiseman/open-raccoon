@@ -8,26 +8,26 @@ defmodule RaccoonAgents.Agent do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "agents" do
-    belongs_to :creator, RaccoonAccounts.User
+    belongs_to(:creator, RaccoonAccounts.User)
 
-    field :name, :string
-    field :slug, :string
-    field :description, :string
-    field :avatar_url, :string
-    field :system_prompt, :string
-    field :model, :string, default: "claude-sonnet-4-6"
-    field :temperature, :float, default: 0.7
-    field :max_tokens, :integer, default: 4096
-    field :tools, {:array, :map}, default: []
-    field :mcp_servers, {:array, :map}, default: []
-    field :visibility, Ecto.Enum, values: [:public, :unlisted, :private], default: :private
-    field :category, :string
-    field :usage_count, :integer, default: 0
-    field :rating_sum, :integer, default: 0
-    field :rating_count, :integer, default: 0
-    field :metadata, :map, default: %{}
+    field(:name, :string)
+    field(:slug, :string)
+    field(:description, :string)
+    field(:avatar_url, :string)
+    field(:system_prompt, :string)
+    field(:model, :string, default: "claude-sonnet-4-6")
+    field(:temperature, :float, default: 0.7)
+    field(:max_tokens, :integer, default: 4096)
+    field(:tools, {:array, :map}, default: [])
+    field(:mcp_servers, {:array, :map}, default: [])
+    field(:visibility, Ecto.Enum, values: [:public, :unlisted, :private], default: :private)
+    field(:category, :string)
+    field(:usage_count, :integer, default: 0)
+    field(:rating_sum, :integer, default: 0)
+    field(:rating_count, :integer, default: 0)
+    field(:metadata, :map, default: %{})
 
-    has_many :ratings, RaccoonAgents.AgentRating
+    has_many(:ratings, RaccoonAgents.AgentRating)
 
     timestamps(type: :utc_datetime_usec)
   end
@@ -35,9 +35,20 @@ defmodule RaccoonAgents.Agent do
   def changeset(agent, attrs) do
     agent
     |> cast(attrs, [
-      :creator_id, :name, :slug, :description, :avatar_url, :system_prompt,
-      :model, :temperature, :max_tokens, :tools, :mcp_servers,
-      :visibility, :category, :metadata
+      :creator_id,
+      :name,
+      :slug,
+      :description,
+      :avatar_url,
+      :system_prompt,
+      :model,
+      :temperature,
+      :max_tokens,
+      :tools,
+      :mcp_servers,
+      :visibility,
+      :category,
+      :metadata
     ])
     |> validate_required([:creator_id, :name, :slug, :system_prompt])
     |> validate_length(:name, max: 64)

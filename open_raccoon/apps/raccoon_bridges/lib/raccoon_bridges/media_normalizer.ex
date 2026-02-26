@@ -46,7 +46,7 @@ defmodule RaccoonBridges.MediaNormalizer do
   end
 
   def validate_file(_size_bytes, content_type) do
-    if content_type in @allowed_image_types ++ @allowed_video_types ++ @allowed_document_types do
+    if content_type in (@allowed_image_types ++ @allowed_video_types ++ @allowed_document_types) do
       :ok
     else
       {:error, :unsupported_format}

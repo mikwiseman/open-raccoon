@@ -8,11 +8,11 @@ defmodule RaccoonAgents.AgentRating do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "agent_ratings" do
-    belongs_to :agent, RaccoonAgents.Agent
-    belongs_to :user, RaccoonAccounts.User
+    belongs_to(:agent, RaccoonAgents.Agent)
+    belongs_to(:user, RaccoonAccounts.User)
 
-    field :rating, :integer
-    field :review, :string
+    field(:rating, :integer)
+    field(:review, :string)
 
     timestamps(type: :utc_datetime_usec, updated_at: false)
   end

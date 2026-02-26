@@ -46,9 +46,19 @@ defmodule RaccoonGatewayWeb.AgentController do
 
       %{creator_id: ^user_id} = agent ->
         allowed_keys = [
-          "name", "slug", "description", "avatar_url", "system_prompt",
-          "model", "temperature", "max_tokens", "tools", "mcp_servers",
-          "visibility", "category", "metadata"
+          "name",
+          "slug",
+          "description",
+          "avatar_url",
+          "system_prompt",
+          "model",
+          "temperature",
+          "max_tokens",
+          "tools",
+          "mcp_servers",
+          "visibility",
+          "category",
+          "metadata"
         ]
 
         update_params = Map.take(params, allowed_keys)

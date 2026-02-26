@@ -11,11 +11,11 @@ defmodule RaccoonAgents.AgentUsageLog do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "agent_usage_logs" do
-    field :user_id, :binary_id
-    field :agent_id, :binary_id
-    field :model, :string
-    field :input_tokens, :integer
-    field :output_tokens, :integer
+    field(:user_id, :binary_id)
+    field(:agent_id, :binary_id)
+    field(:model, :string)
+    field(:input_tokens, :integer)
+    field(:output_tokens, :integer)
 
     timestamps(type: :utc_datetime_usec, updated_at: false)
   end

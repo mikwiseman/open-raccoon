@@ -44,7 +44,7 @@ defmodule RaccoonFeed.SubmissionPipeline do
   # --- Pipeline Steps ---
 
   defp check_rate_limit(creator_id) do
-    today_start = DateTime.utc_now() |> DateTime.beginning_of_day()
+    today_start = DateTime.utc_now() |> DateTime.to_date() |> DateTime.new!(~T[00:00:00], "Etc/UTC")
 
     count =
       from(fi in FeedItem,

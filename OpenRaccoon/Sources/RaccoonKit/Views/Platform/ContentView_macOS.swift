@@ -132,15 +132,51 @@ public struct ContentView_macOS: View {
                     EmptyStateView()
                 }
             case .feed:
-                SecondaryPanePlaceholder(
-                    title: "Feed View",
-                    subtitle: "Open an item from the feed to see details."
-                )
+                if let item = appState.selectedFeedItem {
+                    FeedDetailView(
+                        item: item,
+                        authorName: item.creatorID,
+                        onLike: {},
+                        onFork: {},
+                        onFollow: {}
+                    )
+                } else {
+                    SecondaryPanePlaceholder(
+                        title: "Feed",
+                        subtitle: "Select an item from the feed to see details."
+                    )
+                }
             case .marketplace:
-                SecondaryPanePlaceholder(
-                    title: "Marketplace",
-                    subtitle: "Select an agent card to view profile and start a conversation."
+                if let agent = appState.selectedMarketplaceAgent {
+                    AgentProfileView(
+                        agent: agent,
+                        creatorName: agent.creatorID,
+                        onStartConversation: {
+                            startConversation(with: agent)
+                        }
+                    )
+                } else {
+                    SecondaryPanePlaceholder(
+                        title: "Marketplace",
+                        subtitle: "Select an agent card to view profile and start a conversation."
+                    )
+                }
+            }
+        }
+    }
+
+    private func startConversation(with agent: Agent) {
+        Task {
+            do {
+                let response: ConversationResponse = try await appState.apiClient.request(
+                    .startAgentConversation(agentID: agent.id)
                 )
+                appState.conversationStore.upsert(response.conversation)
+                appState.selectedConversationID = response.conversation.id
+                appState.selectedMarketplaceAgent = nil
+                selectedDestination = .chats
+            } catch {
+                // Error is shown in the marketplace view's alert
             }
         }
     }
@@ -157,9 +193,11 @@ public struct ContentView_macOS: View {
 struct SidebarView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.colorScheme) private var colorScheme
-    @State private var searchText = ""
     @State private var showSettings = false
     @State private var showNewConversation = false
+    @State private var sidebarAgents: [Agent] = []
+    @State private var isLoadingAgents = false
+    @State private var startConversationError: String?
     @Binding private var selectedDestination: SidebarDestination
 
     init(selectedDestination: Binding<SidebarDestination>) {
@@ -178,11 +216,6 @@ struct SidebarView: View {
             .padding(.horizontal, RaccoonSpacing.space4)
             .frame(height: 48)
 
-            // Search bar
-            SearchBarView(text: $searchText, placeholder: "Search...")
-                .padding(.horizontal, RaccoonSpacing.space3)
-                .padding(.vertical, RaccoonSpacing.space3)
-
             Divider()
                 .foregroundStyle(borderPrimary)
 
@@ -200,9 +233,45 @@ struct SidebarView: View {
                 }
 
                 Section {
-                    staticSidebarRow(icon: "cpu", label: "Raccoon (default)")
-                    staticSidebarRow(icon: "chevron.left.forwardslash.chevron.right", label: "Code Agent")
-                    staticSidebarRow(icon: "magnifyingglass", label: "Research Agent")
+                    if isLoadingAgents {
+                        HStack(spacing: RaccoonSpacing.space2) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Loading agents...")
+                                .font(RaccoonTypography.textSm)
+                                .foregroundStyle(textTertiary)
+                        }
+                        .frame(height: 36)
+                        .padding(.horizontal, RaccoonSpacing.space2)
+                    } else if sidebarAgents.isEmpty {
+                        Text("No agents available")
+                            .font(RaccoonTypography.textSm)
+                            .foregroundStyle(textTertiary)
+                            .frame(height: 36)
+                            .padding(.horizontal, RaccoonSpacing.space2)
+                    } else {
+                        ForEach(sidebarAgents) { agent in
+                            Button {
+                                startAgentConversation(agent)
+                            } label: {
+                                Label {
+                                    Text(agent.name)
+                                        .font(RaccoonTypography.textSm)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(textPrimary)
+                                        .lineLimit(1)
+                                } icon: {
+                                    Image(systemName: iconForCategory(agent.category))
+                                        .font(RaccoonTypography.textBase)
+                                        .foregroundStyle(textSecondary)
+                                        .frame(width: 24)
+                                }
+                                .frame(height: 36)
+                                .padding(.horizontal, RaccoonSpacing.space2)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 } header: {
                     Text("AGENTS")
                         .font(RaccoonTypography.textXs)
@@ -247,32 +316,79 @@ struct SidebarView: View {
         }
         .background(bgSecondary)
         .sheet(isPresented: $showSettings) {
-            VStack(spacing: RaccoonSpacing.space4) {
-                Text("Settings")
-                    .font(RaccoonTypography.textLg)
-                    .fontWeight(.semibold)
-                Text("Settings will be available in a future update.")
-                    .font(RaccoonTypography.textSm)
-                    .foregroundStyle(textSecondary)
-                Button("Close") { showSettings = false }
-                    .keyboardShortcut(.cancelAction)
+            NavigationStack {
+                SettingsView()
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") { showSettings = false }
+                        }
+                    }
             }
-            .padding(RaccoonSpacing.space6)
-            .frame(minWidth: 300, minHeight: 200)
+            .frame(minWidth: 550, minHeight: 450)
         }
         .sheet(isPresented: $showNewConversation) {
-            VStack(spacing: RaccoonSpacing.space4) {
-                Text("New Conversation")
-                    .font(RaccoonTypography.textLg)
-                    .fontWeight(.semibold)
-                Text("Start a new conversation with an agent.")
-                    .font(RaccoonTypography.textSm)
-                    .foregroundStyle(textSecondary)
-                Button("Close") { showNewConversation = false }
-                    .keyboardShortcut(.cancelAction)
+            NewConversationSheet(
+                onConversationCreated: { conversationID in
+                    appState.selectedConversationID = conversationID
+                    selectedDestination = .chats
+                    showNewConversation = false
+                },
+                onDismiss: {
+                    showNewConversation = false
+                }
+            )
+        }
+        .alert("Unable to Start Conversation", isPresented: Binding(
+            get: { startConversationError != nil },
+            set: { if !$0 { startConversationError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(startConversationError ?? "Unknown error")
+        }
+        .task {
+            await loadSidebarAgents()
+        }
+    }
+
+    private func loadSidebarAgents() async {
+        isLoadingAgents = true
+        do {
+            let response: PaginatedResponse<Agent> = try await appState.apiClient.request(
+                .marketplace(cursor: nil, limit: 5)
+            )
+            sidebarAgents = Array(response.items.prefix(5))
+        } catch {
+            // Sidebar agents are non-critical; leave empty on failure
+        }
+        isLoadingAgents = false
+    }
+
+    private func startAgentConversation(_ agent: Agent) {
+        Task {
+            do {
+                let response: ConversationResponse = try await appState.apiClient.request(
+                    .startAgentConversation(agentID: agent.id)
+                )
+                appState.conversationStore.upsert(response.conversation)
+                appState.selectedConversationID = response.conversation.id
+                selectedDestination = .chats
+            } catch {
+                startConversationError = String(describing: error)
             }
-            .padding(RaccoonSpacing.space6)
-            .frame(minWidth: 300, minHeight: 200)
+        }
+    }
+
+    private func iconForCategory(_ category: String?) -> String {
+        switch category?.lowercased() {
+        case "coding": return "chevron.left.forwardslash.chevron.right"
+        case "writing": return "pencil.line"
+        case "creative": return "paintbrush"
+        case "data": return "chart.bar"
+        case "productivity": return "list.clipboard"
+        case "education": return "book"
+        case "other": return "sparkles"
+        default: return "cpu"
         }
     }
 
@@ -312,22 +428,6 @@ struct SidebarView: View {
             .clipShape(RoundedRectangle(cornerRadius: RaccoonRadius.md))
         }
         .buttonStyle(.plain)
-    }
-
-    private func staticSidebarRow(icon: String, label: String) -> some View {
-        Label {
-            Text(label)
-                .font(RaccoonTypography.textSm)
-                .fontWeight(.medium)
-                .foregroundStyle(textPrimary)
-        } icon: {
-            Image(systemName: icon)
-                .font(RaccoonTypography.textBase)
-                .foregroundStyle(textSecondary)
-                .frame(width: 24)
-        }
-        .frame(height: 36)
-        .padding(.horizontal, RaccoonSpacing.space2)
     }
 
     private var bgSecondary: Color {

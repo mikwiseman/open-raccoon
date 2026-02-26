@@ -39,15 +39,15 @@ defmodule RaccoonGateway.Workers.BridgeSyncWorker do
       nil ->
         {:discard, "Bridge not found: #{bridge_id}"}
 
-      bridge ->
-        case BridgeManager.reconnect(bridge) do
-          {:ok, _bridge} -> :ok
-          {:error, reason} -> {:error, reason}
-        end
+      _bridge ->
+        BridgeManager.schedule_reconnect(bridge_id)
+        :ok
     end
   end
 
-  def perform(%Oban.Job{args: %{"task" => "send_outbound", "bridge_id" => bridge_id, "message" => message}}) do
+  def perform(%Oban.Job{
+        args: %{"task" => "send_outbound", "bridge_id" => bridge_id, "message" => message}
+      }) do
     case Repo.get(BridgeConnection, bridge_id) do
       nil ->
         {:discard, "Bridge not found: #{bridge_id}"}

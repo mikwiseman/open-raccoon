@@ -34,6 +34,22 @@ public struct AgentChatView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
+            #if os(macOS)
+            // macOS header bar
+            HStack(spacing: RaccoonSpacing.space2) {
+                AvatarView(name: agentName, size: 24, isAgent: true)
+                Text(agentName)
+                    .font(RaccoonTypography.textLg)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(textPrimary)
+                Spacer()
+            }
+            .padding(.horizontal, RaccoonSpacing.space4)
+            .padding(.vertical, RaccoonSpacing.space3)
+            Divider()
+                .foregroundStyle(borderPrimary)
+            #endif
+
             if appState.currentUserID == nil {
                 VStack(spacing: RaccoonSpacing.space3) {
                     Image(systemName: "person.crop.circle.badge.exclamationmark")

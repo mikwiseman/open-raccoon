@@ -57,7 +57,8 @@ defmodule RaccoonBridges.MessageNormalizer do
     }
   end
 
-  def normalize_sender(_platform, _payload), do: %{id: "unknown", type: :bridge, display_name: "Unknown", avatar_url: nil}
+  def normalize_sender(_platform, _payload),
+    do: %{id: "unknown", type: :bridge, display_name: "Unknown", avatar_url: nil}
 
   @doc """
   Normalize a timestamp from a platform-specific format to a DateTime.

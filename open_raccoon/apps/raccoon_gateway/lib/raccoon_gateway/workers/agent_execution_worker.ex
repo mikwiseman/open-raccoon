@@ -14,7 +14,14 @@ defmodule RaccoonGateway.Workers.AgentExecutionWorker do
   require Logger
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"task" => "execute", "agent_id" => agent_id, "conversation_id" => conversation_id, "message" => message}}) do
+  def perform(%Oban.Job{
+        args: %{
+          "task" => "execute",
+          "agent_id" => agent_id,
+          "conversation_id" => conversation_id,
+          "message" => message
+        }
+      }) do
     Logger.info("Executing agent #{agent_id} in conversation #{conversation_id}")
 
     case RaccoonShared.Repo.get(RaccoonAgents.Agent, agent_id) do

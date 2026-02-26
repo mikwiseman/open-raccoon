@@ -2,9 +2,10 @@ import Foundation
 @preconcurrency import SwiftPhoenixClient
 
 /// WebSocket client wrapping SwiftPhoenixClient for Phoenix Channel communication.
-/// Confined to MainActor since Socket is not Sendable and UI updates drive this.
-@MainActor
-public final class WebSocketClient {
+/// Not MainActor-isolated so that closures registered with SwiftPhoenixClient can be
+/// called from any thread. All handler callbacks are @MainActor and dispatched via
+/// Task { @MainActor in } from within socket/channel event handlers.
+public final class WebSocketClient: @unchecked Sendable {
     private var socket: Socket
     private let baseURL: String
     private let authManager: AuthManager
@@ -26,35 +27,35 @@ public final class WebSocketClient {
         case disconnected
     }
 
-    public var onConnectionStateChanged: ((_ state: ConnectionState) -> Void)?
+    public var onConnectionStateChanged: (@MainActor (_ state: ConnectionState) -> Void)?
 
     // MARK: - Conversation Channel Handlers
 
-    public var onNewMessage: ((_ payload: Message) -> Void)?
-    public var onMessageUpdated: ((_ payload: Message) -> Void)?
-    public var onTyping: ((_ payload: TypingPayload) -> Void)?
-    public var onPresenceState: ((_ payload: [String: AnyCodable]) -> Void)?
-    public var onPresenceDiff: ((_ payload: [String: AnyCodable]) -> Void)?
+    public var onNewMessage: (@MainActor (_ payload: Message) -> Void)?
+    public var onMessageUpdated: (@MainActor (_ payload: Message) -> Void)?
+    public var onTyping: (@MainActor (_ payload: TypingPayload) -> Void)?
+    public var onPresenceState: (@MainActor (_ payload: [String: AnyCodable]) -> Void)?
+    public var onPresenceDiff: (@MainActor (_ payload: [String: AnyCodable]) -> Void)?
 
     // MARK: - Agent Channel Handlers
 
-    public var onToken: ((_ payload: [String: AnyCodable]) -> Void)?
-    public var onStatus: ((_ payload: [String: AnyCodable]) -> Void)?
-    public var onApprovalRequested: ((_ payload: ApprovalRequestPayload) -> Void)?
-    public var onToolCall: ((_ payload: ToolCallPayload) -> Void)?
-    public var onToolResult: ((_ payload: ToolResultPayload) -> Void)?
-    public var onCodeBlock: ((_ payload: CodeBlockPayload) -> Void)?
-    public var onComplete: ((_ payload: [String: AnyCodable]) -> Void)?
-    public var onError: ((_ payload: [String: AnyCodable]) -> Void)?
+    public var onToken: (@MainActor (_ payload: [String: AnyCodable]) -> Void)?
+    public var onStatus: (@MainActor (_ payload: [String: AnyCodable]) -> Void)?
+    public var onApprovalRequested: (@MainActor (_ payload: ApprovalRequestPayload) -> Void)?
+    public var onToolCall: (@MainActor (_ payload: ToolCallPayload) -> Void)?
+    public var onToolResult: (@MainActor (_ payload: ToolResultPayload) -> Void)?
+    public var onCodeBlock: (@MainActor (_ payload: CodeBlockPayload) -> Void)?
+    public var onComplete: (@MainActor (_ payload: [String: AnyCodable]) -> Void)?
+    public var onError: (@MainActor (_ payload: [String: AnyCodable]) -> Void)?
 
     // MARK: - User Channel Handlers
 
-    public var onNotification: ((_ payload: [String: AnyCodable]) -> Void)?
-    public var onBridgeStatus: ((_ payload: BridgeStatusPayload) -> Void)?
-    public var onConversationUpdated: ((_ payload: Conversation) -> Void)?
+    public var onNotification: (@MainActor (_ payload: [String: AnyCodable]) -> Void)?
+    public var onBridgeStatus: (@MainActor (_ payload: BridgeStatusPayload) -> Void)?
+    public var onConversationUpdated: (@MainActor (_ payload: Conversation) -> Void)?
 
     /// Called when auth fails and token refresh also fails (user must re-login).
-    public var onAuthFailure: (() -> Void)?
+    public var onAuthFailure: (@MainActor () -> Void)?
 
     public init(baseURL: String, accessToken: String, authManager: AuthManager) {
         self.baseURL = baseURL
@@ -66,21 +67,21 @@ public final class WebSocketClient {
     }
 
     public func connect() {
-        onConnectionStateChanged?(.connecting)
+        Task { @MainActor in onConnectionStateChanged?(.connecting) }
 
-        socket.onOpen { [weak self] in
+        socket.onOpen { @Sendable [weak self] in
             Task { @MainActor in
                 self?.onConnectionStateChanged?(.connected)
             }
         }
 
-        socket.onClose { [weak self] in
+        socket.onClose { @Sendable [weak self] in
             Task { @MainActor in
                 self?.onConnectionStateChanged?(.disconnected)
             }
         }
 
-        socket.onError { [weak self] _ in
+        socket.onError { @Sendable [weak self] _ in
             Task { @MainActor in
                 guard let self, !self.isReconnecting else { return }
                 self.onConnectionStateChanged?(.disconnected)
@@ -92,7 +93,7 @@ public final class WebSocketClient {
 
     public func disconnect() {
         socket.disconnect()
-        onConnectionStateChanged?(.disconnected)
+        Task { @MainActor in onConnectionStateChanged?(.disconnected) }
     }
 
     /// Attempts to refresh the access token and reconnect the WebSocket.
@@ -105,7 +106,7 @@ public final class WebSocketClient {
         socket.disconnect()
 
         do {
-            onConnectionStateChanged?(.connecting)
+            await onConnectionStateChanged?(.connecting)
 
             let newToken = try await authManager.validAccessToken()
             let wsURL = baseURL
@@ -114,19 +115,19 @@ public final class WebSocketClient {
             socket = Socket("\(wsURL)/socket", params: ["token": newToken])
 
             // Re-register socket lifecycle handlers on the new socket
-            socket.onOpen { [weak self] in
+            socket.onOpen { @Sendable [weak self] in
                 Task { @MainActor in
                     self?.onConnectionStateChanged?(.connected)
                 }
             }
 
-            socket.onClose { [weak self] in
+            socket.onClose { @Sendable [weak self] in
                 Task { @MainActor in
                     self?.onConnectionStateChanged?(.disconnected)
                 }
             }
 
-            socket.onError { [weak self] _ in
+            socket.onError { @Sendable [weak self] _ in
                 Task { @MainActor in
                     guard let self, !self.isReconnecting else { return }
                     self.onConnectionStateChanged?(.disconnected)
@@ -144,7 +145,7 @@ public final class WebSocketClient {
                 rejoinTopic(topic)
             }
         } catch {
-            onAuthFailure?()
+            await onAuthFailure?()
         }
     }
 
@@ -168,41 +169,56 @@ public final class WebSocketClient {
         let topic = "conversation:\(id)"
         let channel = socket.channel(topic)
 
-        channel.on(ConversationServerEvent.newMessage.rawValue) { [weak self] message in
-            guard let self else { return }
-            if let decoded = Self.decodeConversationMessage(payload: message.payload) {
-                self.onNewMessage?(decoded)
+        channel.on(ConversationServerEvent.newMessage.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                if let decoded = Self.decodeConversationMessage(payload: payload) {
+                    self.onNewMessage?(decoded)
+                }
             }
         }
 
-        channel.on(ConversationServerEvent.messageUpdated.rawValue) { [weak self] message in
-            guard let self else { return }
-            if let decoded = Self.decodeConversationMessage(payload: message.payload) {
-                self.onMessageUpdated?(decoded)
+        channel.on(ConversationServerEvent.messageUpdated.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                if let decoded = Self.decodeConversationMessage(payload: payload) {
+                    self.onMessageUpdated?(decoded)
+                }
             }
         }
 
-        channel.on(ConversationServerEvent.typing.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode(TypingPayload.self, from: data) {
-                self.onTyping?(decoded)
+        channel.on(ConversationServerEvent.typing.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode(TypingPayload.self, from: data) {
+                    self.onTyping?(decoded)
+                }
             }
         }
 
-        channel.on(ConversationServerEvent.presenceState.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
-                self.onPresenceState?(decoded)
+        channel.on(ConversationServerEvent.presenceState.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
+                    self.onPresenceState?(decoded)
+                }
             }
         }
 
-        channel.on(ConversationServerEvent.presenceDiff.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
-                self.onPresenceDiff?(decoded)
+        channel.on(ConversationServerEvent.presenceDiff.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
+                    self.onPresenceDiff?(decoded)
+                }
             }
         }
 
@@ -218,67 +234,91 @@ public final class WebSocketClient {
         let topic = "agent:\(conversationID)"
         let channel = socket.channel(topic)
 
-        channel.on(AgentServerEvent.token.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
-                self.onToken?(decoded)
+        channel.on(AgentServerEvent.token.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
+                    self.onToken?(decoded)
+                }
             }
         }
 
-        channel.on(AgentServerEvent.status.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
-                self.onStatus?(decoded)
+        channel.on(AgentServerEvent.status.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
+                    self.onStatus?(decoded)
+                }
             }
         }
 
-        channel.on(AgentServerEvent.approvalRequested.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode(ApprovalRequestPayload.self, from: data) {
-                self.onApprovalRequested?(decoded)
+        channel.on(AgentServerEvent.approvalRequested.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode(ApprovalRequestPayload.self, from: data) {
+                    self.onApprovalRequested?(decoded)
+                }
             }
         }
 
-        channel.on(AgentServerEvent.toolCall.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode(ToolCallPayload.self, from: data) {
-                self.onToolCall?(decoded)
+        channel.on(AgentServerEvent.toolCall.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode(ToolCallPayload.self, from: data) {
+                    self.onToolCall?(decoded)
+                }
             }
         }
 
-        channel.on(AgentServerEvent.toolResult.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode(ToolResultPayload.self, from: data) {
-                self.onToolResult?(decoded)
+        channel.on(AgentServerEvent.toolResult.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode(ToolResultPayload.self, from: data) {
+                    self.onToolResult?(decoded)
+                }
             }
         }
 
-        channel.on(AgentServerEvent.codeBlock.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode(CodeBlockPayload.self, from: data) {
-                self.onCodeBlock?(decoded)
+        channel.on(AgentServerEvent.codeBlock.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode(CodeBlockPayload.self, from: data) {
+                    self.onCodeBlock?(decoded)
+                }
             }
         }
 
-        channel.on(AgentServerEvent.complete.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
-                self.onComplete?(decoded)
+        channel.on(AgentServerEvent.complete.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
+                    self.onComplete?(decoded)
+                }
             }
         }
 
-        channel.on(AgentServerEvent.error.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
-                self.onError?(decoded)
+        channel.on(AgentServerEvent.error.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
+                    self.onError?(decoded)
+                }
             }
         }
 
@@ -294,27 +334,36 @@ public final class WebSocketClient {
         let topic = "user:\(userID)"
         let channel = socket.channel(topic)
 
-        channel.on(UserServerEvent.notification.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
-                self.onNotification?(decoded)
+        channel.on(UserServerEvent.notification.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode([String: AnyCodable].self, from: data) {
+                    self.onNotification?(decoded)
+                }
             }
         }
 
-        channel.on(UserServerEvent.bridgeStatus.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode(BridgeStatusPayload.self, from: data) {
-                self.onBridgeStatus?(decoded)
+        channel.on(UserServerEvent.bridgeStatus.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode(BridgeStatusPayload.self, from: data) {
+                    self.onBridgeStatus?(decoded)
+                }
             }
         }
 
-        channel.on(UserServerEvent.conversationUpdated.rawValue) { [weak self] message in
-            guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode(Conversation.self, from: data) {
-                self.onConversationUpdated?(decoded)
+        channel.on(UserServerEvent.conversationUpdated.rawValue) { @Sendable [weak self] message in
+            let payload = message.payload
+            Task { @MainActor in
+                guard let self else { return }
+                guard let data = self.jsonData(from: payload) else { return }
+                if let decoded = try? JSONDecoder.raccoon.decode(Conversation.self, from: data) {
+                    self.onConversationUpdated?(decoded)
+                }
             }
         }
 
@@ -428,6 +477,6 @@ public final class WebSocketClient {
     }
 }
 
-private struct MessageEventWrapper: Codable {
+private struct MessageEventWrapper: Codable, Sendable {
     let message: Message
 }

@@ -35,9 +35,15 @@ defmodule RaccoonAccounts do
     user = get_user_by_email(email)
 
     cond do
-      user && Argon2.verify_pass(password, user.password_hash) -> {:ok, user}
-      user -> {:error, :invalid_credentials}
-      true -> Argon2.no_user_verify(); {:error, :invalid_credentials}
+      user && Argon2.verify_pass(password, user.password_hash) ->
+        {:ok, user}
+
+      user ->
+        {:error, :invalid_credentials}
+
+      true ->
+        Argon2.no_user_verify()
+        {:error, :invalid_credentials}
     end
   end
 
@@ -51,7 +57,7 @@ defmodule RaccoonAccounts do
 
   def list_user_credentials(user_id) do
     import Ecto.Query
-    Repo.all(from c in UserCredential, where: c.user_id == ^user_id)
+    Repo.all(from(c in UserCredential, where: c.user_id == ^user_id))
   end
 
   def get_credential_by_credential_id(credential_id) do

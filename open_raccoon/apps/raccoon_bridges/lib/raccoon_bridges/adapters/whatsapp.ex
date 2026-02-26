@@ -71,7 +71,12 @@ defmodule RaccoonBridges.Adapters.WhatsApp do
       {~c"Content-Type", ~c"application/json"}
     ]
 
-    case :httpc.request(:post, {String.to_charlist(url), headers, ~c"application/json", body}, [], []) do
+    case :httpc.request(
+           :post,
+           {String.to_charlist(url), headers, ~c"application/json", body},
+           [],
+           []
+         ) do
       {:ok, {{_, 200, _}, _headers, response_body}} ->
         {:ok, Jason.decode!(to_string(response_body))}
 

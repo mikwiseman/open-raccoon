@@ -22,9 +22,7 @@ defmodule RaccoonPages.VersionManager do
 
       {:ok, version} =
         %PageVersion{}
-        |> PageVersion.changeset(
-          Map.merge(attrs, %{page_id: page_id, version: new_version})
-        )
+        |> PageVersion.changeset(Map.merge(attrs, %{page_id: page_id, version: new_version}))
         |> Repo.insert()
 
       {:ok, _} =

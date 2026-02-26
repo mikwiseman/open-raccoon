@@ -22,10 +22,14 @@ config :raccoon_shared, Oban,
   plugins: [
     {Oban.Plugins.Cron,
      crontab: [
-       {"0 3 * * *", RaccoonGateway.Workers.MaintenanceWorker, args: %{"task" => "create_partitions"}},
-       {"0 * * * *", RaccoonGateway.Workers.MaintenanceWorker, args: %{"task" => "cleanup_idempotency_keys"}},
-       {"0 4 * * *", RaccoonGateway.Workers.MaintenanceWorker, args: %{"task" => "cleanup_sessions"}},
-       {"0 5 * * *", RaccoonGateway.Workers.MaintenanceWorker, args: %{"task" => "prune_delivery_receipts"}},
+       {"0 3 * * *", RaccoonGateway.Workers.MaintenanceWorker,
+        args: %{"task" => "create_partitions"}},
+       {"0 * * * *", RaccoonGateway.Workers.MaintenanceWorker,
+        args: %{"task" => "cleanup_idempotency_keys"}},
+       {"0 4 * * *", RaccoonGateway.Workers.MaintenanceWorker,
+        args: %{"task" => "cleanup_sessions"}},
+       {"0 5 * * *", RaccoonGateway.Workers.MaintenanceWorker,
+        args: %{"task" => "prune_delivery_receipts"}},
        {"*/15 * * * *", RaccoonGateway.Workers.TrendingWorker}
      ]}
   ]
@@ -50,17 +54,15 @@ config :logger, :default_formatter,
   metadata: [:request_id]
 
 # Guardian JWT config (secret_key loaded from env in runtime.exs)
-config :raccoon_accounts, RaccoonAccounts.Guardian,
-  issuer: "raccoon"
+config :raccoon_accounts, RaccoonAccounts.Guardian, issuer: "raccoon"
 
 # Swoosh Mailer config (Resend in prod, overridden in dev/test)
 config :swoosh, :api_client, Swoosh.ApiClient.Req
 
-config :raccoon_shared, RaccoonShared.Mailer,
-  adapter: Swoosh.Adapters.Resend
+config :raccoon_shared, RaccoonShared.Mailer, adapter: Swoosh.Adapters.Resend
 
 # Base URL for magic links and email callbacks
-config :raccoon_gateway, :base_url, "http://45.55.219.10:4000"
+config :raccoon_gateway, :base_url, "http://157.180.72.249:4000"
 
 # JSON library
 config :phoenix, :json_library, Jason

@@ -78,7 +78,9 @@ defmodule RaccoonShared.Emails do
     |> from(@from)
     |> subject("Welcome to Open Raccoon!")
     |> html_body(welcome_html(user))
-    |> text_body("Welcome to Open Raccoon, #{user.display_name || user.username}! Your account is ready.")
+    |> text_body(
+      "Welcome to Open Raccoon, #{user.display_name || user.username}! Your account is ready."
+    )
   end
 
   defp welcome_html(user) do

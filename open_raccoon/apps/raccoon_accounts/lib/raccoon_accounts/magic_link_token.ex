@@ -15,10 +15,10 @@ defmodule RaccoonAccounts.MagicLinkToken do
 
   @primary_key {:id, :binary_id, autogenerate: true}
   schema "magic_link_tokens" do
-    field :email, :string
-    field :token, :string
-    field :used, :boolean, default: false
-    field :expires_at, :utc_datetime_usec
+    field(:email, :string)
+    field(:token, :string)
+    field(:used, :boolean, default: false)
+    field(:expires_at, :utc_datetime_usec)
 
     timestamps(type: :utc_datetime_usec, updated_at: false)
   end
@@ -65,8 +65,9 @@ defmodule RaccoonAccounts.MagicLinkToken do
     now = DateTime.utc_now()
 
     query =
-      from t in __MODULE__,
+      from(t in __MODULE__,
         where: t.token == ^token and t.used == false and t.expires_at > ^now
+      )
 
     case Repo.one(query) do
       nil ->

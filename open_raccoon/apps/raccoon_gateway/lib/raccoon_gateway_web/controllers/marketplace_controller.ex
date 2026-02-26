@@ -23,7 +23,11 @@ defmodule RaccoonGatewayWeb.MarketplaceController do
       %{slug: "writing", name: "Writing & Content", description: "Agents for content creation"},
       %{slug: "data", name: "Data & Analysis", description: "Agents for data processing"},
       %{slug: "creative", name: "Creative & Design", description: "Agents for creative tasks"},
-      %{slug: "productivity", name: "Productivity", description: "Agents that boost productivity"},
+      %{
+        slug: "productivity",
+        name: "Productivity",
+        description: "Agents that boost productivity"
+      },
       %{slug: "education", name: "Education", description: "Learning and tutoring agents"},
       %{slug: "other", name: "Other", description: "Miscellaneous agents"}
     ]

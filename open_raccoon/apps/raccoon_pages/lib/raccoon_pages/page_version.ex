@@ -8,11 +8,11 @@ defmodule RaccoonPages.PageVersion do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "page_versions" do
-    belongs_to :page, RaccoonPages.Page
+    belongs_to(:page, RaccoonPages.Page)
 
-    field :version, :integer
-    field :r2_path, :string
-    field :changes, :string
+    field(:version, :integer)
+    field(:r2_path, :string)
+    field(:changes, :string)
 
     timestamps(type: :utc_datetime_usec, updated_at: false)
   end

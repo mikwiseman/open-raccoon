@@ -120,7 +120,9 @@ public actor AuthManager {
         self.tokenExpiry = Date().addingTimeInterval(expiresIn)
         try keychain.set(access, key: "access_token")
         try keychain.set(refresh, key: "refresh_token")
-        try keychain.set(String(tokenExpiry!.timeIntervalSince1970), key: "token_expiry")
+        if let expiry = tokenExpiry {
+            try keychain.set(String(expiry.timeIntervalSince1970), key: "token_expiry")
+        }
     }
 
     public func clearTokens() throws {

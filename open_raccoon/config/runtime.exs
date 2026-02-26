@@ -15,8 +15,7 @@ guardian_secret_key =
     You can generate one by calling: mix guardian.gen.secret
     """
 
-config :raccoon_accounts, RaccoonAccounts.Guardian,
-  secret_key: guardian_secret_key
+config :raccoon_accounts, RaccoonAccounts.Guardian, secret_key: guardian_secret_key
 
 # Bridge credential encryption key (base64-encoded 32-byte key)
 # Generate with: :crypto.strong_rand_bytes(32) |> Base.encode64()
@@ -71,9 +70,20 @@ if config_env() == :prod do
       maintenance: 2
     ]
 
-  config :raccoon_shared, RaccoonShared.Mailer,
-    api_key: System.fetch_env!("RESEND_API_KEY")
+  config :raccoon_shared, RaccoonShared.Mailer, api_key: System.fetch_env!("RESEND_API_KEY")
 
-  config :raccoon_gateway, :base_url,
-    System.get_env("BASE_URL", "http://45.55.219.10:4000")
+  config :raccoon_gateway, :base_url, System.get_env("BASE_URL", "http://157.180.72.249:4000")
+
+  # Hetzner Object Storage (S3-compatible)
+  if System.get_env("SPACES_BUCKET") do
+    config :raccoon_shared,
+      spaces_region: System.fetch_env!("SPACES_REGION"),
+      spaces_access_key: System.fetch_env!("SPACES_ACCESS_KEY"),
+      spaces_secret_key: System.fetch_env!("SPACES_SECRET_KEY"),
+      spaces_bucket: System.fetch_env!("SPACES_BUCKET")
+
+    if cdn_url = System.get_env("CDN_BASE_URL") do
+      config :raccoon_shared, cdn_base_url: cdn_url
+    end
+  end
 end

@@ -9,35 +9,35 @@ defmodule RaccoonShared.MessageEnvelope do
 
   @primary_key false
   embedded_schema do
-    field :conversation_id, :string
-    field :type, Ecto.Enum, values: [:text, :media, :code, :embed, :system, :agent_status]
+    field(:conversation_id, :string)
+    field(:type, Ecto.Enum, values: [:text, :media, :code, :embed, :system, :agent_status])
 
     embeds_one :sender, Sender, primary_key: false do
-      field :id, :string
-      field :type, Ecto.Enum, values: [:human, :agent, :bridge, :system]
-      field :display_name, :string
-      field :avatar_url, :string
+      field(:id, :string)
+      field(:type, Ecto.Enum, values: [:human, :agent, :bridge, :system])
+      field(:display_name, :string)
+      field(:avatar_url, :string)
     end
 
     embeds_one :content, Content, primary_key: false do
-      field :text, :string
-      field :media_url, :string
-      field :code, :string
-      field :language, :string
+      field(:text, :string)
+      field(:media_url, :string)
+      field(:code, :string)
+      field(:language, :string)
     end
 
     embeds_one :metadata, Metadata, primary_key: false do
-      field :bridge_source, :string
-      field :agent_model, :string
-      field :agent_tools_used, {:array, :string}, default: []
-      field :encryption, Ecto.Enum, values: [:e2e, :server, :none], default: :none
-      field :reply_to, :string
-      field :thread_id, :string
+      field(:bridge_source, :string)
+      field(:agent_model, :string)
+      field(:agent_tools_used, {:array, :string}, default: [])
+      field(:encryption, Ecto.Enum, values: [:e2e, :server, :none], default: :none)
+      field(:reply_to, :string)
+      field(:thread_id, :string)
     end
 
-    field :reactions, {:array, :map}, default: []
-    field :created_at, :utc_datetime_usec
-    field :updated_at, :utc_datetime_usec
+    field(:reactions, {:array, :map}, default: [])
+    field(:created_at, :utc_datetime_usec)
+    field(:updated_at, :utc_datetime_usec)
   end
 
   def changeset(envelope, attrs) do
@@ -60,6 +60,13 @@ defmodule RaccoonShared.MessageEnvelope do
   end
 
   defp metadata_changeset(metadata, attrs) do
-    cast(metadata, attrs, [:bridge_source, :agent_model, :agent_tools_used, :encryption, :reply_to, :thread_id])
+    cast(metadata, attrs, [
+      :bridge_source,
+      :agent_model,
+      :agent_tools_used,
+      :encryption,
+      :reply_to,
+      :thread_id
+    ])
   end
 end

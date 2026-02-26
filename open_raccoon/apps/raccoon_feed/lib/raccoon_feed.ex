@@ -112,16 +112,18 @@ defmodule RaccoonFeed do
 
   def like_item(feed_item_id, user_id) do
     Repo.transaction(fn ->
-      {:ok, like} =
-        %FeedLike{}
-        |> FeedLike.changeset(%{feed_item_id: feed_item_id, user_id: user_id})
-        |> Repo.insert()
+      case %FeedLike{}
+           |> FeedLike.changeset(%{feed_item_id: feed_item_id, user_id: user_id})
+           |> Repo.insert() do
+        {:ok, like} ->
+          from(fi in FeedItem, where: fi.id == ^feed_item_id)
+          |> Repo.update_all(inc: [like_count: 1])
 
-      {1, _} =
-        from(fi in FeedItem, where: fi.id == ^feed_item_id)
-        |> Repo.update_all(inc: [like_count: 1])
+          like
 
-      like
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
     end)
   end
 

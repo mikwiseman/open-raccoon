@@ -8,12 +8,12 @@ defmodule RaccoonAccounts.UserCredential do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "user_credentials" do
-    belongs_to :user, RaccoonAccounts.User
+    belongs_to(:user, RaccoonAccounts.User)
 
-    field :credential_id, :binary
-    field :public_key, :binary
-    field :sign_count, :integer, default: 0
-    field :name, :string
+    field(:credential_id, :binary)
+    field(:public_key, :binary)
+    field(:sign_count, :integer, default: 0)
+    field(:name, :string)
 
     timestamps(type: :utc_datetime_usec, updated_at: false)
   end

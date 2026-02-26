@@ -24,7 +24,7 @@ defmodule RaccoonAccounts.Guardian do
   def resource_from_claims(_), do: {:error, :invalid_claims}
 
   @impl true
-  def after_decode_and_verify(claims, _options) do
+  def on_verify(claims, _token, _options) do
     case RaccoonAccounts.Token.check_not_revoked(claims) do
       :ok -> {:ok, claims}
       {:error, _} = error -> error

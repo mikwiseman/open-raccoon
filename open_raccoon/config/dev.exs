@@ -16,14 +16,14 @@ config :raccoon_gateway, RaccoonGatewayWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "dev-secret-key-base-that-is-at-least-64-bytes-long-for-phoenix-to-accept-it-ok",
+  secret_key_base:
+    "dev-secret-key-base-that-is-at-least-64-bytes-long-for-phoenix-to-accept-it-ok",
   watchers: []
 
 config :raccoon_gateway, dev_routes: true
 
 # Use local adapter for dev (emails logged to console)
-config :raccoon_shared, RaccoonShared.Mailer,
-  adapter: Swoosh.Adapters.Local
+config :raccoon_shared, RaccoonShared.Mailer, adapter: Swoosh.Adapters.Local
 
 config :logger, :default_formatter, format: "[$level] $message\n"
 

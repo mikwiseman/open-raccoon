@@ -148,7 +148,11 @@ public struct MarketplaceView: View {
             ) {
                 ForEach(filteredAgents) { agent in
                     Button {
+                        #if os(macOS)
+                        appState.selectedMarketplaceAgent = agent
+                        #else
                         selectedAgent = agent
+                        #endif
                     } label: {
                         agentCard(agent)
                     }

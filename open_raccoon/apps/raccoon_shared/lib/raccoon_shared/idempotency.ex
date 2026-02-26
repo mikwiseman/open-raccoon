@@ -9,11 +9,11 @@ defmodule RaccoonShared.Idempotency do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "idempotency_keys" do
-    field :key, :string
-    field :user_id, :binary_id
-    field :response_code, :integer
-    field :response_body, :map
-    field :expires_at, :utc_datetime_usec
+    field(:key, :string)
+    field(:user_id, :binary_id)
+    field(:response_code, :integer)
+    field(:response_body, :map)
+    field(:expires_at, :utc_datetime_usec)
     timestamps(type: :utc_datetime_usec, updated_at: false)
   end
 

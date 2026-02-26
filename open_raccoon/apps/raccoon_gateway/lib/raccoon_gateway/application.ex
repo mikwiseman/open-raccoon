@@ -31,5 +31,4 @@ defmodule RaccoonGateway.Application do
     RaccoonGatewayWeb.Endpoint.config_change(changed, removed)
     :ok
   end
-
 end

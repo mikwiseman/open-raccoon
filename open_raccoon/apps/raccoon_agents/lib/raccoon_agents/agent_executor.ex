@@ -107,7 +107,8 @@ defmodule RaccoonAgents.AgentExecutor do
       {:error, :limit_exceeded} ->
         broadcast(topic, "error", %{
           code: "limit_exceeded",
-          message: "Token usage limit exceeded. Please upgrade your plan or wait for the limit to reset."
+          message:
+            "Token usage limit exceeded. Please upgrade your plan or wait for the limit to reset."
         })
 
       {:error, :private_agent} ->

@@ -2,7 +2,9 @@ defmodule RaccoonGatewayWeb.ErrorJSONTest do
   use RaccoonGatewayWeb.ConnCase, async: true
 
   test "renders 404" do
-    assert RaccoonGatewayWeb.ErrorJSON.render("404.json", %{}) == %{errors: %{detail: "Not Found"}}
+    assert RaccoonGatewayWeb.ErrorJSON.render("404.json", %{}) == %{
+             errors: %{detail: "Not Found"}
+           }
   end
 
   test "renders 500" do

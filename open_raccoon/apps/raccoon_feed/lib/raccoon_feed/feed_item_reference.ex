@@ -9,9 +9,9 @@ defmodule RaccoonFeed.FeedItemReference do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "feed_item_references" do
-    field :reference_id, :binary_id
-    field :reference_type, Ecto.Enum, values: [:agent, :page, :tool]
-    field :exists_flag, :boolean, default: true
+    field(:reference_id, :binary_id)
+    field(:reference_type, Ecto.Enum, values: [:agent, :page, :tool])
+    field(:exists_flag, :boolean, default: true)
 
     timestamps(type: :utc_datetime_usec)
   end

@@ -8,10 +8,10 @@ defmodule RaccoonChat.MessageReaction do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "message_reactions" do
-    belongs_to :message, RaccoonChat.Message
-    belongs_to :user, RaccoonAccounts.User
+    belongs_to(:message, RaccoonChat.Message)
+    belongs_to(:user, RaccoonAccounts.User)
 
-    field :emoji, :string
+    field(:emoji, :string)
 
     timestamps(type: :utc_datetime_usec, updated_at: false)
   end

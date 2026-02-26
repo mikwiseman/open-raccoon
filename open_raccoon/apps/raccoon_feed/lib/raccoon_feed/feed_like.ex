@@ -8,8 +8,8 @@ defmodule RaccoonFeed.FeedLike do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "feed_likes" do
-    belongs_to :feed_item, RaccoonFeed.FeedItem
-    belongs_to :user, RaccoonAccounts.User
+    belongs_to(:feed_item, RaccoonFeed.FeedItem)
+    belongs_to(:user, RaccoonAccounts.User)
 
     timestamps(type: :utc_datetime_usec, updated_at: false)
   end

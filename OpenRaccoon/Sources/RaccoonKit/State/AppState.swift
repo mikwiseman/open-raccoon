@@ -6,6 +6,9 @@ public final class AppState {
     public var currentUser: User?
     public var isAuthenticated: Bool { currentUser != nil }
     public var selectedConversationID: String?
+    public var selectedFeedItemID: String?
+    public var selectedFeedItem: FeedItem?
+    public var selectedMarketplaceAgent: Agent?
     public var isWorkspaceOpen: Bool = false
     public var connectionState: WebSocketClient.ConnectionState = .disconnected
 
@@ -18,7 +21,7 @@ public final class AppState {
     public var webSocketClient: WebSocketClient?
     private let baseURL: URL
 
-    public init(baseURL: URL = URL(string: "http://45.55.219.10")!) {
+    public init(baseURL: URL = URL(string: "http://157.180.72.249")!) {
         self.baseURL = baseURL
         self.conversationStore = ConversationStore()
         self.messageStore = MessageStore()

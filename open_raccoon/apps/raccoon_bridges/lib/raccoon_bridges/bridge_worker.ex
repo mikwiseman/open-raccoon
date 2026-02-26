@@ -89,9 +89,14 @@ defmodule RaccoonBridges.BridgeWorker do
           {:ok, updates} ->
             Enum.each(updates, fn update ->
               case Telegram.handle_webhook(update) do
-                {:ok, :ignored} -> :ok
-                {:ok, envelope} -> RaccoonBridges.route_telegram_envelope(bridge, envelope)
-                {:error, reason} -> Logger.warning("Telegram update processing failed: #{inspect(reason)}")
+                {:ok, :ignored} ->
+                  :ok
+
+                {:ok, envelope} ->
+                  RaccoonBridges.route_telegram_envelope(bridge, envelope)
+
+                {:error, reason} ->
+                  Logger.warning("Telegram update processing failed: #{inspect(reason)}")
               end
             end)
 
@@ -105,18 +110,25 @@ defmodule RaccoonBridges.BridgeWorker do
             %{state | last_update_id: last_id}
 
           {:error, reason} ->
-            Logger.warning("Telegram getUpdates failed for bridge #{state.bridge_id}: #{inspect(reason)}")
+            Logger.warning(
+              "Telegram getUpdates failed for bridge #{state.bridge_id}: #{inspect(reason)}"
+            )
+
             state
         end
 
       {:error, reason} ->
-        Logger.error("Failed to decrypt credentials for bridge #{state.bridge_id}: #{inspect(reason)}")
+        Logger.error(
+          "Failed to decrypt credentials for bridge #{state.bridge_id}: #{inspect(reason)}"
+        )
+
         state
     end
   end
 
   defp fetch_updates(bot_token, offset) do
-    url = "https://api.telegram.org/bot#{bot_token}/getUpdates?offset=#{offset}&timeout=0&limit=100"
+    url =
+      "https://api.telegram.org/bot#{bot_token}/getUpdates?offset=#{offset}&timeout=0&limit=100"
 
     case :httpc.request(:get, {String.to_charlist(url), []}, [], []) do
       {:ok, {{_, 200, _}, _headers, response_body}} ->
@@ -135,7 +147,9 @@ defmodule RaccoonBridges.BridgeWorker do
 
   defp update_last_sync(bridge_id) do
     case Repo.get(BridgeConnection, bridge_id) do
-      nil -> :ok
+      nil ->
+        :ok
+
       bridge ->
         bridge
         |> BridgeConnection.changeset(%{last_sync_at: DateTime.utc_now()})

@@ -1,17 +1,20 @@
 defmodule RaccoonShared.Media.CDN do
   @moduledoc """
-  CDN URL generation for R2-stored assets.
+  CDN URL generation for object-storage assets.
 
-  Configuration is read from the CDN_BASE_URL environment variable.
+  By default, uses the Hetzner Object Storage public URL format:
+  `https://{bucket}.{region}.your-objectstorage.com`
+
+  Override with the CDN_BASE_URL environment variable for a custom domain.
   """
 
   @doc """
-  Generate a public CDN URL from an R2 object key.
+  Generate a public CDN URL from an object key.
 
   ## Examples
 
       iex> RaccoonShared.Media.CDN.url("pages/abc123/index.html")
-      "https://cdn.raccoon.page/pages/abc123/index.html"
+      "https://open-raccoon.hel1.your-objectstorage.com/pages/abc123/index.html"
   """
   @spec url(String.t()) :: String.t()
   def url(key) do
@@ -23,7 +26,7 @@ defmodule RaccoonShared.Media.CDN do
   Generate a thumbnail URL with a size parameter.
 
   ## Parameters
-    - `key` - The R2 object key for the original image
+    - `key` - The object key for the original image
     - `size` - Thumbnail size (e.g., `"128x128"`, `"256x256"`)
   """
   @spec thumbnail_url(String.t(), String.t()) :: String.t()
@@ -35,6 +38,14 @@ defmodule RaccoonShared.Media.CDN do
   # --- Private ---
 
   defp base_url do
-    Application.get_env(:raccoon_shared, :cdn_base_url, "https://cdn.raccoon.page")
+    case Application.get_env(:raccoon_shared, :cdn_base_url) do
+      nil ->
+        bucket = Application.fetch_env!(:raccoon_shared, :spaces_bucket)
+        region = Application.fetch_env!(:raccoon_shared, :spaces_region)
+        "https://#{bucket}.#{region}.your-objectstorage.com"
+
+      url ->
+        url
+    end
   end
 end

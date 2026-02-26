@@ -37,8 +37,17 @@ defmodule RaccoonGateway.Workers.MailerWorker do
     end
   end
 
-  def perform(%Oban.Job{args: %{"task" => "new_message", "to" => to, "from" => from, "conversation_id" => conversation_id}}) do
-    Logger.info("[MailerWorker] Sending new message notification to #{to} from #{from} in conversation #{conversation_id}")
+  def perform(%Oban.Job{
+        args: %{
+          "task" => "new_message",
+          "to" => to,
+          "from" => from,
+          "conversation_id" => conversation_id
+        }
+      }) do
+    Logger.info(
+      "[MailerWorker] Sending new message notification to #{to} from #{from} in conversation #{conversation_id}"
+    )
 
     import Swoosh.Email
 
@@ -50,8 +59,17 @@ defmodule RaccoonGateway.Workers.MailerWorker do
     |> deliver_email("new_message")
   end
 
-  def perform(%Oban.Job{args: %{"task" => "mention", "to" => to, "mentioned_by" => mentioned_by, "conversation_id" => conversation_id}}) do
-    Logger.info("[MailerWorker] Sending mention notification to #{to} by #{mentioned_by} in conversation #{conversation_id}")
+  def perform(%Oban.Job{
+        args: %{
+          "task" => "mention",
+          "to" => to,
+          "mentioned_by" => mentioned_by,
+          "conversation_id" => conversation_id
+        }
+      }) do
+    Logger.info(
+      "[MailerWorker] Sending mention notification to #{to} by #{mentioned_by} in conversation #{conversation_id}"
+    )
 
     import Swoosh.Email
 
@@ -63,8 +81,17 @@ defmodule RaccoonGateway.Workers.MailerWorker do
     |> deliver_email("mention")
   end
 
-  def perform(%Oban.Job{args: %{"task" => "bridge_alert", "to" => to, "bridge_id" => bridge_id, "alert_type" => alert_type}}) do
-    Logger.info("[MailerWorker] Sending bridge alert (#{alert_type}) to #{to} for bridge #{bridge_id}")
+  def perform(%Oban.Job{
+        args: %{
+          "task" => "bridge_alert",
+          "to" => to,
+          "bridge_id" => bridge_id,
+          "alert_type" => alert_type
+        }
+      }) do
+    Logger.info(
+      "[MailerWorker] Sending bridge alert (#{alert_type}) to #{to} for bridge #{bridge_id}"
+    )
 
     import Swoosh.Email
 

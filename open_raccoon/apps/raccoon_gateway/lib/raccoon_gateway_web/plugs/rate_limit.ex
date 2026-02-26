@@ -53,7 +53,7 @@ defmodule RaccoonGatewayWeb.Plugs.RateLimit do
   end
 
   defp rate_limit_key(conn, category) do
-    user_id = conn.assigns[:user_id] || (conn.remote_ip |> :inet.ntoa() |> to_string())
+    user_id = conn.assigns[:user_id] || conn.remote_ip |> :inet.ntoa() |> to_string()
     "#{category}:#{user_id}"
   end
 end

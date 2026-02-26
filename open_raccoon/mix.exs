@@ -6,7 +6,25 @@ defmodule OpenRaccoon.MixProject do
       apps_path: "apps",
       version: "0.1.0",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      releases: releases()
+    ]
+  end
+
+  defp releases do
+    [
+      open_raccoon: [
+        applications: [
+          raccoon_shared: :permanent,
+          raccoon_accounts: :permanent,
+          raccoon_chat: :permanent,
+          raccoon_agents: :permanent,
+          raccoon_feed: :permanent,
+          raccoon_bridges: :permanent,
+          raccoon_pages: :permanent,
+          raccoon_gateway: :permanent
+        ]
+      ]
     ]
   end
 

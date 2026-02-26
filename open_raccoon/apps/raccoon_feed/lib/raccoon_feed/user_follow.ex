@@ -8,8 +8,8 @@ defmodule RaccoonFeed.UserFollow do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "user_follows" do
-    belongs_to :follower, RaccoonAccounts.User
-    belongs_to :following, RaccoonAccounts.User
+    belongs_to(:follower, RaccoonAccounts.User)
+    belongs_to(:following, RaccoonAccounts.User)
 
     timestamps(type: :utc_datetime_usec, updated_at: false)
   end

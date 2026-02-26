@@ -58,15 +58,6 @@ defmodule RaccoonGateway.Workers.MaintenanceWorker do
     end
   end
 
-  defp advance_months(date, 0), do: Date.beginning_of_month(date)
-
-  defp advance_months(date, n) when n > 0 do
-    date
-    |> Date.end_of_month()
-    |> Date.add(1)
-    |> advance_months(n - 1)
-  end
-
   def perform(%Oban.Job{args: %{"task" => "cleanup_idempotency_keys"}}) do
     Logger.info("Cleaning up expired idempotency keys")
 
@@ -102,5 +93,14 @@ defmodule RaccoonGateway.Workers.MaintenanceWorker do
 
   def perform(%Oban.Job{args: args}) do
     {:error, "Unknown maintenance task: #{inspect(args)}"}
+  end
+
+  defp advance_months(date, 0), do: Date.beginning_of_month(date)
+
+  defp advance_months(date, n) when n > 0 do
+    date
+    |> Date.end_of_month()
+    |> Date.add(1)
+    |> advance_months(n - 1)
   end
 end

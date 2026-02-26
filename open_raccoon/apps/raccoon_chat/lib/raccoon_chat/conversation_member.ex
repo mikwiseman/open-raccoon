@@ -8,13 +8,13 @@ defmodule RaccoonChat.ConversationMember do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "conversation_members" do
-    belongs_to :conversation, RaccoonChat.Conversation
-    belongs_to :user, RaccoonAccounts.User
+    belongs_to(:conversation, RaccoonChat.Conversation)
+    belongs_to(:user, RaccoonAccounts.User)
 
-    field :role, Ecto.Enum, values: [:owner, :admin, :member], default: :member
-    field :muted, :boolean, default: false
-    field :last_read_at, :utc_datetime_usec
-    field :joined_at, :utc_datetime_usec
+    field(:role, Ecto.Enum, values: [:owner, :admin, :member], default: :member)
+    field(:muted, :boolean, default: false)
+    field(:last_read_at, :utc_datetime_usec)
+    field(:joined_at, :utc_datetime_usec)
   end
 
   def changeset(member, attrs) do

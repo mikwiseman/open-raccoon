@@ -15,6 +15,21 @@ public struct ConversationDetailView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
+            #if os(macOS)
+            // macOS header bar
+            HStack {
+                Text(conversationTitle)
+                    .font(RaccoonTypography.textLg)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(textPrimary)
+                Spacer()
+            }
+            .padding(.horizontal, RaccoonSpacing.space4)
+            .padding(.vertical, RaccoonSpacing.space3)
+            Divider()
+                .foregroundStyle(borderPrimary)
+            #endif
+
             if appState.currentUserID == nil {
                 VStack(spacing: RaccoonSpacing.space3) {
                     Image(systemName: "person.crop.circle.badge.exclamationmark")

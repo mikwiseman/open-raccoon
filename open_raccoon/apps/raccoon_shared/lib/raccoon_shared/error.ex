@@ -16,7 +16,11 @@ defmodule RaccoonShared.Error do
   end
 
   def rate_limited(retry_after \\ nil) do
-    %__MODULE__{code: "rate_limited", message: "Rate limit exceeded", details: %{retry_after: retry_after}}
+    %__MODULE__{
+      code: "rate_limited",
+      message: "Rate limit exceeded",
+      details: %{retry_after: retry_after}
+    }
   end
 
   def idempotency_conflict do
@@ -24,11 +28,19 @@ defmodule RaccoonShared.Error do
   end
 
   def tool_permission_denied(tool) do
-    %__MODULE__{code: "tool_permission_denied", message: "Tool execution was denied by user policy", details: %{tool: tool}}
+    %__MODULE__{
+      code: "tool_permission_denied",
+      message: "Tool execution was denied by user policy",
+      details: %{tool: tool}
+    }
   end
 
   def bridge_not_connected(platform) do
-    %__MODULE__{code: "bridge_not_connected", message: "Bridge is not connected", details: %{platform: platform}}
+    %__MODULE__{
+      code: "bridge_not_connected",
+      message: "Bridge is not connected",
+      details: %{platform: platform}
+    }
   end
 
   def deadline_exceeded do

@@ -1,13 +1,13 @@
 defmodule RaccoonShared.Media.R2 do
   @moduledoc """
-  Cloudflare R2 (S3-compatible) storage client.
+  S3-compatible object storage client (Hetzner Object Storage).
 
   Uses ExAws.S3 under the hood. Configuration is read from environment
-  variables: R2_ACCOUNT_ID, R2_ACCESS_KEY, R2_SECRET_KEY, R2_BUCKET.
+  variables: SPACES_REGION, SPACES_ACCESS_KEY, SPACES_SECRET_KEY, SPACES_BUCKET.
   """
 
   @doc """
-  Upload a file to the R2 bucket.
+  Upload a file to the Spaces bucket.
 
   ## Parameters
     - `key` - The object key (path) in the bucket
@@ -17,31 +17,31 @@ defmodule RaccoonShared.Media.R2 do
   @spec upload(String.t(), binary(), String.t()) :: {:ok, map()} | {:error, term()}
   def upload(key, content, content_type) do
     bucket()
-    |> ExAws.S3.put_object(key, content, content_type: content_type)
-    |> ExAws.request(r2_config())
+    |> ExAws.S3.put_object(key, content, content_type: content_type, acl: "public-read")
+    |> ExAws.request(spaces_config())
   end
 
   @doc """
-  Download a file from the R2 bucket by key.
+  Download a file from the Spaces bucket by key.
   """
   @spec download(String.t()) :: {:ok, binary()} | {:error, term()}
   def download(key) do
     case bucket()
          |> ExAws.S3.get_object(key)
-         |> ExAws.request(r2_config()) do
+         |> ExAws.request(spaces_config()) do
       {:ok, %{body: body}} -> {:ok, body}
       {:error, _} = error -> error
     end
   end
 
   @doc """
-  Delete a file from the R2 bucket by key.
+  Delete a file from the Spaces bucket by key.
   """
   @spec delete(String.t()) :: {:ok, map()} | {:error, term()}
   def delete(key) do
     bucket()
     |> ExAws.S3.delete_object(key)
-    |> ExAws.request(r2_config())
+    |> ExAws.request(spaces_config())
   end
 
   @doc """
@@ -58,7 +58,7 @@ defmodule RaccoonShared.Media.R2 do
     method = Keyword.get(opts, :method, :get)
     expires_in = Keyword.get(opts, :expires_in, 3600)
 
-    config = ExAws.Config.new(:s3, r2_config())
+    config = ExAws.Config.new(:s3, spaces_config())
 
     case ExAws.S3.presigned_url(config, method, bucket(), key, expires_in: expires_in) do
       {:ok, url} -> {:ok, url}
@@ -69,17 +69,17 @@ defmodule RaccoonShared.Media.R2 do
   # --- Private ---
 
   defp bucket do
-    Application.fetch_env!(:raccoon_shared, :r2_bucket)
+    Application.fetch_env!(:raccoon_shared, :spaces_bucket)
   end
 
-  defp r2_config do
-    account_id = Application.fetch_env!(:raccoon_shared, :r2_account_id)
+  defp spaces_config do
+    region = Application.fetch_env!(:raccoon_shared, :spaces_region)
 
     [
-      access_key_id: Application.fetch_env!(:raccoon_shared, :r2_access_key),
-      secret_access_key: Application.fetch_env!(:raccoon_shared, :r2_secret_key),
-      host: "#{account_id}.r2.cloudflarestorage.com",
-      region: "auto",
+      access_key_id: Application.fetch_env!(:raccoon_shared, :spaces_access_key),
+      secret_access_key: Application.fetch_env!(:raccoon_shared, :spaces_secret_key),
+      host: "#{region}.your-objectstorage.com",
+      region: region,
       scheme: "https://"
     ]
   end

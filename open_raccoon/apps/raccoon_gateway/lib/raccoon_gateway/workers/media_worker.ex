@@ -14,7 +14,9 @@ defmodule RaccoonGateway.Workers.MediaWorker do
   require Logger
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"task" => "generate_thumbnail", "key" => key, "content_type" => content_type}}) do
+  def perform(%Oban.Job{
+        args: %{"task" => "generate_thumbnail", "key" => key, "content_type" => content_type}
+      }) do
     with {:ok, data} <- RaccoonShared.Media.R2.download(key) do
       # Generate thumbnail key
       thumb_key = "thumbnails/256x256/#{key}"
@@ -27,7 +29,10 @@ defmodule RaccoonGateway.Workers.MediaWorker do
       end
     else
       {:error, reason} ->
-        Logger.error("Failed to download media for thumbnail generation, key=#{key}: #{inspect(reason)}")
+        Logger.error(
+          "Failed to download media for thumbnail generation, key=#{key}: #{inspect(reason)}"
+        )
+
         {:error, "Failed to download media: #{inspect(reason)}"}
     end
   end
@@ -60,7 +65,10 @@ defmodule RaccoonGateway.Workers.MediaWorker do
         :ok
 
       {:error, reason} ->
-        Logger.error("Failed to download media for metadata extraction, key=#{key}: #{inspect(reason)}")
+        Logger.error(
+          "Failed to download media for metadata extraction, key=#{key}: #{inspect(reason)}"
+        )
+
         {:error, "Failed to download media: #{inspect(reason)}"}
     end
   end
