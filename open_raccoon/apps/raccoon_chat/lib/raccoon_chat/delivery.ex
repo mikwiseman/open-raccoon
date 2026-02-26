@@ -11,6 +11,8 @@ defmodule RaccoonChat.Delivery do
     5. Notify user channels for badge counts
   """
 
+  require Logger
+
   alias RaccoonShared.Repo
   alias RaccoonChat.Message
   alias RaccoonChat.Conversation
@@ -39,34 +41,118 @@ defmodule RaccoonChat.Delivery do
       metadata: Map.get(params, "metadata", %{})
     }
 
-    Repo.transaction(fn ->
-      # 1. Validate conversation exists
-      conversation = Repo.get!(Conversation, conversation_id)
+    result =
+      Repo.transaction(fn ->
+        # 1. Validate conversation exists
+        conversation = Repo.get!(Conversation, conversation_id)
 
-      # 2. Persist message
-      case %Message{} |> Message.changeset(attrs) |> Repo.insert() do
-        {:ok, message} ->
-          # 3. Update conversation's last_message_at
-          conversation
-          |> Ecto.Changeset.change(last_message_at: message.created_at)
-          |> Repo.update!()
+        # Human senders must be active conversation members.
+        if attrs.sender_type == "human" do
+          membership =
+            Repo.get_by(ConversationMember,
+              conversation_id: conversation_id,
+              user_id: sender_id
+            )
 
-          # 4. Broadcast via PubSub (conversation channel picks this up)
-          Phoenix.PubSub.broadcast(
-            RaccoonGateway.PubSub,
-            "conversation:#{conversation_id}",
-            {:new_message, message}
-          )
+          if is_nil(membership) do
+            Repo.rollback(:forbidden)
+          end
+        end
 
-          # 5. Notify user channels for badge counts
-          notify_conversation_updated(conversation_id)
+        # 2. Persist message
+        case %Message{} |> Message.changeset(attrs) |> Repo.insert() do
+          {:ok, message} ->
+            # 3. Update conversation's last_message_at
+            conversation
+            |> Ecto.Changeset.change(last_message_at: message.created_at)
+            |> Repo.update!()
 
-          message
+            {conversation, message}
 
-        {:error, changeset} ->
-          Repo.rollback(changeset)
+          {:error, changeset} ->
+            Repo.rollback(changeset)
+        end
+      end)
+
+    # Broadcast AFTER transaction commits to prevent phantom messages on rollback
+    case result do
+      {:ok, {conversation, message}} ->
+        Phoenix.PubSub.broadcast(
+          RaccoonGateway.PubSub,
+          "conversation:#{conversation_id}",
+          {:new_message, message}
+        )
+
+        notify_conversation_updated(conversation_id)
+
+        if conversation.type == :agent && attrs.sender_type == "human" do
+          trigger_agent_execution(conversation, sender_id)
+        end
+
+        {:ok, message}
+
+      error ->
+        error
+    end
+  end
+
+  defp trigger_agent_execution(conversation, sender_id) do
+    conversation_id = conversation.id
+    agent_id = conversation.agent_id
+
+    # Fetch recent messages for context
+    messages =
+      from(m in Message,
+        where: m.conversation_id == ^conversation_id,
+        order_by: [asc: m.created_at],
+        limit: 50
+      )
+      |> Repo.all()
+      |> Enum.map(fn msg ->
+        %{
+          role: if(msg.sender_type == "human", do: "user", else: "assistant"),
+          content: Map.get(msg.content, "text", ""),
+          message_id: msg.id
+        }
+      end)
+
+    # Load agent to build config with BYOK support
+    agent = RaccoonAgents.get_agent(agent_id)
+
+    config =
+      if agent do
+        agent_metadata = agent.metadata || %{}
+
+        %{
+          agent_id: agent_id,
+          system_prompt: agent.system_prompt,
+          model: agent.model,
+          temperature: agent.temperature,
+          max_tokens: agent.max_tokens,
+          visibility: to_string(agent.visibility),
+          user_api_key: Map.get(agent_metadata, "user_api_key", "")
+        }
+      else
+        %{agent_id: agent_id}
       end
-    end)
+
+    Task.Supervisor.start_child(
+      RaccoonChat.TaskSupervisor,
+      fn ->
+        RaccoonAgents.AgentExecutor.execute(
+          conversation_id,
+          agent_id,
+          sender_id,
+          messages,
+          config
+        )
+      end
+    )
+
+    Logger.info("Triggered agent execution",
+      conversation_id: conversation_id,
+      agent_id: agent_id
+    )
   end
 
   defp notify_conversation_updated(conversation_id) do

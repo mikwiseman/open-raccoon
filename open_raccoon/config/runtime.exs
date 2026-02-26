@@ -7,6 +7,28 @@ end
 config :raccoon_gateway, RaccoonGatewayWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+# Guardian secret key - required in all environments, no hardcoded fallback
+guardian_secret_key =
+  System.get_env("GUARDIAN_SECRET_KEY") ||
+    raise """
+    environment variable GUARDIAN_SECRET_KEY is missing.
+    You can generate one by calling: mix guardian.gen.secret
+    """
+
+config :raccoon_accounts, RaccoonAccounts.Guardian,
+  secret_key: guardian_secret_key
+
+# Bridge credential encryption key (base64-encoded 32-byte key)
+# Generate with: :crypto.strong_rand_bytes(32) |> Base.encode64()
+bridge_encryption_key =
+  System.get_env("BRIDGE_ENCRYPTION_KEY") ||
+    raise """
+    environment variable BRIDGE_ENCRYPTION_KEY is missing.
+    Generate one with: elixir -e ':crypto.strong_rand_bytes(32) |> Base.encode64() |> IO.puts()'
+    """
+
+config :raccoon_bridges, bridge_encryption_key: bridge_encryption_key
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
@@ -36,16 +58,6 @@ if config_env() == :prod do
     http: [ip: {0, 0, 0, 0, 0, 0, 0, 0}, port: port],
     secret_key_base: secret_key_base,
     server: true
-
-  guardian_secret_key =
-    System.get_env("GUARDIAN_SECRET_KEY") ||
-      raise """
-      environment variable GUARDIAN_SECRET_KEY is missing.
-      You can generate one by calling: mix guardian.gen.secret
-      """
-
-  config :raccoon_accounts, RaccoonAccounts.Guardian,
-    secret_key: guardian_secret_key
 
   config :raccoon_shared, Oban,
     repo: RaccoonShared.Repo,

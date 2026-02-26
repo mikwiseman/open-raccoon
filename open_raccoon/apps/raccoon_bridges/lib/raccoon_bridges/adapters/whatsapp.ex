@@ -5,9 +5,13 @@ defmodule RaccoonBridges.Adapters.WhatsApp do
   Handles normalizing incoming WhatsApp messages to MessageEnvelope format,
   sending outbound messages via the Cloud API, processing webhooks, and
   challenge/response webhook verification.
+
+  Media files are downloaded via the WhatsApp Cloud API media endpoint
+  and uploaded to R2 storage.
   """
 
   alias RaccoonShared.MessageEnvelope
+  alias RaccoonShared.Media.{R2, CDN}
 
   @cloud_api_base "https://graph.facebook.com/v21.0"
 
@@ -80,6 +84,27 @@ defmodule RaccoonBridges.Adapters.WhatsApp do
   end
 
   @doc """
+  Download a WhatsApp media file by media_id, then upload to R2.
+  Returns the CDN URL of the uploaded file.
+
+  Steps:
+  1. Call GET /<media_id> to retrieve the media URL and mime_type
+  2. Download the file binary from the returned URL
+  3. Upload to R2 under bridges/whatsapp/<media_id>
+  4. Return the CDN URL
+  """
+  @spec download_and_upload_media(String.t(), String.t()) :: {:ok, String.t()} | {:error, term()}
+  def download_and_upload_media(media_id, access_token) do
+    with {:ok, media_url, mime_type} <- get_media_url(media_id, access_token),
+         {:ok, file_binary} <- download_media(media_url, access_token),
+         extension <- mime_to_extension(mime_type),
+         r2_key <- "bridges/whatsapp/#{media_id}#{extension}",
+         {:ok, _} <- R2.upload(r2_key, file_binary, mime_type) do
+      {:ok, CDN.url(r2_key)}
+    end
+  end
+
+  @doc """
   Process an incoming WhatsApp Cloud API webhook payload.
   Extracts messages from the nested webhook structure.
   """
@@ -117,6 +142,51 @@ defmodule RaccoonBridges.Adapters.WhatsApp do
 
   # --- Private ---
 
+  defp get_media_url(media_id, access_token) do
+    url = "#{@cloud_api_base}/#{media_id}"
+
+    headers = [
+      {~c"Authorization", String.to_charlist("Bearer #{access_token}")}
+    ]
+
+    case :httpc.request(:get, {String.to_charlist(url), headers}, [], []) do
+      {:ok, {{_, 200, _}, _headers, response_body}} ->
+        case Jason.decode!(to_string(response_body)) do
+          %{"url" => media_url, "mime_type" => mime_type} ->
+            {:ok, media_url, mime_type}
+
+          %{"url" => media_url} ->
+            {:ok, media_url, "application/octet-stream"}
+
+          _ ->
+            {:error, :missing_media_url}
+        end
+
+      {:ok, {{_, status, _}, _headers, response_body}} ->
+        {:error, %{status: status, body: to_string(response_body)}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp download_media(media_url, access_token) do
+    headers = [
+      {~c"Authorization", String.to_charlist("Bearer #{access_token}")}
+    ]
+
+    case :httpc.request(:get, {String.to_charlist(media_url), headers}, [], body_format: :binary) do
+      {:ok, {{_, 200, _}, _headers, body}} ->
+        {:ok, IO.iodata_to_binary(body)}
+
+      {:ok, {{_, status, _}, _headers, response_body}} ->
+        {:error, %{status: status, body: to_string(response_body)}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
   defp extract_content(%{"type" => "text", "text" => %{"body" => body}}) do
     {:text, %{text: body}}
   end
@@ -143,5 +213,21 @@ defmodule RaccoonBridges.Adapters.WhatsApp do
 
   defp extract_content(_msg) do
     {:text, %{text: "[unsupported message type]"}}
+  end
+
+  defp mime_to_extension(mime_type) do
+    case mime_type do
+      "image/jpeg" -> ".jpg"
+      "image/png" -> ".png"
+      "image/gif" -> ".gif"
+      "image/webp" -> ".webp"
+      "video/mp4" -> ".mp4"
+      "video/3gpp" -> ".3gp"
+      "audio/aac" -> ".aac"
+      "audio/ogg" -> ".ogg"
+      "audio/mpeg" -> ".mp3"
+      "application/pdf" -> ".pdf"
+      _ -> ""
+    end
   end
 end

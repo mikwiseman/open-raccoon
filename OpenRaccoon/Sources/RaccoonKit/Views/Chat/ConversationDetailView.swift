@@ -26,6 +26,11 @@ public struct ConversationDetailView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let viewModel {
+                // Connection status banner
+                if appState.connectionState != .connected {
+                    connectionBanner
+                }
+
                 // Messages
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -141,6 +146,26 @@ public struct ConversationDetailView: View {
             }
         }
         #endif
+    }
+
+    private var connectionBanner: some View {
+        HStack(spacing: RaccoonSpacing.space2) {
+            if appState.connectionState == .connecting {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Connecting...")
+                    .font(RaccoonTypography.textSm)
+            } else {
+                Image(systemName: "wifi.slash")
+                    .font(.system(size: 12))
+                Text("Offline")
+                    .font(RaccoonTypography.textSm)
+            }
+        }
+        .foregroundStyle(.white)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, RaccoonSpacing.space2)
+        .background(appState.connectionState == .connecting ? Color.orange : RaccoonColors.Semantic.error)
     }
 
     private var conversationTitle: String {

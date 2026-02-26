@@ -31,7 +31,27 @@ defmodule RaccoonChat.Message do
     |> validate_required([:conversation_id, :sender_id, :sender_type, :type, :content])
     |> validate_inclusion(:sender_type, [:human, :agent, :bridge, :system])
     |> validate_inclusion(:type, [:text, :media, :code, :embed, :system, :agent_status])
+    |> validate_text_content()
     |> foreign_key_constraint(:conversation_id)
     |> foreign_key_constraint(:sender_id)
+  end
+
+  @doc "Changeset for editing an existing message's content."
+  def edit_changeset(message, attrs) do
+    message
+    |> cast(attrs, [:content, :edited_at])
+    |> validate_required([:content, :edited_at])
+    |> validate_text_content()
+  end
+
+  defp validate_text_content(changeset) do
+    type = get_field(changeset, :type)
+    content = get_field(changeset, :content)
+
+    if type == :text && is_map(content) && content == %{} do
+      add_error(changeset, :content, "cannot be empty for text messages")
+    else
+      changeset
+    end
   end
 end

@@ -10,7 +10,7 @@ defmodule RaccoonGateway.Workers.TrendingWorker do
 
   use Oban.Worker,
     queue: :feed,
-    max_attempts: 1
+    max_attempts: 3
 
   alias RaccoonShared.Repo
   alias RaccoonFeed.FeedItem
@@ -27,28 +27,26 @@ defmodule RaccoonGateway.Workers.TrendingWorker do
     # Fetch recent feed items (created in the last 7 days)
     cutoff = DateTime.add(now, -7 * 24 * 3600, :second)
 
-    items =
+    {count, _} =
       from(fi in FeedItem,
         where: fi.inserted_at > ^cutoff,
-        select: %{
-          id: fi.id,
-          like_count: fi.like_count,
-          fork_count: fi.fork_count,
-          view_count: fi.view_count,
-          inserted_at: fi.inserted_at
-        }
+        update: [
+          set: [
+            trending_score:
+              fragment(
+                "(?.like_count * 3 + ?.fork_count * 5 + ?.view_count * 0.1) / POWER(EXTRACT(EPOCH FROM ? - ?.inserted_at) / 3600.0 + 2, 1.5)",
+                fi,
+                fi,
+                fi,
+                ^now,
+                fi
+              )
+          ]
+        ]
       )
-      |> Repo.all()
+      |> Repo.update_all([])
 
-    Logger.info("Updating trending scores for #{length(items)} items")
-
-    Enum.each(items, fn item ->
-      hours = DateTime.diff(now, item.inserted_at, :second) / 3600.0
-      score = trending_score(item.like_count, item.fork_count, item.view_count, hours)
-
-      from(fi in FeedItem, where: fi.id == ^item.id)
-      |> Repo.update_all(set: [trending_score: score])
-    end)
+    Logger.info("Updated trending scores for #{count} items")
 
     :ok
   end

@@ -13,6 +13,7 @@ defmodule RaccoonBridges.Application do
     children = [
       {Registry, keys: :unique, name: RaccoonBridges.Registry},
       RaccoonBridges.BridgeSupervisor,
+      RaccoonBridges.BridgeManager,
       RaccoonBridges.ConnectionMonitor
     ]
 

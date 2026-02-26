@@ -4,6 +4,7 @@ defmodule RaccoonChat do
   """
 
   alias RaccoonShared.Repo
+  alias RaccoonShared.Pagination
   alias RaccoonChat.{Conversation, ConversationMember, Message, MessageReaction}
   import Ecto.Query
 
@@ -13,6 +14,21 @@ defmodule RaccoonChat do
     %Conversation{}
     |> Conversation.changeset(attrs)
     |> Repo.insert()
+  end
+
+  @doc """
+  Find an existing DM conversation between two users, if one exists.
+  Returns the conversation or nil.
+  """
+  def find_dm_between(user_id_a, user_id_b) do
+    from(c in Conversation,
+      where: c.type == :dm,
+      join: m1 in ConversationMember,
+      on: m1.conversation_id == c.id and m1.user_id == ^user_id_a,
+      join: m2 in ConversationMember,
+      on: m2.conversation_id == c.id and m2.user_id == ^user_id_b
+    )
+    |> Repo.one()
   end
 
   def get_conversation(id), do: Repo.get(Conversation, id)
@@ -50,16 +66,28 @@ defmodule RaccoonChat do
 
   def get_messages(conversation_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
+    cursor = Keyword.get(opts, :cursor, nil)
 
     from(m in Message,
       where: m.conversation_id == ^conversation_id,
       order_by: [desc: m.created_at],
       limit: ^(limit + 1)
     )
+    |> Pagination.apply_cursor(cursor, :id)
     |> Repo.all()
   end
 
   def get_message(id), do: Repo.get(Message, id)
+
+  def update_message(%Message{} = message, attrs) do
+    message |> Message.edit_changeset(attrs) |> Repo.update()
+  end
+
+  def soft_delete_message(%Message{} = message) do
+    message
+    |> Ecto.Changeset.change(deleted_at: DateTime.utc_now())
+    |> Repo.update()
+  end
 
   # --- Members ---
 

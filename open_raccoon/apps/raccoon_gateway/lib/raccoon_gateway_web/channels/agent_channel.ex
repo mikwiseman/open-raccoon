@@ -21,6 +21,8 @@ defmodule RaccoonGatewayWeb.AgentChannel do
 
   use RaccoonGatewayWeb, :channel
 
+  alias RaccoonAgents.ToolApproval
+
   @impl true
   def join("agent:" <> conversation_id, _params, socket) do
     user_id = socket.assigns.user_id
@@ -39,19 +41,92 @@ defmodule RaccoonGatewayWeb.AgentChannel do
   def handle_in("approval_decision", payload, socket) do
     %{"request_id" => request_id, "decision" => decision} = payload
     scope = Map.get(payload, "scope", "allow_once")
+    conversation_id = socket.assigns.conversation_id
+    user_id = socket.assigns.user_id
 
-    event =
-      case decision do
-        "approve" -> "approval_granted"
-        "deny" -> "approval_denied"
-      end
+    decision_atom = if decision == "approve", do: :approved, else: :denied
+    scope_atom = parse_scope(scope)
+
+    ToolApproval.record_decision(%{
+      actor_user_id: user_id,
+      agent_id: nil,
+      conversation_id: conversation_id,
+      tool_name: Map.get(payload, "tool_name"),
+      scope: scope_atom,
+      arguments_hash: nil,
+      decision: decision_atom
+    })
+
+    event = if decision == "approve", do: "approval_granted", else: "approval_denied"
 
     broadcast!(socket, event, %{
       request_id: request_id,
       scope: scope,
-      user_id: socket.assigns.user_id
+      user_id: user_id
     })
 
     {:reply, :ok, socket}
   end
+
+  # -- PubSub handle_info clauses for AgentExecutor events --
+
+  @impl true
+  def handle_info(%{event: "token", payload: payload}, socket) do
+    push(socket, "token", payload)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(%{event: "status", payload: payload}, socket) do
+    push(socket, "status", payload)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(%{event: "tool_call", payload: payload}, socket) do
+    push(socket, "tool_call", payload)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(%{event: "tool_result", payload: payload}, socket) do
+    push(socket, "tool_result", payload)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(%{event: "approval_requested", payload: payload}, socket) do
+    push(socket, "approval_requested", payload)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(%{event: "code_block", payload: payload}, socket) do
+    push(socket, "code_block", payload)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(%{event: "complete", payload: payload}, socket) do
+    push(socket, "complete", payload)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(%{event: "error", payload: payload}, socket) do
+    push(socket, "error", payload)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info(_msg, socket) do
+    {:noreply, socket}
+  end
+
+  # -- Private --
+
+  defp parse_scope("allow_once"), do: :allow_once
+  defp parse_scope("allow_for_session"), do: :allow_for_session
+  defp parse_scope("always_for_agent_tool"), do: :always_for_agent_tool
+  defp parse_scope(_), do: :allow_once
 end

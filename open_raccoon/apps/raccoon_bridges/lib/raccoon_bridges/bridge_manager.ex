@@ -3,21 +3,30 @@ defmodule RaccoonBridges.BridgeManager do
   Bridge lifecycle management: connect, disconnect, reconnect, status.
   """
 
+  use GenServer
+
   alias RaccoonShared.Repo
-  alias RaccoonBridges.{BridgeConnection, BridgeSupervisor}
+  alias RaccoonBridges.{BridgeConnection, BridgeSupervisor, CredentialEncryption}
 
   @backoff_schedule [1_000, 2_000, 5_000, 10_000, 10_000]
 
+  # --- Public API ---
+
+  def start_link(opts \\ []) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+
   @doc """
   Connect a bridge (telegram/whatsapp). Validates credentials,
-  creates or updates BridgeConnection record, and starts a supervised process.
+  encrypts them, creates or updates BridgeConnection record, and starts a supervised process.
   """
   @spec connect(map(), Keyword.t()) :: {:ok, BridgeConnection.t()} | {:error, term()}
   def connect(attrs, opts \\ []) do
     platform = attrs[:platform] || attrs["platform"]
 
     with :ok <- validate_credentials(platform, attrs),
-         {:ok, bridge} <- upsert_bridge(attrs),
+         {:ok, attrs_with_encrypted} <- encrypt_credentials(platform, attrs),
+         {:ok, bridge} <- upsert_bridge(attrs_with_encrypted),
          :ok <- maybe_start_process(bridge, opts) do
       {:ok, bridge}
     end
@@ -36,34 +45,25 @@ defmodule RaccoonBridges.BridgeManager do
   end
 
   @doc """
-  Reconnect a bridge with exponential backoff (1s -> 2s -> 5s -> 10s -> 10s cap).
+  Schedule a reconnect attempt for a bridge using Process.send_after.
+  Non-blocking -- the actual reconnect happens asynchronously in the GenServer.
   """
-  @spec reconnect(BridgeConnection.t(), non_neg_integer()) ::
-          {:ok, BridgeConnection.t()} | {:error, term()}
-  def reconnect(%BridgeConnection{} = bridge, attempt \\ 0) do
+  @spec schedule_reconnect(String.t(), non_neg_integer()) :: :ok
+  def schedule_reconnect(bridge_id, attempt \\ 0) do
     delay = backoff_delay(attempt)
-
-    {:ok, bridge} =
-      bridge
-      |> BridgeConnection.changeset(%{status: :reconnecting})
-      |> Repo.update()
-
-    Process.sleep(delay)
-
-    case connect(%{user_id: bridge.user_id, platform: bridge.platform, method: bridge.method}, skip_process: false) do
-      {:ok, reconnected} ->
-        {:ok, reconnected}
-
-      {:error, _reason} ->
-        if attempt + 1 >= length(@backoff_schedule) do
-          bridge
-          |> BridgeConnection.changeset(%{status: :error})
-          |> Repo.update()
-        else
-          reconnect(Repo.get!(BridgeConnection, bridge.id), attempt + 1)
-        end
-    end
+    Process.send_after(__MODULE__, {:reconnect, bridge_id, attempt}, delay)
+    :ok
   end
+
+  @doc """
+  Decrypt stored credentials for a bridge connection.
+  """
+  @spec decrypt_credentials(BridgeConnection.t()) :: {:ok, String.t()} | {:error, term()}
+  def decrypt_credentials(%BridgeConnection{encrypted_credentials: nil}),
+    do: {:error, :no_credentials}
+
+  def decrypt_credentials(%BridgeConnection{encrypted_credentials: encrypted}),
+    do: CredentialEncryption.decrypt(encrypted)
 
   @doc """
   Get bridge connection status with health info.
@@ -95,6 +95,52 @@ defmodule RaccoonBridges.BridgeManager do
     Enum.at(@backoff_schedule, min(attempt, length(@backoff_schedule) - 1))
   end
 
+  # --- GenServer callbacks ---
+
+  @impl true
+  def init(_opts) do
+    {:ok, %{}}
+  end
+
+  @impl true
+  def handle_info({:reconnect, bridge_id, attempt}, state) do
+    case Repo.get(BridgeConnection, bridge_id) do
+      nil ->
+        {:noreply, state}
+
+      %BridgeConnection{status: :disconnected} ->
+        # Bridge was intentionally disconnected; do not reconnect.
+        {:noreply, state}
+
+      bridge ->
+        {:ok, bridge} =
+          bridge
+          |> BridgeConnection.changeset(%{status: :reconnecting})
+          |> Repo.update()
+
+        case connect(
+               %{user_id: bridge.user_id, platform: bridge.platform, method: bridge.method},
+               skip_process: false
+             ) do
+          {:ok, _reconnected} ->
+            {:noreply, state}
+
+          {:error, _reason} ->
+            if attempt + 1 >= length(@backoff_schedule) do
+              bridge
+              |> BridgeConnection.changeset(%{status: :error})
+              |> Repo.update()
+
+              {:noreply, state}
+            else
+              # Schedule next attempt -- iterative, no recursion, no stack growth
+              schedule_reconnect(bridge_id, attempt + 1)
+              {:noreply, state}
+            end
+        end
+    end
+  end
+
   # --- Private ---
 
   defp validate_credentials(:telegram, attrs) do
@@ -108,6 +154,45 @@ defmodule RaccoonBridges.BridgeManager do
   end
 
   defp validate_credentials(_platform, _attrs), do: :ok
+
+  defp encrypt_credentials(:telegram, attrs) do
+    case get_in_attrs(attrs, :bot_token) do
+      nil ->
+        # Already have encrypted_credentials or none needed
+        {:ok, attrs}
+
+      token ->
+        {:ok, encrypted} = CredentialEncryption.encrypt(token)
+
+        attrs =
+          attrs
+          |> Map.delete(:bot_token)
+          |> Map.delete("bot_token")
+          |> Map.put(:encrypted_credentials, encrypted)
+
+        {:ok, attrs}
+    end
+  end
+
+  defp encrypt_credentials(:whatsapp, attrs) do
+    case get_in_attrs(attrs, :access_token) do
+      nil ->
+        {:ok, attrs}
+
+      token ->
+        {:ok, encrypted} = CredentialEncryption.encrypt(token)
+
+        attrs =
+          attrs
+          |> Map.delete(:access_token)
+          |> Map.delete("access_token")
+          |> Map.put(:encrypted_credentials, encrypted)
+
+        {:ok, attrs}
+    end
+  end
+
+  defp encrypt_credentials(_platform, attrs), do: {:ok, attrs}
 
   defp upsert_bridge(attrs) do
     %BridgeConnection{}

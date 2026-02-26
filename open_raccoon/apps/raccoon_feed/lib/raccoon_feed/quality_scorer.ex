@@ -115,6 +115,7 @@ defmodule RaccoonFeed.QualityScorer do
 
         case avg_quality do
           nil -> 0.1
+          %Decimal{} = avg -> Float.round(Decimal.to_float(avg) * 0.2, 4)
           avg -> Float.round(avg * 0.2, 4)
         end
     end

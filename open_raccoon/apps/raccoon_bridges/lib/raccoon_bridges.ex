@@ -83,7 +83,42 @@ defmodule RaccoonBridges do
     end
   end
 
+  @doc """
+  Route a Telegram envelope from the BridgeWorker polling loop.
+  Called by BridgeWorker when it receives updates via getUpdates.
+  """
+  def route_telegram_envelope(%BridgeConnection{} = bridge, envelope) do
+    route_bridge_message_for_bridge(bridge, :telegram, envelope)
+  end
+
   # -- Private ---------------------------------------------------------------
+
+  defp route_bridge_message_for_bridge(bridge, platform, envelope) do
+    bridge_source = to_string(platform)
+
+    with {:ok, conversation} <- find_or_create_bridge_conversation(bridge, envelope) do
+      sender_id = bridge.id
+
+      message_params = %{
+        "sender_type" => "bridge",
+        "type" => to_string(envelope.type),
+        "content" => envelope_content_to_map(envelope.content),
+        "metadata" => %{
+          "bridge_source" => bridge_source,
+          "bridge_connection_id" => bridge.id,
+          "bridge_owner_id" => bridge.user_id,
+          "bridge_sender_id" => envelope.sender.id,
+          "bridge_sender_name" => envelope.sender.display_name,
+          "reply_to" => get_in_metadata(envelope, :reply_to)
+        }
+      }
+
+      case Delivery.send_message(conversation.id, sender_id, message_params) do
+        {:ok, _message} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
 
   defp route_bridge_message(platform, envelope) do
     bridge_source = to_string(platform)

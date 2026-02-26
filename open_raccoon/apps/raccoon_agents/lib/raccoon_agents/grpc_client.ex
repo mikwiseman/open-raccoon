@@ -39,7 +39,8 @@ defmodule RaccoonAgents.GRPCClient do
   """
   @spec execute_agent(map()) :: {:ok, Enumerable.t(), GRPC.Channel.t()} | {:error, term()}
   def execute_agent(params) do
-    with {:ok, channel} <- connect() do
+    with :ok <- validate_required_params(params),
+         {:ok, channel} <- connect() do
       request = build_request(params)
 
       case AgentService.Stub.execute_agent(channel, request, timeout: :infinity) do
@@ -54,6 +55,22 @@ defmodule RaccoonAgents.GRPCClient do
           GRPC.Stub.disconnect(channel)
           {:error, reason}
       end
+    end
+  end
+
+  defp validate_required_params(params) do
+    conversation_id = to_string(params[:conversation_id] || "")
+    agent_id = to_string(params[:agent_id] || "")
+
+    cond do
+      conversation_id == "" ->
+        {:error, :missing_conversation_id}
+
+      agent_id == "" ->
+        {:error, :missing_agent_id}
+
+      true ->
+        :ok
     end
   end
 
@@ -171,7 +188,7 @@ defmodule RaccoonAgents.GRPCClient do
             agent_id: Map.get(cfg, :agent_id, Map.get(cfg, "agent_id", "")),
             system_prompt: Map.get(cfg, :system_prompt, Map.get(cfg, "system_prompt", "")),
             model: Map.get(cfg, :model, Map.get(cfg, "model", "")),
-            temperature: Map.get(cfg, :temperature, Map.get(cfg, "temperature", 0.7)) / 1,
+            temperature: to_float(Map.get(cfg, :temperature, Map.get(cfg, "temperature", 0.7))),
             max_tokens: Map.get(cfg, :max_tokens, Map.get(cfg, "max_tokens", 4096)),
             visibility: Map.get(cfg, :visibility, Map.get(cfg, "visibility", "private"))
           }
@@ -207,4 +224,14 @@ defmodule RaccoonAgents.GRPCClient do
     do: Enum.map(vs, &protobuf_value_to_term/1)
 
   defp protobuf_value_to_term(_), do: nil
+
+  defp to_float(val) when is_float(val), do: val
+  defp to_float(val) when is_integer(val), do: val * 1.0
+  defp to_float(val) when is_binary(val) do
+    case Float.parse(val) do
+      {f, _} -> f
+      :error -> 0.7
+    end
+  end
+  defp to_float(_), do: 0.7
 end

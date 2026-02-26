@@ -11,6 +11,7 @@ defmodule RaccoonChat.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      {Task.Supervisor, name: RaccoonChat.TaskSupervisor},
       RaccoonChat.PresenceTracker,
       RaccoonChat.Typing
     ]

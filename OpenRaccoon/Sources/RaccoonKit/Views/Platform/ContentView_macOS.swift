@@ -1,12 +1,21 @@
 import SwiftUI
 
 #if os(macOS)
+enum SidebarDestination: String, CaseIterable, Identifiable {
+    case chats
+    case feed
+    case marketplace
+
+    var id: String { rawValue }
+}
+
 public struct ContentView_macOS: View {
     @Environment(AppState.self) private var appState
     @Environment(\.colorScheme) private var colorScheme
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var showRegister = false
     @State private var isRestoringSession = true
+    @State private var selectedDestination: SidebarDestination = .chats
 
     public init() {}
 
@@ -100,16 +109,38 @@ public struct ContentView_macOS: View {
 
     private var authenticatedView: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView()
+            SidebarView(selectedDestination: $selectedDestination)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 320)
         } content: {
-            ConversationListView()
-                .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
+            switch selectedDestination {
+            case .chats:
+                ConversationListView()
+                    .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 400)
+            case .feed:
+                FeedView()
+                    .navigationSplitViewColumnWidth(min: 380, ideal: 520, max: 800)
+            case .marketplace:
+                MarketplaceView()
+                    .navigationSplitViewColumnWidth(min: 380, ideal: 520, max: 800)
+            }
         } detail: {
-            if let conversationID = appState.selectedConversationID {
-                ConversationDetailView(conversationID: conversationID)
-            } else {
-                EmptyStateView()
+            switch selectedDestination {
+            case .chats:
+                if let conversationID = appState.selectedConversationID {
+                    ConversationDetailView(conversationID: conversationID)
+                } else {
+                    EmptyStateView()
+                }
+            case .feed:
+                SecondaryPanePlaceholder(
+                    title: "Feed View",
+                    subtitle: "Open an item from the feed to see details."
+                )
+            case .marketplace:
+                SecondaryPanePlaceholder(
+                    title: "Marketplace",
+                    subtitle: "Select an agent card to view profile and start a conversation."
+                )
             }
         }
     }
@@ -129,6 +160,11 @@ struct SidebarView: View {
     @State private var searchText = ""
     @State private var showSettings = false
     @State private var showNewConversation = false
+    @Binding private var selectedDestination: SidebarDestination
+
+    init(selectedDestination: Binding<SidebarDestination>) {
+        _selectedDestination = selectedDestination
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -153,9 +189,9 @@ struct SidebarView: View {
             // Navigation list
             List {
                 Section {
-                    sidebarItem(icon: "bubble.left.and.bubble.right", label: "Chats")
-                    sidebarItem(icon: "square.grid.2x2", label: "Feed")
-                    sidebarItem(icon: "storefront", label: "Marketplace")
+                    sidebarItem(icon: "bubble.left.and.bubble.right", label: "Chats", destination: .chats)
+                    sidebarItem(icon: "square.grid.2x2", label: "Feed", destination: .feed)
+                    sidebarItem(icon: "storefront", label: "Marketplace", destination: .marketplace)
                 } header: {
                     Text("RECENT")
                         .font(RaccoonTypography.textXs)
@@ -164,9 +200,9 @@ struct SidebarView: View {
                 }
 
                 Section {
-                    sidebarItem(icon: "cpu", label: "Raccoon (default)")
-                    sidebarItem(icon: "chevron.left.forwardslash.chevron.right", label: "Code Agent")
-                    sidebarItem(icon: "magnifyingglass", label: "Research Agent")
+                    staticSidebarRow(icon: "cpu", label: "Raccoon (default)")
+                    staticSidebarRow(icon: "chevron.left.forwardslash.chevron.right", label: "Code Agent")
+                    staticSidebarRow(icon: "magnifyingglass", label: "Research Agent")
                 } header: {
                     Text("AGENTS")
                         .font(RaccoonTypography.textXs)
@@ -240,7 +276,45 @@ struct SidebarView: View {
         }
     }
 
-    private func sidebarItem(icon: String, label: String) -> some View {
+    private func sidebarItem(icon: String, label: String, destination: SidebarDestination) -> some View {
+        Button {
+            selectedDestination = destination
+            if destination != .chats {
+                appState.selectedConversationID = nil
+            }
+        } label: {
+            Label {
+                Text(label)
+                    .font(RaccoonTypography.textSm)
+                    .fontWeight(.medium)
+                    .foregroundStyle(
+                        selectedDestination == destination
+                            ? RaccoonColors.accentPrimary
+                            : textPrimary
+                    )
+            } icon: {
+                Image(systemName: icon)
+                    .font(RaccoonTypography.textBase)
+                    .foregroundStyle(
+                        selectedDestination == destination
+                            ? RaccoonColors.accentPrimary
+                            : textSecondary
+                    )
+                    .frame(width: 24)
+            }
+            .frame(height: 36)
+            .padding(.horizontal, RaccoonSpacing.space2)
+            .background(
+                (selectedDestination == destination)
+                    ? (colorScheme == .dark ? RaccoonColors.accentSubtleDark : RaccoonColors.accentSubtleLight)
+                    : Color.clear
+            )
+            .clipShape(RoundedRectangle(cornerRadius: RaccoonRadius.md))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func staticSidebarRow(icon: String, label: String) -> some View {
         Label {
             Text(label)
                 .font(RaccoonTypography.textSm)
@@ -292,6 +366,34 @@ struct EmptyStateView: View {
                 .font(RaccoonTypography.textSm)
                 .foregroundStyle(textTertiary)
         }
+    }
+
+    private var textSecondary: Color {
+        colorScheme == .dark ? RaccoonColors.Dark.textSecondary : RaccoonColors.Light.textSecondary
+    }
+
+    private var textTertiary: Color {
+        colorScheme == .dark ? RaccoonColors.Dark.textTertiary : RaccoonColors.Light.textTertiary
+    }
+}
+
+struct SecondaryPanePlaceholder: View {
+    let title: String
+    let subtitle: String
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(spacing: RaccoonSpacing.space3) {
+            Text(title)
+                .font(RaccoonTypography.textLg)
+                .foregroundStyle(textSecondary)
+            Text(subtitle)
+                .font(RaccoonTypography.textSm)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(textTertiary)
+        }
+        .padding(RaccoonSpacing.space6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var textSecondary: Color {

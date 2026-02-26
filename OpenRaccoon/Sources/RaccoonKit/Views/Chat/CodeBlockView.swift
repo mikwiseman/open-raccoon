@@ -17,7 +17,7 @@ public struct CodeBlockView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header with language label and copy button
-            if language != nil || true {
+            if language != nil {
                 HStack {
                     if let language {
                         Text(language)

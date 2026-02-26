@@ -27,28 +27,44 @@ defmodule RaccoonGatewayWeb.ConversationController do
     user_id = conn.assigns.user_id
     attrs = Map.put(params, "creator_id", user_id)
 
-    with {:ok, conversation} <- RaccoonChat.create_conversation(attrs),
-         {:ok, _member} <-
-           RaccoonChat.add_member(%{
-             conversation_id: conversation.id,
-             user_id: user_id,
-             role: :owner,
-             joined_at: DateTime.utc_now()
-           }) do
-      conn
-      |> put_status(:created)
-      |> json(%{conversation: conversation_json(conversation)})
+    # DM idempotency: if creating a DM, check if one already exists between these users
+    case check_dm_idempotency(attrs, user_id) do
+      {:existing, conversation} ->
+        json(conn, %{conversation: conversation_json(conversation)})
+
+      :proceed ->
+        with {:ok, conversation} <- RaccoonChat.create_conversation(attrs),
+             {:ok, _member} <-
+               RaccoonChat.add_member(%{
+                 conversation_id: conversation.id,
+                 user_id: user_id,
+                 role: :owner,
+                 joined_at: DateTime.utc_now()
+               }) do
+          conn
+          |> put_status(:created)
+          |> json(%{conversation: conversation_json(conversation)})
+        end
     end
   end
 
   def show(conn, %{"id" => id}) do
+    user_id = conn.assigns.user_id
+
     case RaccoonChat.get_conversation(id) do
-      nil -> {:error, :not_found}
-      conversation -> json(conn, %{conversation: conversation_json(conversation)})
+      nil ->
+        {:error, :not_found}
+
+      conversation ->
+        with :ok <- ensure_member(id, user_id) do
+          json(conn, %{conversation: conversation_json(conversation)})
+        end
     end
   end
 
   def update(conn, %{"id" => id} = params) do
+    user_id = conn.assigns.user_id
+
     case RaccoonChat.get_conversation(id) do
       nil ->
         {:error, :not_found}
@@ -57,23 +73,36 @@ defmodule RaccoonGatewayWeb.ConversationController do
         allowed_keys = ["title", "avatar_url", "metadata"]
         update_params = Map.take(params, allowed_keys)
 
-        with {:ok, updated} <- RaccoonChat.update_conversation(conversation, update_params) do
+        with :ok <- ensure_moderator(id, user_id),
+             {:ok, updated} <- RaccoonChat.update_conversation(conversation, update_params) do
           json(conn, %{conversation: conversation_json(updated)})
         end
     end
   end
 
   def delete(conn, %{"id" => id}) do
+    user_id = conn.assigns.user_id
+
     case RaccoonChat.get_conversation(id) do
       nil ->
         {:error, :not_found}
 
       conversation ->
-        with {:ok, _} <- RaccoonChat.delete_conversation(conversation) do
+        with :ok <- ensure_moderator(id, user_id),
+             {:ok, _} <- RaccoonChat.delete_conversation(conversation) do
           send_resp(conn, :no_content, "")
         end
     end
   end
+
+  defp check_dm_idempotency(%{"type" => "dm", "member_id" => other_user_id}, user_id) do
+    case RaccoonChat.find_dm_between(user_id, other_user_id) do
+      nil -> :proceed
+      conversation -> {:existing, conversation}
+    end
+  end
+
+  defp check_dm_idempotency(_attrs, _user_id), do: :proceed
 
   defp maybe_apply_cursor(conversations, nil), do: conversations
 
@@ -85,6 +114,20 @@ defmodule RaccoonGatewayWeb.ConversationController do
 
       :error ->
         conversations
+    end
+  end
+
+  defp ensure_member(conversation_id, user_id) do
+    case RaccoonChat.get_membership(conversation_id, user_id) do
+      nil -> {:error, :forbidden}
+      _member -> :ok
+    end
+  end
+
+  defp ensure_moderator(conversation_id, user_id) do
+    case RaccoonChat.get_membership(conversation_id, user_id) do
+      %{role: role} when role in [:owner, :admin] -> :ok
+      _ -> {:error, :forbidden}
     end
   end
 

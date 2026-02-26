@@ -86,6 +86,9 @@ defmodule RaccoonGatewayWeb.AgentController do
       nil ->
         {:error, :not_found}
 
+      %{visibility: :private, creator_id: creator_id} when creator_id != user_id ->
+        {:error, :forbidden}
+
       agent ->
         # Create an agent conversation with the user as owner
         with {:ok, conversation} <-

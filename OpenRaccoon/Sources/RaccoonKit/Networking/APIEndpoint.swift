@@ -54,6 +54,7 @@ public enum APIEndpoint: Sendable {
     // MARK: - Feed
     case feed(cursor: String?, limit: Int?)
     case trending(cursor: String?, limit: Int?)
+    case followingFeed(cursor: String?, limit: Int?)
     case newFeedItems(cursor: String?, limit: Int?)
     case likeFeedItem(id: String)
     case unlikeFeedItem(id: String)
@@ -126,6 +127,7 @@ public enum APIEndpoint: Sendable {
 
         case .feed: return "/feed"
         case .trending: return "/feed/trending"
+        case .followingFeed: return "/feed/following"
         case .newFeedItems: return "/feed/new"
         case .likeFeedItem(let id), .unlikeFeedItem(let id): return "/feed/\(id)/like"
         case .forkFeedItem(let id, _): return "/feed/\(id)/fork"
@@ -164,6 +166,7 @@ public enum APIEndpoint: Sendable {
         case .listConversations(let cursor, let limit),
              .feed(let cursor, let limit),
              .trending(let cursor, let limit),
+             .followingFeed(let cursor, let limit),
              .newFeedItems(let cursor, let limit),
              .marketplace(let cursor, let limit):
             var items: [URLQueryItem] = []
@@ -198,66 +201,73 @@ public enum APIEndpoint: Sendable {
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        if let body = httpBody {
-            request.httpBody = body
-        }
+        request.httpBody = try httpBody()
 
         return request
     }
 
-    private var httpBody: Data? {
+    private func httpBody() throws -> Data? {
         let encoder = JSONEncoder.raccoon
         switch self {
         case .register(let username, let email, let password):
-            return try? encoder.encode(["username": username, "email": email, "password": password])
+            return try encoder.encode(["username": username, "email": email, "password": password])
         case .login(let email, let password):
-            return try? encoder.encode(["email": email, "password": password])
+            return try encoder.encode(["email": email, "password": password])
         case .refresh(let refreshToken):
-            return try? encoder.encode(["refreshToken": refreshToken])
+            return try encoder.encode(["refresh_token": refreshToken])
         case .requestMagicLink(let email):
-            return try? encoder.encode(["email": email])
+            return try encoder.encode(["email": email])
         case .verifyMagicLink(let token):
-            return try? encoder.encode(["token": token])
+            return try encoder.encode(["token": token])
         case .createConversation(let type, let title, let agentID):
             var body: [String: String] = ["type": type]
             if let title { body["title"] = title }
-            if let agentID { body["agentId"] = agentID }
-            return try? encoder.encode(body)
+            if let agentID { body["agent_id"] = agentID }
+            return try encoder.encode(body)
         case .sendMessage(_, let content, _):
             struct SendMessageBody: Encodable {
                 let content: MessageContent
                 let type: String
             }
-            return try? encoder.encode(SendMessageBody(content: content, type: "text"))
+            let messageType: String = if content.code != nil {
+                "code"
+            } else if content.mediaURL != nil {
+                "media"
+            } else if content.embed != nil {
+                "embed"
+            } else {
+                "text"
+            }
+            return try encoder.encode(SendMessageBody(content: content, type: messageType))
         case .addMember(_, let userID):
-            return try? encoder.encode(["userId": userID])
+            return try encoder.encode(["user_id": userID])
         case .createAgent(let name, let systemPrompt, let model):
-            var body: [String: String] = ["name": name, "systemPrompt": systemPrompt]
+            var body: [String: String] = ["name": name, "system_prompt": systemPrompt]
             if let model { body["model"] = model }
-            return try? encoder.encode(body)
+            return try encoder.encode(body)
         case .createPage(let title, let slug):
-            return try? encoder.encode(["title": title, "slug": slug])
+            return try encoder.encode(["title": title, "slug": slug])
         case .rateAgent(_, let rating, let review):
             var body: [String: AnyCodable] = ["rating": AnyCodable(rating)]
             if let review { body["review"] = AnyCodable(review) }
-            return try? encoder.encode(body)
+            return try encoder.encode(body)
         case .updateMe(let displayName, let bio, let avatarURL):
             var body: [String: String] = [:]
-            if let displayName { body["displayName"] = displayName }
+            if let displayName { body["display_name"] = displayName }
             if let bio { body["bio"] = bio }
-            if let avatarURL { body["avatarUrl"] = avatarURL }
-            return try? encoder.encode(body)
+            if let avatarURL { body["avatar_url"] = avatarURL }
+            return try encoder.encode(body)
         case .updateConversation(_, let title):
             var body: [String: String] = [:]
             if let title { body["title"] = title }
-            return try? encoder.encode(body)
+            return try encoder.encode(body)
         case .updateAgent(_, let params):
-            return try? encoder.encode(params)
+            return try encoder.encode(params)
         case .updatePage(_, let title, let description):
             var body: [String: String] = [:]
             if let title { body["title"] = title }
             if let description { body["description"] = description }
-            return try? encoder.encode(body)
+            return try encoder.encode(body)
         default:
             return nil
         }

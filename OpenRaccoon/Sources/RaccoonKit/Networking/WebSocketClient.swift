@@ -5,11 +5,28 @@ import Foundation
 /// Confined to MainActor since Socket is not Sendable and UI updates drive this.
 @MainActor
 public final class WebSocketClient {
-    private let socket: Socket
+    private var socket: Socket
     private let baseURL: String
+    private let authManager: AuthManager
 
     /// Tracks active channels by topic (e.g. "conversation:abc123") so we can push events to them.
     private var activeChannels: [String: Channel] = [:]
+
+    /// Tracks which topics were joined so we can rejoin after reconnect.
+    private var joinedTopics: Set<String> = []
+
+    /// Whether a token-refresh reconnect is in progress.
+    private var isReconnecting = false
+
+    // MARK: - Connection State
+
+    public enum ConnectionState: String, Sendable {
+        case connecting
+        case connected
+        case disconnected
+    }
+
+    public var onConnectionStateChanged: ((_ state: ConnectionState) -> Void)?
 
     // MARK: - Conversation Channel Handlers
 
@@ -36,8 +53,12 @@ public final class WebSocketClient {
     public var onBridgeStatus: ((_ payload: BridgeStatusPayload) -> Void)?
     public var onConversationUpdated: ((_ payload: Conversation) -> Void)?
 
-    public init(baseURL: String, accessToken: String) {
+    /// Called when auth fails and token refresh also fails (user must re-login).
+    public var onAuthFailure: (() -> Void)?
+
+    public init(baseURL: String, accessToken: String, authManager: AuthManager) {
         self.baseURL = baseURL
+        self.authManager = authManager
         let wsURL = baseURL
             .replacingOccurrences(of: "https://", with: "wss://")
             .replacingOccurrences(of: "http://", with: "ws://")
@@ -45,11 +66,92 @@ public final class WebSocketClient {
     }
 
     public func connect() {
+        onConnectionStateChanged?(.connecting)
+
+        socket.onOpen { [weak self] in
+            self?.onConnectionStateChanged?(.connected)
+        }
+
+        socket.onClose { [weak self] in
+            self?.onConnectionStateChanged?(.disconnected)
+        }
+
+        socket.onError { [weak self] _ in
+            guard let self, !self.isReconnecting else { return }
+            self.onConnectionStateChanged?(.disconnected)
+            Task { @MainActor in
+                await self.handleAuthFailure()
+            }
+        }
         socket.connect()
     }
 
     public func disconnect() {
         socket.disconnect()
+        onConnectionStateChanged?(.disconnected)
+    }
+
+    /// Attempts to refresh the access token and reconnect the WebSocket.
+    /// If the refresh fails, notifies via `onAuthFailure`.
+    private func handleAuthFailure() async {
+        guard !isReconnecting else { return }
+        isReconnecting = true
+        defer { isReconnecting = false }
+
+        socket.disconnect()
+
+        do {
+            onConnectionStateChanged?(.connecting)
+
+            let newToken = try await authManager.validAccessToken()
+            let wsURL = baseURL
+                .replacingOccurrences(of: "https://", with: "wss://")
+                .replacingOccurrences(of: "http://", with: "ws://")
+            socket = Socket("\(wsURL)/socket", params: ["token": newToken])
+
+            // Re-register socket lifecycle handlers on the new socket
+            socket.onOpen { [weak self] in
+                self?.onConnectionStateChanged?(.connected)
+            }
+
+            socket.onClose { [weak self] in
+                self?.onConnectionStateChanged?(.disconnected)
+            }
+
+            socket.onError { [weak self] _ in
+                guard let self, !self.isReconnecting else { return }
+                self.onConnectionStateChanged?(.disconnected)
+                Task { @MainActor in
+                    await self.handleAuthFailure()
+                }
+            }
+
+            // Rejoin all previously active topics
+            let topicsToRejoin = joinedTopics
+            activeChannels.removeAll()
+
+            socket.connect()
+
+            for topic in topicsToRejoin {
+                rejoinTopic(topic)
+            }
+        } catch {
+            onAuthFailure?()
+        }
+    }
+
+    /// Rejoin a topic after reconnect based on its prefix.
+    private func rejoinTopic(_ topic: String) {
+        if topic.hasPrefix("conversation:") {
+            let id = String(topic.dropFirst("conversation:".count))
+            joinConversation(id: id)
+        } else if topic.hasPrefix("agent:") {
+            let id = String(topic.dropFirst("agent:".count))
+            joinAgentChannel(conversationID: id)
+        } else if topic.hasPrefix("user:") {
+            let id = String(topic.dropFirst("user:".count))
+            joinUserChannel(userID: id)
+        }
     }
 
     /// Join a conversation channel to receive real-time message events.
@@ -60,16 +162,14 @@ public final class WebSocketClient {
 
         channel.on(ConversationServerEvent.newMessage.rawValue) { [weak self] message in
             guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode(Message.self, from: data) {
+            if let decoded = Self.decodeConversationMessage(payload: message.payload) {
                 self.onNewMessage?(decoded)
             }
         }
 
         channel.on(ConversationServerEvent.messageUpdated.rawValue) { [weak self] message in
             guard let self else { return }
-            guard let data = self.jsonData(from: message.payload) else { return }
-            if let decoded = try? JSONDecoder.raccoon.decode(Message.self, from: data) {
+            if let decoded = Self.decodeConversationMessage(payload: message.payload) {
                 self.onMessageUpdated?(decoded)
             }
         }
@@ -100,6 +200,7 @@ public final class WebSocketClient {
 
         channel.join()
         activeChannels[topic] = channel
+        joinedTopics.insert(topic)
         return channel
     }
 
@@ -175,6 +276,7 @@ public final class WebSocketClient {
 
         channel.join()
         activeChannels[topic] = channel
+        joinedTopics.insert(topic)
         return channel
     }
 
@@ -210,6 +312,7 @@ public final class WebSocketClient {
 
         channel.join()
         activeChannels[topic] = channel
+        joinedTopics.insert(topic)
         return channel
     }
 
@@ -280,6 +383,7 @@ public final class WebSocketClient {
     /// Leave a conversation channel and remove it from tracked channels.
     public func leaveConversation(id: String) {
         let topic = "conversation:\(id)"
+        joinedTopics.remove(topic)
         if let channel = activeChannels.removeValue(forKey: topic) {
             channel.leave()
         }
@@ -290,6 +394,7 @@ public final class WebSocketClient {
         // Remove from tracked channels if present
         if let topic = activeChannels.first(where: { $0.value === channel })?.key {
             activeChannels.removeValue(forKey: topic)
+            joinedTopics.remove(topic)
         }
         channel.leave()
     }
@@ -300,4 +405,21 @@ public final class WebSocketClient {
     private func jsonData(from payload: Payload) -> Data? {
         try? JSONSerialization.data(withJSONObject: payload, options: [])
     }
+
+    /// ConversationChannel can emit either `%{message: ...}` or a direct message payload.
+    static func decodeConversationMessage(payload: Payload) -> Message? {
+        guard let data = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
+            return nil
+        }
+
+        if let wrapped = try? JSONDecoder.raccoon.decode(MessageEventWrapper.self, from: data) {
+            return wrapped.message
+        }
+
+        return try? JSONDecoder.raccoon.decode(Message.self, from: data)
+    }
+}
+
+private struct MessageEventWrapper: Codable {
+    let message: Message
 }

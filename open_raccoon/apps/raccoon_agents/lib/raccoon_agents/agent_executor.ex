@@ -21,6 +21,9 @@ defmodule RaccoonAgents.AgentExecutor do
   require Logger
 
   alias RaccoonAgents.{CostTracker, GRPCClient, ToolApproval}
+  alias RaccoonShared.Repo
+  alias RaccoonAgents.Agent
+  import Ecto.Query
 
   defstruct [:conversation_id, :agent_id, :user_id, :channel_pid]
 
@@ -65,33 +68,58 @@ defmodule RaccoonAgents.AgentExecutor do
 
     topic = "agent:#{state.conversation_id}"
 
-    broadcast(topic, "status", %{
-      message: "connecting to agent runtime...",
-      category: "thinking"
-    })
+    # 1. Check agent visibility - private agents can only be used by their creator
+    with :ok <- check_agent_visibility(state.agent_id, state.user_id),
+         # 2. Check cost limit before execution
+         :ok <- CostTracker.check_limit(state.user_id) do
+      broadcast(topic, "status", %{
+        message: "connecting to agent runtime...",
+        category: "thinking"
+      })
 
-    request_params = %{
-      conversation_id: state.conversation_id,
-      agent_id: state.agent_id,
-      messages: messages,
-      config: config,
-      user_api_key: ""
-    }
+      request_params = %{
+        conversation_id: state.conversation_id,
+        agent_id: state.agent_id,
+        messages: messages,
+        config: config,
+        user_api_key: Map.get(config, :user_api_key, Map.get(config, "user_api_key", ""))
+      }
 
-    case GRPCClient.execute_agent(request_params) do
-      {:ok, event_stream, channel} ->
-        consume_stream(event_stream, topic, state)
-        GRPC.Stub.disconnect(channel)
+      case GRPCClient.execute_agent(request_params) do
+        {:ok, event_stream, channel} ->
+          case consume_stream(event_stream, topic, state, channel) do
+            :ok -> GRPC.Stub.disconnect(channel)
+            :timed_out -> :ok
+          end
 
-      {:error, reason} ->
-        Logger.error("gRPC connection failed",
-          conversation_id: state.conversation_id,
-          error: inspect(reason)
-        )
+        {:error, reason} ->
+          Logger.error("gRPC connection failed",
+            conversation_id: state.conversation_id,
+            error: inspect(reason)
+          )
 
+          broadcast(topic, "error", %{
+            code: "sidecar_unavailable",
+            message: "Agent runtime is not reachable: #{inspect(reason)}"
+          })
+      end
+    else
+      {:error, :limit_exceeded} ->
         broadcast(topic, "error", %{
-          code: "sidecar_unavailable",
-          message: "Agent runtime is not reachable: #{inspect(reason)}"
+          code: "limit_exceeded",
+          message: "Token usage limit exceeded. Please upgrade your plan or wait for the limit to reset."
+        })
+
+      {:error, :private_agent} ->
+        broadcast(topic, "error", %{
+          code: "forbidden",
+          message: "This agent is private and can only be used by its creator."
+        })
+
+      {:error, :agent_not_found} ->
+        broadcast(topic, "error", %{
+          code: "not_found",
+          message: "Agent not found."
         })
     end
 
@@ -100,7 +128,7 @@ defmodule RaccoonAgents.AgentExecutor do
 
   # -- Private ---------------------------------------------------------------
 
-  defp consume_stream(event_stream, topic, state) do
+  defp consume_stream(event_stream, topic, state, channel) do
     task =
       Task.async(fn ->
         event_stream
@@ -128,7 +156,10 @@ defmodule RaccoonAgents.AgentExecutor do
         :ok
 
       nil ->
-        Logger.error("Agent execution timed out",
+        # Disconnect the gRPC channel to signal cancellation to the Python runtime
+        GRPC.Stub.disconnect(channel)
+
+        Logger.error("Agent execution timed out, sent cancellation signal",
           conversation_id: state.conversation_id
         )
 
@@ -136,6 +167,8 @@ defmodule RaccoonAgents.AgentExecutor do
           code: "deadline_exceeded",
           message: "Agent execution timed out after #{div(@stream_timeout, 1_000)}s"
         })
+
+        :timed_out
     end
   end
 
@@ -201,6 +234,8 @@ defmodule RaccoonAgents.AgentExecutor do
           model: Map.get(complete, :model, "unknown")
         })
 
+        increment_usage_count(state.agent_id)
+
         broadcast(topic, "complete", %{
           input_tokens: Map.get(complete, :prompt_tokens, 0),
           output_tokens: Map.get(complete, :completion_tokens, 0),
@@ -214,5 +249,23 @@ defmodule RaccoonAgents.AgentExecutor do
       other ->
         Logger.warning("Unknown agent event type", event: inspect(other))
     end
+  end
+
+  defp check_agent_visibility(agent_id, user_id) do
+    case Repo.get(Agent, agent_id) do
+      nil ->
+        {:error, :agent_not_found}
+
+      %Agent{visibility: :private, creator_id: creator_id} when creator_id != user_id ->
+        {:error, :private_agent}
+
+      %Agent{} ->
+        :ok
+    end
+  end
+
+  defp increment_usage_count(agent_id) do
+    from(a in Agent, where: a.id == ^agent_id)
+    |> Repo.update_all(inc: [usage_count: 1])
   end
 end

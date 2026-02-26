@@ -13,6 +13,9 @@ public final class AuthStore {
     private let apiClient: APIClient
     private let authManager: AuthManager
 
+    /// Auto-reset task for magicLinkSent flag.
+    private var magicLinkResetTask: Task<Void, Never>?
+
     public init(apiClient: APIClient, authManager: AuthManager) {
         self.apiClient = apiClient
         self.authManager = authManager
@@ -86,17 +89,32 @@ public final class AuthStore {
     }
 
     /// Sends a magic link email to the given address.
+    /// Auto-resets `magicLinkSent` after 60 seconds so the user can retry.
     public func requestMagicLink(email: String) async throws {
         isSendingMagicLink = true
         magicLinkError = nil
+        // Reset on retry so the UI goes back to the input state
+        magicLinkSent = false
+        magicLinkResetTask?.cancel()
         defer { isSendingMagicLink = false }
 
         do {
             let _: MagicLinkResponse = try await apiClient.request(.requestMagicLink(email: email))
             magicLinkSent = true
+            scheduleMagicLinkReset()
         } catch {
             magicLinkError = Self.readableError(error)
             throw error
+        }
+    }
+
+    /// Schedules automatic reset of the magicLinkSent flag after a timeout.
+    private func scheduleMagicLinkReset() {
+        magicLinkResetTask?.cancel()
+        magicLinkResetTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(60))
+            guard !Task.isCancelled else { return }
+            self?.magicLinkSent = false
         }
     }
 
@@ -113,6 +131,8 @@ public final class AuthStore {
 
     /// Resets magic link state for a fresh attempt.
     public func resetMagicLinkState() {
+        magicLinkResetTask?.cancel()
+        magicLinkResetTask = nil
         magicLinkSent = false
         magicLinkError = nil
     }

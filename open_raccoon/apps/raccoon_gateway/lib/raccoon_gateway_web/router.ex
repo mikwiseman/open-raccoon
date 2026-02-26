@@ -55,6 +55,8 @@ defmodule RaccoonGatewayWeb.Router do
     # Messages (idempotency enforced via plug in controller)
     get "/conversations/:conversation_id/messages", MessageController, :index
     post "/conversations/:conversation_id/messages", MessageController, :create
+    patch "/conversations/:conversation_id/messages/:id", MessageController, :update
+    delete "/conversations/:conversation_id/messages/:id", MessageController, :delete
 
     # Members
     get "/conversations/:conversation_id/members", MemberController, :index
@@ -89,6 +91,7 @@ defmodule RaccoonGatewayWeb.Router do
     get "/feed", FeedController, :index
     post "/feed", FeedController, :create
     get "/feed/trending", FeedController, :trending
+    get "/feed/following", FeedController, :following
     get "/feed/new", FeedController, :new_items
     post "/feed/:id/like", FeedController, :like
     delete "/feed/:id/like", FeedController, :unlike

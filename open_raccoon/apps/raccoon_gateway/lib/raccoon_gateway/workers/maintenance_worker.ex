@@ -10,7 +10,7 @@ defmodule RaccoonGateway.Workers.MaintenanceWorker do
 
   use Oban.Worker,
     queue: :maintenance,
-    max_attempts: 1
+    max_attempts: 3
 
   alias RaccoonShared.Repo
   import Ecto.Query
@@ -19,34 +19,52 @@ defmodule RaccoonGateway.Workers.MaintenanceWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"task" => "create_partitions"}}) do
-    Logger.info("Creating message table partitions for next month")
+    Logger.info("Creating message table partitions for the next 3 months")
 
-    # Calculate next month boundaries
     now = Date.utc_today()
-    next_month_start = now |> Date.end_of_month() |> Date.add(1)
-    next_month_end = next_month_start |> Date.end_of_month() |> Date.add(1)
 
-    partition_name = "messages_#{Calendar.strftime(next_month_start, "%Y_%m")}"
+    results =
+      for offset <- 0..2 do
+        month_start = advance_months(now, offset)
+        month_end = month_start |> Date.end_of_month() |> Date.add(1)
+        partition_name = "messages_#{Calendar.strftime(month_start, "%Y_%m")}"
 
-    sql = """
-    CREATE TABLE IF NOT EXISTS #{partition_name}
-    PARTITION OF messages
-    FOR VALUES FROM ('#{next_month_start}') TO ('#{next_month_end}')
-    """
+        unless Regex.match?(~r/\Amessages_\d{4}_\d{2}\z/, partition_name) do
+          raise "Invalid partition name: #{partition_name}"
+        end
 
-    case Repo.query(sql) do
-      {:ok, _} ->
-        Logger.info("Created partition #{partition_name}")
-        :ok
+        sql =
+          "CREATE TABLE IF NOT EXISTS messages_partition PARTITION OF messages FOR VALUES FROM ($1::date) TO ($2::date)"
+          |> String.replace("messages_partition", partition_name)
 
-      {:error, %{postgres: %{code: :duplicate_table}}} ->
-        Logger.info("Partition #{partition_name} already exists")
-        :ok
+        case Repo.query(sql, [month_start, month_end]) do
+          {:ok, _} ->
+            Logger.info("Created partition #{partition_name}")
+            :ok
 
-      {:error, reason} ->
-        Logger.error("Failed to create partition: #{inspect(reason)}")
-        {:error, reason}
+          {:error, %{postgres: %{code: :duplicate_table}}} ->
+            Logger.info("Partition #{partition_name} already exists")
+            :ok
+
+          {:error, reason} ->
+            Logger.error("Failed to create partition #{partition_name}: #{inspect(reason)}")
+            {:error, reason}
+        end
+      end
+
+    case Enum.find(results, &match?({:error, _}, &1)) do
+      nil -> :ok
+      error -> error
     end
+  end
+
+  defp advance_months(date, 0), do: Date.beginning_of_month(date)
+
+  defp advance_months(date, n) when n > 0 do
+    date
+    |> Date.end_of_month()
+    |> Date.add(1)
+    |> advance_months(n - 1)
   end
 
   def perform(%Oban.Job{args: %{"task" => "cleanup_idempotency_keys"}}) do

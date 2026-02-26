@@ -29,6 +29,18 @@ defmodule RaccoonGatewayWeb.FeedController do
     })
   end
 
+  def following(conn, params) do
+    user_id = conn.assigns.user_id
+    {_cursor, limit} = Pagination.parse_params(params)
+    items = RaccoonFeed.get_following(user_id, limit: limit + 1)
+    {items, page_info} = Pagination.build_page_info(items, limit)
+
+    json(conn, %{
+      items: Enum.map(items, &feed_item_json/1),
+      page_info: %{next_cursor: page_info.next_cursor, has_more: page_info.has_more}
+    })
+  end
+
   def new_items(conn, params) do
     {_cursor, limit} = Pagination.parse_params(params)
     items = RaccoonFeed.list_new(limit: limit + 1)

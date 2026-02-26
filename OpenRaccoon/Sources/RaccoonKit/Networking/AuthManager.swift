@@ -8,6 +8,9 @@ public actor AuthManager {
     private var tokenExpiry: Date?
     public let baseURL: URL?
 
+    /// In-flight refresh task to coalesce concurrent refresh requests.
+    private var activeRefreshTask: Task<String, Error>?
+
     /// Response from the /auth/refresh endpoint.
     private struct RefreshResponse: Codable, Sendable {
         let accessToken: String
@@ -34,10 +37,33 @@ public actor AuthManager {
 
         // Attempt to refresh if a refresh token exists
         if refreshToken != nil {
-            return try await refreshAccessToken()
+            return try await coalescedRefresh()
         }
 
         throw APIError.unauthorized
+    }
+
+    /// Coalesces concurrent token refresh requests into a single network call.
+    /// If a refresh is already in flight, subsequent callers await the same task.
+    private func coalescedRefresh() async throws -> String {
+        if let existing = activeRefreshTask {
+            return try await existing.value
+        }
+
+        let task = Task<String, Error> { [weak self] in
+            guard let self else { throw APIError.unauthorized }
+            return try await self.refreshAccessToken()
+        }
+        activeRefreshTask = task
+
+        do {
+            let token = try await task.value
+            activeRefreshTask = nil
+            return token
+        } catch {
+            activeRefreshTask = nil
+            throw error
+        }
     }
 
     /// Refreshes the access token using the stored refresh token.

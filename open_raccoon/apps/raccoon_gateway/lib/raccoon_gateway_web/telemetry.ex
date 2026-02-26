@@ -52,6 +52,30 @@ defmodule RaccoonGatewayWeb.Telemetry do
         unit: {:native, :millisecond}
       ),
 
+      # Oban Job Metrics
+      summary("oban.job.stop.duration",
+        tags: [:queue, :worker],
+        unit: {:native, :millisecond},
+        tag_values: &oban_tag_values/1
+      ),
+      summary("oban.job.exception.duration",
+        tags: [:queue, :worker],
+        unit: {:native, :millisecond},
+        tag_values: &oban_tag_values/1
+      ),
+      counter("oban.job.start.count",
+        tags: [:queue, :worker],
+        tag_values: &oban_tag_values/1
+      ),
+      counter("oban.job.stop.count",
+        tags: [:queue, :worker],
+        tag_values: &oban_tag_values/1
+      ),
+      counter("oban.job.exception.count",
+        tags: [:queue, :worker],
+        tag_values: &oban_tag_values/1
+      ),
+
       # VM Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
       summary("vm.total_run_queue_lengths.total"),
@@ -66,5 +90,12 @@ defmodule RaccoonGatewayWeb.Telemetry do
       # This function must call :telemetry.execute/3 and a metric must be added above.
       # {RaccoonGatewayWeb, :count_users, []}
     ]
+  end
+
+  defp oban_tag_values(metadata) do
+    %{
+      queue: metadata[:queue] || "unknown",
+      worker: metadata[:worker] || "unknown"
+    }
   end
 end

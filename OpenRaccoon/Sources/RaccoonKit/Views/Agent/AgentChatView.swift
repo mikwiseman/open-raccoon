@@ -21,6 +21,7 @@ public struct AgentChatView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private struct PendingApproval: Sendable {
+        let requestID: String
         let toolName: String
         let description: String
         let parametersPreview: String
@@ -94,7 +95,13 @@ public struct AgentChatView: View {
                                     toolName: approval.toolName,
                                     toolDescription: approval.description,
                                     parametersPreview: approval.parametersPreview,
-                                    onDecision: { _ in
+                                    onDecision: { scope in
+                                        appState.webSocketClient?.sendApprovalDecision(
+                                            conversationID: conversationID,
+                                            requestID: approval.requestID,
+                                            decision: "approve",
+                                            scope: scope.rawValue
+                                        )
                                         pendingApproval = nil
                                     }
                                 )
@@ -208,6 +215,10 @@ public struct AgentChatView: View {
                 viewModel = vm
                 await vm.loadMessages()
             }
+
+            // Join agent channel for streaming events
+            subscribeToAgentEvents()
+            appState.webSocketClient?.joinAgentChannel(conversationID: conversationID)
         }
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -222,6 +233,89 @@ public struct AgentChatView: View {
             }
         }
         #endif
+    }
+
+    private func subscribeToAgentEvents() {
+        let ws = appState.webSocketClient
+
+        ws?.onToken = { payload in
+            if let text = payload["text"]?.stringValue {
+                isAgentStreaming = true
+                streamingText += text
+            }
+        }
+
+        ws?.onStatus = { payload in
+            if let message = payload["message"]?.stringValue {
+                agentStatus = message
+            }
+        }
+
+        ws?.onApprovalRequested = { payload in
+            let argsString: String
+            if let args = payload.argsPreview {
+                let pairs = args.map { (key, val) in
+                    "\(key): \(val.stringValue ?? String(describing: val))"
+                }
+                argsString = pairs.joined(separator: "\n")
+            } else {
+                argsString = ""
+            }
+
+            pendingApproval = PendingApproval(
+                requestID: payload.requestID,
+                toolName: payload.tool,
+                description: "The agent wants to use \(payload.tool)",
+                parametersPreview: argsString
+            )
+        }
+
+        ws?.onToolCall = { payload in
+            let argsString: String
+            if let args = payload.args {
+                let pairs = args.map { (key, val) in
+                    "\(key): \(val.stringValue ?? String(describing: val))"
+                }
+                argsString = pairs.joined(separator: "\n")
+            } else {
+                argsString = ""
+            }
+
+            toolExecutions.append(ToolExecutionLog.ToolExecution(
+                id: UUID().uuidString,
+                toolName: payload.tool,
+                status: .running,
+                input: argsString
+            ))
+        }
+
+        ws?.onToolResult = { payload in
+            if let idx = toolExecutions.lastIndex(where: { $0.toolName == payload.tool }) {
+                let resultString = payload.result.stringValue ?? String(describing: payload.result)
+                let existing = toolExecutions[idx]
+                toolExecutions[idx] = ToolExecutionLog.ToolExecution(
+                    id: existing.id,
+                    toolName: existing.toolName,
+                    status: .completed,
+                    input: existing.input,
+                    output: resultString
+                )
+            }
+        }
+
+        ws?.onComplete = { _ in
+            isAgentStreaming = false
+            agentStatus = ""
+            streamingText = ""
+        }
+
+        ws?.onError = { payload in
+            isAgentStreaming = false
+            agentStatus = ""
+            if let message = payload["message"]?.stringValue {
+                viewModel?.error = message
+            }
+        }
     }
 
     private var bgPrimary: Color {

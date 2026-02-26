@@ -7,6 +7,7 @@ public final class AppState {
     public var isAuthenticated: Bool { currentUser != nil }
     public var selectedConversationID: String?
     public var isWorkspaceOpen: Bool = false
+    public var connectionState: WebSocketClient.ConnectionState = .disconnected
 
     public let conversationStore: ConversationStore
     public let messageStore: MessageStore
@@ -15,8 +16,10 @@ public final class AppState {
     public let authManager: AuthManager
     public let apiClient: APIClient
     public var webSocketClient: WebSocketClient?
+    private let baseURL: URL
 
     public init(baseURL: URL = URL(string: "http://45.55.219.10")!) {
+        self.baseURL = baseURL
         self.conversationStore = ConversationStore()
         self.messageStore = MessageStore()
 
@@ -86,17 +89,33 @@ public final class AppState {
 
     /// Sets up the WebSocket connection after authentication.
     public func connectWebSocket(accessToken: String) {
-        guard let baseURL = URL(string: "http://45.55.219.10") else { return }
-        webSocketClient = WebSocketClient(
+        // Disconnect any existing client before creating a new one
+        if webSocketClient != nil {
+            disconnectWebSocket()
+        }
+
+        let client = WebSocketClient(
             baseURL: baseURL.absoluteString,
-            accessToken: accessToken
+            accessToken: accessToken,
+            authManager: authManager
         )
-        webSocketClient?.connect()
+        webSocketClient = client
+
+        client.onConnectionStateChanged = { [weak self] state in
+            self?.connectionState = state
+        }
+
+        client.onAuthFailure = { [weak self] in
+            Task { await self?.logout() }
+        }
+
+        client.connect()
     }
 
     public func disconnectWebSocket() {
         webSocketClient?.disconnect()
         webSocketClient = nil
+        connectionState = .disconnected
     }
 
     /// The current user's ID, if authenticated.

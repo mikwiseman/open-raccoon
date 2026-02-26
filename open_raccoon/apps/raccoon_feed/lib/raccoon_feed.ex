@@ -37,6 +37,26 @@ defmodule RaccoonFeed do
   end
 
   @doc """
+  Get feed items from creators the user follows.
+  """
+  def get_following(user_id, opts \\ []) do
+    limit = Keyword.get(opts, :limit, 50)
+
+    following_ids =
+      from(f in UserFollow,
+        where: f.follower_id == ^user_id,
+        select: f.following_id
+      )
+
+    from(fi in FeedItem,
+      where: fi.creator_id in subquery(following_ids) and fi.quality_score >= 0.3,
+      order_by: [desc: fi.inserted_at],
+      limit: ^limit
+    )
+    |> Repo.all()
+  end
+
+  @doc """
   Get newest feed items.
   """
   def get_new(opts \\ []) do

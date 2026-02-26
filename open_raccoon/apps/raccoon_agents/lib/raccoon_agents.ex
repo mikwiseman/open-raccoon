@@ -6,6 +6,7 @@ defmodule RaccoonAgents do
   alias RaccoonShared.Repo
   alias RaccoonAgents.{Agent, AgentRating}
   import Ecto.Query
+  require Logger
 
   # --- Agents ---
 
@@ -63,11 +64,38 @@ defmodule RaccoonAgents do
   # --- Ratings ---
 
   def rate_agent(attrs) do
-    %AgentRating{}
-    |> AgentRating.changeset(attrs)
-    |> Repo.insert(
-      on_conflict: {:replace, [:rating, :review]},
-      conflict_target: [:agent_id, :user_id]
+    result =
+      %AgentRating{}
+      |> AgentRating.changeset(attrs)
+      |> Repo.insert(
+        on_conflict: {:replace, [:rating, :review]},
+        conflict_target: [:agent_id, :user_id]
+      )
+
+    case result do
+      {:ok, rating} ->
+        sync_agent_rating_aggregates(rating.agent_id)
+        {:ok, rating}
+
+      error ->
+        error
+    end
+  end
+
+  defp sync_agent_rating_aggregates(agent_id) do
+    {rating_sum, rating_count} =
+      from(r in AgentRating,
+        where: r.agent_id == ^agent_id,
+        select: {sum(r.rating), count(r.id)}
+      )
+      |> Repo.one()
+
+    from(a in Agent, where: a.id == ^agent_id)
+    |> Repo.update_all(
+      set: [
+        rating_sum: rating_sum || 0,
+        rating_count: rating_count || 0
+      ]
     )
   end
 

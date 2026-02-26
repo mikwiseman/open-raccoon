@@ -11,6 +11,7 @@ defmodule RaccoonChat.Typing do
   use GenServer
 
   @debounce_ms 2_000
+  @max_typing_users 10
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -65,6 +66,8 @@ defmodule RaccoonChat.Typing do
     users =
       state.typing
       |> Enum.filter(fn {{conv_id, _user_id}, _} -> conv_id == conversation_id end)
+      |> Enum.sort_by(fn {_key, {time, _timer}} -> time end, :desc)
+      |> Enum.take(@max_typing_users)
       |> Enum.map(fn {{_conv_id, user_id}, _} -> user_id end)
 
     {:reply, users, state}

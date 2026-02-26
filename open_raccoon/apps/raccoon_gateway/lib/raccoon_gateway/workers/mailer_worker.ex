@@ -22,19 +22,19 @@ defmodule RaccoonGateway.Workers.MailerWorker do
 
     email
     |> RaccoonShared.Emails.magic_link(token, base_url)
-    |> RaccoonShared.Mailer.deliver()
-
-    :ok
+    |> deliver_email("magic_link")
   end
 
   def perform(%Oban.Job{args: %{"task" => "welcome", "user_id" => user_id}}) do
-    user = RaccoonAccounts.get_user!(user_id)
+    case RaccoonAccounts.get_user(user_id) do
+      nil ->
+        {:discard, "User not found: #{user_id}"}
 
-    user
-    |> RaccoonShared.Emails.welcome()
-    |> RaccoonShared.Mailer.deliver()
-
-    :ok
+      user ->
+        user
+        |> RaccoonShared.Emails.welcome()
+        |> deliver_email("welcome")
+    end
   end
 
   def perform(%Oban.Job{args: %{"task" => "new_message", "to" => to, "from" => from, "conversation_id" => conversation_id}}) do
@@ -47,9 +47,7 @@ defmodule RaccoonGateway.Workers.MailerWorker do
     |> from({"Open Raccoon", "noreply@mail.waiwai.is"})
     |> subject("New message in your conversation")
     |> text_body("You have a new message from #{from} in conversation #{conversation_id}.")
-    |> RaccoonShared.Mailer.deliver()
-
-    :ok
+    |> deliver_email("new_message")
   end
 
   def perform(%Oban.Job{args: %{"task" => "mention", "to" => to, "mentioned_by" => mentioned_by, "conversation_id" => conversation_id}}) do
@@ -62,9 +60,7 @@ defmodule RaccoonGateway.Workers.MailerWorker do
     |> from({"Open Raccoon", "noreply@mail.waiwai.is"})
     |> subject("You were mentioned in a conversation")
     |> text_body("#{mentioned_by} mentioned you in conversation #{conversation_id}.")
-    |> RaccoonShared.Mailer.deliver()
-
-    :ok
+    |> deliver_email("mention")
   end
 
   def perform(%Oban.Job{args: %{"task" => "bridge_alert", "to" => to, "bridge_id" => bridge_id, "alert_type" => alert_type}}) do
@@ -77,12 +73,21 @@ defmodule RaccoonGateway.Workers.MailerWorker do
     |> from({"Open Raccoon", "noreply@mail.waiwai.is"})
     |> subject("Bridge alert: #{alert_type}")
     |> text_body("Alert (#{alert_type}) for bridge #{bridge_id}.")
-    |> RaccoonShared.Mailer.deliver()
-
-    :ok
+    |> deliver_email("bridge_alert")
   end
 
   def perform(%Oban.Job{args: args}) do
     {:error, "Unknown mailer task: #{inspect(args)}"}
+  end
+
+  defp deliver_email(email, task_type) do
+    case RaccoonShared.Mailer.deliver(email) do
+      {:ok, _} ->
+        :ok
+
+      {:error, reason} ->
+        Logger.error("[MailerWorker] Failed to deliver #{task_type} email: #{inspect(reason)}")
+        {:error, "Email delivery failed: #{inspect(reason)}"}
+    end
   end
 end

@@ -65,12 +65,25 @@ public struct MessageBubbleView: View {
 
     private var bubble: some View {
         VStack(alignment: isSent ? .trailing : .leading, spacing: RaccoonSpacing.space1) {
+            // Reply reference
+            if let replyToID = message.metadata?.replyTo {
+                ReplyView(
+                    replyToText: replyToID,
+                    senderName: ""
+                )
+            }
+
             MessageContentView(message: message)
 
             if isLastInGroup {
                 Text(formattedTime)
                     .font(RaccoonTypography.textXs)
                     .foregroundStyle(textSecondary)
+            }
+
+            // Reactions
+            if let reactions = message.reactions, !reactions.isEmpty {
+                ReactionView(reactions: reactions)
             }
         }
         .padding(.vertical, 10)

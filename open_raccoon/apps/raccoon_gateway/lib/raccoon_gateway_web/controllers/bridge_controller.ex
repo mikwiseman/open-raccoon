@@ -3,12 +3,19 @@ defmodule RaccoonGatewayWeb.BridgeController do
   action_fallback RaccoonGatewayWeb.FallbackController
 
   alias RaccoonBridges
+  alias RaccoonShared.Pagination
 
-  def index(conn, _params) do
+  def index(conn, params) do
     user_id = conn.assigns.user_id
-    bridges = RaccoonBridges.list_user_bridges(user_id)
+    {_cursor, limit} = Pagination.parse_params(params)
 
-    json(conn, %{items: Enum.map(bridges, &bridge_json/1)})
+    bridges = RaccoonBridges.list_user_bridges(user_id)
+    {items, page_info} = Pagination.build_page_info(Enum.take(bridges, limit + 1), limit)
+
+    json(conn, %{
+      items: Enum.map(items, &bridge_json/1),
+      page_info: %{next_cursor: page_info.next_cursor, has_more: page_info.has_more}
+    })
   end
 
   def connect_telegram(conn, params) do

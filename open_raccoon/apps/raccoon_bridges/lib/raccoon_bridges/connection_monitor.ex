@@ -4,8 +4,9 @@ defmodule RaccoonBridges.ConnectionMonitor do
 
   - Runs health checks every 30 seconds on active bridges.
   - Tracks consecutive failures per bridge.
-  - Attempts reconnection with exponential backoff on failure.
+  - Delegates reconnection to BridgeManager.schedule_reconnect (non-blocking).
   - Marks a bridge as :error after 5 consecutive failures.
+  - Skips bridges with status :disconnected (intentionally stopped).
   """
 
   use GenServer
@@ -43,6 +44,8 @@ defmodule RaccoonBridges.ConnectionMonitor do
   end
 
   defp run_health_checks(state) do
+    # Only check bridges that are :connected or :reconnecting.
+    # Bridges with :disconnected are intentionally stopped -- skip them.
     active_bridges =
       from(b in BridgeConnection,
         where: b.status in [:connected, :reconnecting]
@@ -51,6 +54,7 @@ defmodule RaccoonBridges.ConnectionMonitor do
 
     Enum.reduce(active_bridges, state, fn bridge, acc ->
       if BridgeSupervisor.bridge_alive?(bridge.id) do
+        # Process alive -- clear any failure count for this bridge
         %{acc | failure_counts: Map.delete(acc.failure_counts, bridge.id)}
       else
         handle_failure(bridge, acc)
@@ -69,9 +73,9 @@ defmodule RaccoonBridges.ConnectionMonitor do
 
       %{state | failure_counts: Map.delete(updated_counts, bridge.id)}
     else
-      Task.start(fn ->
-        BridgeManager.reconnect(bridge, count - 1)
-      end)
+      # Delegate reconnection to BridgeManager via Process.send_after.
+      # No Task.start -- avoids race conditions and unlinked processes.
+      BridgeManager.schedule_reconnect(bridge.id, count - 1)
 
       %{state | failure_counts: updated_counts}
     end

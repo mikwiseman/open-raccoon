@@ -8,6 +8,8 @@ public struct MarketplaceView: View {
     @State private var searchText = ""
     @State private var selectedCategory: String?
     @State private var searchTask: Task<Void, Never>?
+    @State private var selectedAgent: Agent?
+    @State private var startConversationError: String?
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -61,6 +63,39 @@ public struct MarketplaceView: View {
             }
         }
         .background(bgPrimary)
+        .alert("Unable to Start Conversation", isPresented: Binding(
+            get: { startConversationError != nil },
+            set: { if !$0 { startConversationError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(startConversationError ?? "Unknown error")
+        }
+        .sheet(item: $selectedAgent) { agent in
+            #if os(iOS)
+            NavigationStack {
+                agentProfileView(for: agent)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") { selectedAgent = nil }
+                        }
+                    }
+            }
+            #else
+            VStack(spacing: 0) {
+                HStack {
+                    Spacer()
+                    Button("Close") { selectedAgent = nil }
+                        .keyboardShortcut(.cancelAction)
+                }
+                .padding(.horizontal, RaccoonSpacing.space4)
+                .padding(.top, RaccoonSpacing.space3)
+
+                agentProfileView(for: agent)
+            }
+            .frame(minWidth: 560, minHeight: 560)
+            #endif
+        }
         .task {
             if viewModel == nil {
                 let vm = MarketplaceViewModel(apiClient: appState.apiClient)
@@ -112,10 +147,41 @@ public struct MarketplaceView: View {
                 spacing: RaccoonSpacing.space4
             ) {
                 ForEach(filteredAgents) { agent in
-                    agentCard(agent)
+                    Button {
+                        selectedAgent = agent
+                    } label: {
+                        agentCard(agent)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, RaccoonSpacing.space4)
+        }
+    }
+
+    private func agentProfileView(for agent: Agent) -> some View {
+        AgentProfileView(
+            agent: agent,
+            creatorName: agent.creatorID,
+            onStartConversation: {
+                startConversation(with: agent)
+            }
+        )
+    }
+
+    private func startConversation(with agent: Agent) {
+        Task {
+            do {
+                let response: ConversationResponse = try await appState.apiClient.request(
+                    .startAgentConversation(agentID: agent.id)
+                )
+
+                appState.conversationStore.upsert(response.conversation)
+                appState.selectedConversationID = response.conversation.id
+                selectedAgent = nil
+            } catch {
+                startConversationError = String(describing: error)
+            }
         }
     }
 

@@ -18,6 +18,16 @@ config :raccoon_shared, Oban,
     agents: 5,
     feed: 10,
     maintenance: 2
+  ],
+  plugins: [
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"0 3 * * *", RaccoonGateway.Workers.MaintenanceWorker, args: %{"task" => "create_partitions"}},
+       {"0 * * * *", RaccoonGateway.Workers.MaintenanceWorker, args: %{"task" => "cleanup_idempotency_keys"}},
+       {"0 4 * * *", RaccoonGateway.Workers.MaintenanceWorker, args: %{"task" => "cleanup_sessions"}},
+       {"0 5 * * *", RaccoonGateway.Workers.MaintenanceWorker, args: %{"task" => "prune_delivery_receipts"}},
+       {"*/15 * * * *", RaccoonGateway.Workers.TrendingWorker}
+     ]}
   ]
 
 # Phoenix gateway config
@@ -39,10 +49,9 @@ config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
-# Guardian JWT config
+# Guardian JWT config (secret_key loaded from env in runtime.exs)
 config :raccoon_accounts, RaccoonAccounts.Guardian,
-  issuer: "raccoon",
-  secret_key: "dev-guardian-secret-key-change-in-prod"
+  issuer: "raccoon"
 
 # Swoosh Mailer config (Resend in prod, overridden in dev/test)
 config :swoosh, :api_client, Swoosh.ApiClient.Req

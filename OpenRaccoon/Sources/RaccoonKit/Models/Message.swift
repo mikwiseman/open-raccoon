@@ -8,6 +8,7 @@ public struct Message: Codable, Identifiable, Sendable, Equatable {
     public let type: MessageType
     public var content: MessageContent
     public var metadata: MessageMetadata?
+    public var reactions: [MessageReaction]?
     public var editedAt: Date?
     public var deletedAt: Date?
     public let createdAt: Date
@@ -36,6 +37,7 @@ public struct Message: Codable, Identifiable, Sendable, Equatable {
         case type
         case content
         case metadata
+        case reactions
         case editedAt
         case deletedAt
         case createdAt
@@ -49,6 +51,7 @@ public struct Message: Codable, Identifiable, Sendable, Equatable {
         type: MessageType,
         content: MessageContent,
         metadata: MessageMetadata? = nil,
+        reactions: [MessageReaction]? = nil,
         editedAt: Date? = nil,
         deletedAt: Date? = nil,
         createdAt: Date = Date()
@@ -60,6 +63,7 @@ public struct Message: Codable, Identifiable, Sendable, Equatable {
         self.type = type
         self.content = content
         self.metadata = metadata
+        self.reactions = reactions
         self.editedAt = editedAt
         self.deletedAt = deletedAt
         self.createdAt = createdAt

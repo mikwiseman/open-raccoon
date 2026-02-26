@@ -4,7 +4,9 @@ import SwiftUI
 @Observable
 public final class ConversationDetailViewModel {
     public let conversationID: String
-    public var messages: [Message] = []
+    public var messages: [Message] = [] {
+        didSet { rebuildGroupedMessages() }
+    }
     public var isTyping = false
     public var isAgentGenerating = false
     public var inputText = ""
@@ -19,6 +21,9 @@ public final class ConversationDetailViewModel {
     private var hasMore: Bool = true
     private var isLoadingMore: Bool = false
 
+    /// Set of known message IDs for O(1) duplicate checking.
+    private var messageIDs: Set<String> = []
+
     /// Task for debouncing the typing-stopped event.
     private var typingDebounceTask: Task<Void, Never>?
 
@@ -32,8 +37,14 @@ public final class ConversationDetailViewModel {
         public let showDateSeparator: Bool
     }
 
-    public var groupedMessages: [MessageGroup] {
-        guard !messages.isEmpty else { return [] }
+    /// Cached grouped messages, rebuilt when `messages` changes.
+    public private(set) var groupedMessages: [MessageGroup] = []
+
+    private func rebuildGroupedMessages() {
+        guard !messages.isEmpty else {
+            groupedMessages = []
+            return
+        }
 
         var groups: [MessageGroup] = []
         var currentGroup: [Message] = []
@@ -87,7 +98,7 @@ public final class ConversationDetailViewModel {
             ))
         }
 
-        return groups
+        groupedMessages = groups
     }
 
     public init(
@@ -109,8 +120,9 @@ public final class ConversationDetailViewModel {
 
         ws.onNewMessage = { [weak self] message in
             guard let self else { return }
-            // Avoid duplicates (e.g. optimistic messages already appended locally)
-            if !self.messages.contains(where: { $0.id == message.id }) {
+            // O(1) duplicate check using Set
+            if !self.messageIDs.contains(message.id) {
+                self.messageIDs.insert(message.id)
                 self.messages.append(message)
             }
         }
@@ -173,6 +185,7 @@ public final class ConversationDetailViewModel {
                 .listMessages(conversationID: conversationID, cursor: nil, limit: 50)
             )
             messages = response.items
+            messageIDs = Set(response.items.map(\.id))
             nextCursor = response.pageInfo.nextCursor
             hasMore = response.pageInfo.hasMore
         } catch {
@@ -191,6 +204,9 @@ public final class ConversationDetailViewModel {
                 .listMessages(conversationID: conversationID, cursor: cursor, limit: 50)
             )
             // Prepend older messages to the front
+            for item in response.items {
+                messageIDs.insert(item.id)
+            }
             messages.insert(contentsOf: response.items, at: 0)
             nextCursor = response.pageInfo.nextCursor
             hasMore = response.pageInfo.hasMore
@@ -218,6 +234,7 @@ public final class ConversationDetailViewModel {
             content: messageContent,
             createdAt: Date()
         )
+        messageIDs.insert(idempotencyKey)
         messages.append(localMessage)
 
         Task {
@@ -231,11 +248,14 @@ public final class ConversationDetailViewModel {
                 )
                 // Replace optimistic message with server response
                 if let index = messages.firstIndex(where: { $0.id == idempotencyKey }) {
+                    messageIDs.remove(idempotencyKey)
+                    messageIDs.insert(response.message.id)
                     messages[index] = response.message
                 }
             } catch {
                 self.error = String(describing: error)
                 // Remove optimistic message on failure
+                messageIDs.remove(idempotencyKey)
                 messages.removeAll { $0.id == idempotencyKey }
             }
         }

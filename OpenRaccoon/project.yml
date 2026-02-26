@@ -27,6 +27,7 @@ targets:
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Sources/OpenRaccoonApp/Info-macOS.plist
         INFOPLIST_KEY_CFBundleDisplayName: Open Raccoon
         INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.social-networking"
         INFOPLIST_KEY_NSMainStoryboardFile: ""
@@ -53,6 +54,7 @@ targets:
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Sources/OpenRaccoonApp/Info-iOS.plist
         INFOPLIST_KEY_CFBundleDisplayName: Open Raccoon
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"

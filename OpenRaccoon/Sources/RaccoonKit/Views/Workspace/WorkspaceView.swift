@@ -12,6 +12,8 @@ public struct WorkspaceView: View {
     @State private var selectedFileName: String?
     @State private var previewHTML: String?
     @State private var terminalLines: [TerminalView.TerminalLine] = []
+    @State private var dragStartRatio: CGFloat = 0.55
+    @State private var containerHeight: CGFloat = 600
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -51,6 +53,9 @@ public struct WorkspaceView: View {
                     // Bottom pane: Files or Terminal
                     bottomPane
                         .frame(maxHeight: .infinity)
+                }
+                .onChange(of: geometry.size.height, initial: true) { _, newHeight in
+                    containerHeight = newHeight
                 }
             }
         }
@@ -148,8 +153,12 @@ public struct WorkspaceView: View {
             .gesture(
                 DragGesture()
                     .onChanged { value in
-                        // Placeholder: would update splitRatio based on drag
-                        let _ = value.translation.height
+                        let delta = value.translation.height
+                        let newRatio = dragStartRatio + delta / containerHeight
+                        splitRatio = min(max(newRatio, 0.2), 0.8)
+                    }
+                    .onEnded { _ in
+                        dragStartRatio = splitRatio
                     }
             )
             #if os(macOS)

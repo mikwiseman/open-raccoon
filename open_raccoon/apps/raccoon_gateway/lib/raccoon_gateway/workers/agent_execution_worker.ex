@@ -17,33 +17,36 @@ defmodule RaccoonGateway.Workers.AgentExecutionWorker do
   def perform(%Oban.Job{args: %{"task" => "execute", "agent_id" => agent_id, "conversation_id" => conversation_id, "message" => message}}) do
     Logger.info("Executing agent #{agent_id} in conversation #{conversation_id}")
 
-    # Placeholder: delegate to the agent runtime (Python sidecar)
-    # via HTTP or gRPC call
-    #
-    # In production this would:
-    # 1. Load agent config from DB
-    # 2. Send execution request to Python runtime
-    # 3. Stream responses back via PubSub
-    # 4. Track execution time and tokens used
+    case RaccoonShared.Repo.get(RaccoonAgents.Agent, agent_id) do
+      nil ->
+        {:discard, "Agent not found: #{agent_id}"}
 
-    _agent = RaccoonShared.Repo.get!(RaccoonAgents.Agent, agent_id)
+      _agent ->
+        # Placeholder: delegate to the agent runtime (Python sidecar)
+        # via HTTP or gRPC call
+        #
+        # In production this would:
+        # 1. Load agent config from DB
+        # 2. Send execution request to Python runtime
+        # 3. Stream responses back via PubSub
+        # 4. Track execution time and tokens used
 
-    # Simulate execution tracking
-    started_at = System.monotonic_time(:millisecond)
+        started_at = System.monotonic_time(:millisecond)
 
-    # Placeholder for actual agent execution
-    _result = %{
-      agent_id: agent_id,
-      conversation_id: conversation_id,
-      input: message,
-      output: nil,
-      status: :pending
-    }
+        # Placeholder for actual agent execution
+        _result = %{
+          agent_id: agent_id,
+          conversation_id: conversation_id,
+          input: message,
+          output: nil,
+          status: :pending
+        }
 
-    elapsed_ms = System.monotonic_time(:millisecond) - started_at
-    Logger.info("Agent #{agent_id} execution placeholder completed in #{elapsed_ms}ms")
+        elapsed_ms = System.monotonic_time(:millisecond) - started_at
+        Logger.info("Agent #{agent_id} execution placeholder completed in #{elapsed_ms}ms")
 
-    :ok
+        :ok
+    end
   end
 
   def perform(%Oban.Job{args: %{"task" => "cleanup_stale", "older_than_minutes" => minutes}}) do
