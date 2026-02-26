@@ -5,6 +5,7 @@ import SwiftUI
 public final class AuthStore {
     public var isLoggingIn = false
     public var isRegistering = false
+    public var isVerifyingMagicLink = false
     public var loginError: String?
     public var isSendingMagicLink = false
     public var magicLinkSent = false
@@ -120,13 +121,32 @@ public final class AuthStore {
 
     /// Verifies a magic link token, stores tokens, and returns the authenticated User.
     public func verifyMagicLink(token: String) async throws -> User {
-        let response: AuthResponse = try await apiClient.request(.verifyMagicLink(token: token))
+        isVerifyingMagicLink = true
+        magicLinkError = nil
+        defer { isVerifyingMagicLink = false }
+
+        let response: AuthResponse
+        do {
+            response = try await apiClient.request(.verifyMagicLink(token: token))
+        } catch {
+            magicLinkError = Self.readableError(error)
+            throw error
+        }
+
         try await authManager.setTokens(
             access: response.tokens.accessToken,
             refresh: response.tokens.refreshToken,
             expiresIn: response.tokens.expiresIn
         )
         return response.user
+    }
+
+    /// Logs out by revoking the refresh token on the server, then clearing local tokens.
+    public func logout() async throws {
+        if let refreshToken = await authManager.currentRefreshToken {
+            try? await apiClient.requestVoid(.logout(refreshToken: refreshToken))
+        }
+        try await authManager.clearTokens()
     }
 
     /// Resets magic link state for a fresh attempt.

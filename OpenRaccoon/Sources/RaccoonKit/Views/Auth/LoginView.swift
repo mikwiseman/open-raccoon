@@ -13,7 +13,6 @@ public struct LoginView: View {
     @State private var password = ""
     @State private var magicLinkToken = ""
     @State private var loginMode: LoginMode = .password
-    @State private var isVerifyingToken = false
 
     @Environment(AppState.self) private var appState
 
@@ -285,11 +284,10 @@ public struct LoginView: View {
 
             // Verify button
             Button {
-                isVerifyingToken = true
                 onMagicLinkVerify(magicLinkToken)
             } label: {
                 Group {
-                    if isVerifyingToken {
+                    if appState.authStore.isVerifyingMagicLink {
                         ProgressView()
                             .tint(RaccoonColors.Light.textInverse)
                     } else {
@@ -304,7 +302,7 @@ public struct LoginView: View {
                 .clipShape(RoundedRectangle(cornerRadius: RaccoonRadius.xl))
             }
             .buttonStyle(.plain)
-            .disabled(magicLinkToken.isEmpty || isVerifyingToken)
+            .disabled(magicLinkToken.isEmpty || appState.authStore.isVerifyingMagicLink)
 
             // Send again link
             Button {

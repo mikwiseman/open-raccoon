@@ -5,7 +5,7 @@ public enum APIEndpoint: Sendable {
     case register(username: String, email: String, password: String)
     case login(email: String, password: String)
     case refresh(refreshToken: String)
-    case logout
+    case logout(refreshToken: String)
     case requestMagicLink(email: String)
     case verifyMagicLink(token: String)
 
@@ -219,6 +219,8 @@ public enum APIEndpoint: Sendable {
             return try encoder.encode(["email": email])
         case .verifyMagicLink(let token):
             return try encoder.encode(["token": token])
+        case .logout(let refreshToken):
+            return try encoder.encode(["refresh_token": refreshToken])
         case .createConversation(let type, let title, let agentID):
             var body: [String: String] = ["type": type]
             if let title { body["title"] = title }

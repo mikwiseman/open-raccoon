@@ -15,6 +15,9 @@ public struct MagicLinkResponse: Codable, Sendable {
     public let message: String
 }
 
+/// Empty response for endpoints that return 204 No Content.
+public struct EmptyResponse: Codable, Sendable {}
+
 // MARK: - Single-resource response wrappers
 
 /// Wraps `{"user": {...}}` responses from GET /users/me, etc.

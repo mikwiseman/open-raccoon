@@ -59,12 +59,12 @@ public final class AppState {
         connectWebSocket(accessToken: accessToken)
     }
 
-    /// Clears tokens, disconnects WebSocket, and clears currentUser.
+    /// Revokes refresh token on server, clears local tokens, disconnects WebSocket.
     public func logout() async {
         disconnectWebSocket()
         currentUser = nil
         selectedConversationID = nil
-        try? await authStore.clearTokens()
+        try? await authStore.logout()
     }
 
     /// Called on app launch. Checks for stored tokens, refreshes if needed,
