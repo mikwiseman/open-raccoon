@@ -11,7 +11,7 @@ source "$SCRIPT_DIR/helpers.sh"
 # Override set -e from helpers.sh — soak test must not exit on individual failures
 set +e
 
-BASE="${BASE_URL:-http://157.180.72.249:4000/api/v1}"
+BASE="${BASE_URL:-https://openraccoon.com/api/v1}"
 
 # --- Configuration ---
 

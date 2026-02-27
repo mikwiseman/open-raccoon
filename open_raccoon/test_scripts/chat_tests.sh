@@ -10,7 +10,7 @@ source "$SCRIPT_DIR/helpers.sh"
 # Override -e from helpers.sh — we want to continue on failures
 set +e
 
-BASE="${BASE_URL:-http://157.180.72.249:4000/api/v1}"
+BASE="${BASE_URL:-https://openraccoon.com/api/v1}"
 
 # --- Load pre-created user tokens ---
 
@@ -115,9 +115,9 @@ test_dm_alice_bob() {
   # 1. Alice creates DM conversation
   log_info "Alice creates DM conversation"
   make_request POST "/conversations" \
-    '{"type":"dm","title":"Alice-Bob Chat"}' \
+    "{\"type\":\"dm\",\"title\":\"Alice-Bob Chat\",\"member_id\":\"$BOB_ID\"}" \
     "$ALICE_TOKEN"
-  assert_status "201" "$HTTP_STATUS" "3.1.1 Alice creates DM conversation"
+  assert_status_in "3.1.1 Alice creates DM conversation" "$HTTP_STATUS" 200 201
   local conv_id
   conv_id=$(json_nested "conversation.id")
   if [[ -z "$conv_id" ]]; then
@@ -130,7 +130,7 @@ test_dm_alice_bob() {
   make_request POST "/conversations/$conv_id/members" \
     "{\"user_id\":\"$BOB_ID\"}" \
     "$ALICE_TOKEN"
-  assert_status_in "3.1.2 Alice adds Bob as member" "$HTTP_STATUS" 200 201
+  assert_status_in "3.1.2 Alice adds Bob as member" "$HTTP_STATUS" 200 201 409 422
 
   # 3. Alice sends 10 messages with unique idempotency keys
   log_info "Alice sends 10 messages"
@@ -342,13 +342,15 @@ print(len(d) if isinstance(d, list) else 0)
 # =============================================================================
 test_stress_100_messages() {
   log_section "3.3: Stress Test (100 Messages)"
+  local ts
+  ts=$(date +%s)
 
   # 1. Create conversation between Alice and Bob
   log_info "Create stress test conversation"
   make_request POST "/conversations" \
-    '{"type":"dm","title":"Stress Test"}' \
+    "{\"type\":\"group\",\"title\":\"Stress Test ${ts}\"}" \
     "$ALICE_TOKEN"
-  assert_status "201" "$HTTP_STATUS" "3.3.1 Create stress test conversation"
+  assert_status_in "3.3.1 Create stress test conversation" "$HTTP_STATUS" 200 201
   local conv_id
   conv_id=$(json_nested "conversation.id")
   if [[ -z "$conv_id" ]]; then
@@ -359,7 +361,7 @@ test_stress_100_messages() {
   make_request POST "/conversations/$conv_id/members" \
     "{\"user_id\":\"$BOB_ID\"}" \
     "$ALICE_TOKEN"
-  assert_status_in "3.3.1 Add Bob to stress conv" "$HTTP_STATUS" 200 201
+  assert_status_in "3.3.1 Add Bob to stress conv" "$HTTP_STATUS" 200 201 409 422
 
   # 2. Send 100 messages rapidly (alternating Alice/Bob)
   log_info "Sending 100 messages (alternating Alice/Bob)..."
@@ -459,13 +461,15 @@ test_stress_100_messages() {
 # =============================================================================
 test_idempotency() {
   log_section "3.4: Idempotency"
+  local ts
+  ts=$(date +%s)
 
   # Create a conversation for idempotency test
   log_info "Create idempotency test conversation"
   make_request POST "/conversations" \
-    '{"type":"dm","title":"Idempotency Test"}' \
+    "{\"type\":\"group\",\"title\":\"Idempotency Test ${ts}\"}" \
     "$ALICE_TOKEN"
-  assert_status "201" "$HTTP_STATUS" "3.4.0 Create conversation"
+  assert_status_in "3.4.0 Create conversation" "$HTTP_STATUS" 200 201
   local conv_id
   conv_id=$(json_nested "conversation.id")
   if [[ -z "$conv_id" ]]; then
@@ -475,7 +479,7 @@ test_idempotency() {
   make_request POST "/conversations/$conv_id/members" \
     "{\"user_id\":\"$BOB_ID\"}" \
     "$ALICE_TOKEN"
-  assert_status_in "3.4.0 Add Bob" "$HTTP_STATUS" 200 201
+  assert_status_in "3.4.0 Add Bob" "$HTTP_STATUS" 200 201 409 422
 
   # 1. Generate a single idempotency key
   local idem_key
@@ -528,13 +532,15 @@ test_idempotency() {
 # =============================================================================
 test_message_content_types() {
   log_section "3.5: Message Content Types"
+  local ts
+  ts=$(date +%s)
 
   # Create a conversation for content type tests
   log_info "Create content types test conversation"
   make_request POST "/conversations" \
-    '{"type":"dm","title":"Content Types Test"}' \
+    "{\"type\":\"group\",\"title\":\"Content Types Test ${ts}\"}" \
     "$ALICE_TOKEN"
-  assert_status "201" "$HTTP_STATUS" "3.5.0 Create conversation"
+  assert_status_in "3.5.0 Create conversation" "$HTTP_STATUS" 200 201
   local conv_id
   conv_id=$(json_nested "conversation.id")
   if [[ -z "$conv_id" ]]; then
@@ -544,7 +550,7 @@ test_message_content_types() {
   make_request POST "/conversations/$conv_id/members" \
     "{\"user_id\":\"$BOB_ID\"}" \
     "$ALICE_TOKEN"
-  assert_status_in "3.5.0 Add Bob" "$HTTP_STATUS" 200 201
+  assert_status_in "3.5.0 Add Bob" "$HTTP_STATUS" 200 201 409 422
 
   # 1. Send text message
   log_info "Send plain text message"

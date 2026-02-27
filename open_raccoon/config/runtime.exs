@@ -72,7 +72,7 @@ if config_env() == :prod do
 
   config :raccoon_shared, RaccoonShared.Mailer, api_key: System.fetch_env!("RESEND_API_KEY")
 
-  config :raccoon_gateway, :base_url, System.get_env("BASE_URL", "http://157.180.72.249:4000")
+  config :raccoon_gateway, :base_url, System.get_env("BASE_URL", "https://openraccoon.com")
 
   # Hetzner Object Storage (S3-compatible)
   if System.get_env("SPACES_BUCKET") do

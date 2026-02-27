@@ -6,8 +6,8 @@ defmodule RaccoonGatewayWeb.MarketplaceController do
   alias RaccoonShared.Pagination
 
   def index(conn, params) do
-    {_cursor, limit} = Pagination.parse_params(params)
-    agents = RaccoonAgents.list_public_agents(limit: limit + 1)
+    {cursor, limit} = Pagination.parse_params(params)
+    agents = RaccoonAgents.list_public_agents(limit: limit + 1, cursor: cursor)
     {items, page_info} = Pagination.build_page_info(agents, limit)
 
     json(conn, %{
@@ -86,10 +86,10 @@ defmodule RaccoonGatewayWeb.MarketplaceController do
   end
 
   def search(conn, %{"q" => query} = params) do
-    {_cursor, limit} = Pagination.parse_params(params)
+    {cursor, limit} = Pagination.parse_params(params)
 
     # Search through public agents by name/description
-    agents = RaccoonAgents.search_public_agents(query, limit: limit + 1)
+    agents = RaccoonAgents.search_public_agents(query, limit: limit + 1, cursor: cursor)
     {items, page_info} = Pagination.build_page_info(agents, limit)
 
     json(conn, %{

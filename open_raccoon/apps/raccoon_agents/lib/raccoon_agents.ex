@@ -4,6 +4,7 @@ defmodule RaccoonAgents do
   """
 
   alias RaccoonShared.Repo
+  alias RaccoonShared.Pagination
   alias RaccoonAgents.{Agent, AgentRating}
   import Ecto.Query
   require Logger
@@ -37,17 +38,20 @@ defmodule RaccoonAgents do
 
   def list_public_agents(opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
+    cursor = Keyword.get(opts, :cursor)
 
     from(a in Agent,
       where: a.visibility == :public,
-      order_by: [desc: a.usage_count],
+      order_by: [desc: a.usage_count, desc: a.id],
       limit: ^limit
     )
+    |> apply_public_agent_cursor(cursor)
     |> Repo.all()
   end
 
   def search_public_agents(query, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
+    cursor = Keyword.get(opts, :cursor)
     search_term = "%#{query}%"
 
     from(a in Agent,
@@ -55,9 +59,10 @@ defmodule RaccoonAgents do
         a.visibility == :public and
           (ilike(a.name, ^search_term) or ilike(a.description, ^search_term) or
              ilike(a.category, ^search_term)),
-      order_by: [desc: a.usage_count],
+      order_by: [desc: a.usage_count, desc: a.id],
       limit: ^limit
     )
+    |> apply_public_agent_cursor(cursor)
     |> Repo.all()
   end
 
@@ -100,7 +105,21 @@ defmodule RaccoonAgents do
   end
 
   def get_agent_ratings(agent_id) do
-    from(r in AgentRating, where: r.agent_id == ^agent_id, order_by: [desc: r.created_at])
+    from(r in AgentRating, where: r.agent_id == ^agent_id, order_by: [desc: r.inserted_at])
     |> Repo.all()
+  end
+
+  defp apply_public_agent_cursor(query, nil), do: query
+
+  defp apply_public_agent_cursor(query, cursor) do
+    with {:ok, cursor_id} <- Pagination.decode_cursor(cursor),
+         %Agent{usage_count: usage_count} <- Repo.get(Agent, cursor_id) do
+      from(a in query,
+        where:
+          a.usage_count < ^usage_count or (a.usage_count == ^usage_count and a.id < ^cursor_id)
+      )
+    else
+      _ -> query
+    end
   end
 end

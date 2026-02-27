@@ -16,6 +16,7 @@ PHASE_RESULTS=()
 OVERALL_FAIL=0
 START_TIME=$(date +%s)
 PHASE_TSV_FILE=""
+TOKEN_FILE="/tmp/raccoon_test_tokens.env"
 
 NON_INTERACTIVE=false
 RUN_SOAK_MODE="prompt" # prompt | yes | no
@@ -37,7 +38,7 @@ Options:
   --soak-hours HOURS         Soak duration in hours (default: SOAK_DURATION_HOURS or 4).
   --soak-log FILE            Soak log file path (default: /tmp/raccoon_soak_test.log).
   --summary-json FILE        Write machine-readable summary JSON.
-  --base-url URL             API base URL, e.g. http://157.180.72.249:4000/api/v1
+  --base-url URL             API base URL, e.g. https://openraccoon.com/api/v1
   --help                     Show this help.
 EOF
 }
@@ -92,12 +93,15 @@ export SOAK_DURATION_HOURS
 export SOAK_LOG_FILE
 PHASE_TSV_FILE="$(mktemp /tmp/raccoon_phase_summary.XXXXXX)"
 
+# Start each run with a fresh token file so downstream phases never use stale credentials.
+rm -f "$TOKEN_FILE"
+
 echo -e "${BOLD}╔══════════════════════════════════════════════════╗${NC}"
 echo -e "${BOLD}║       Open Raccoon — Full Test Suite             ║${NC}"
 echo -e "${BOLD}║       $(date '+%Y-%m-%d %H:%M:%S')                       ║${NC}"
 echo -e "${BOLD}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
-echo "Base URL: ${BASE_URL:-http://157.180.72.249:4000/api/v1}"
+echo "Base URL: ${BASE_URL:-https://openraccoon.com/api/v1}"
 echo "Non-interactive: $NON_INTERACTIVE"
 echo ""
 
@@ -163,7 +167,21 @@ run_phase 1 "api_smoke_test.sh" "API Smoke Test" || true
 run_phase 2 "auth_tests.sh" "Auth Flow Tests" || true
 
 # --- Phases 3-8 require tokens from Phase 2 ---
-if [[ -f /tmp/raccoon_test_tokens.env ]]; then
+token_file_valid() {
+  if [[ ! -f "$TOKEN_FILE" ]]; then
+    return 1
+  fi
+
+  # shellcheck disable=SC1090
+  source "$TOKEN_FILE"
+
+  [[ -n "${ALICE_EMAIL:-}" ]] && [[ -n "${ALICE_PASSWORD:-}" ]] && \
+    [[ -n "${BOB_EMAIL:-}" ]] && [[ -n "${BOB_PASSWORD:-}" ]] && \
+    [[ -n "${CHARLIE_EMAIL:-}" ]] && [[ -n "${CHARLIE_PASSWORD:-}" ]] && \
+    [[ -n "${DIANA_EMAIL:-}" ]] && [[ -n "${DIANA_PASSWORD:-}" ]]
+}
+
+if token_file_valid; then
   echo ""
   echo -e "${GREEN}Token file found. Running phases 3-8...${NC}"
 
@@ -175,8 +193,8 @@ if [[ -f /tmp/raccoon_test_tokens.env ]]; then
   run_phase 8 "edge_case_tests.sh" "Edge Cases & Security" || true
 else
   echo ""
-  echo -e "${RED}WARNING: /tmp/raccoon_test_tokens.env not found.${NC}"
-  echo "Auth tests may have failed. Skipping phases 3-8."
+  echo -e "${RED}WARNING: $TOKEN_FILE missing or invalid.${NC}"
+  echo "Auth tests may have failed or produced incomplete credentials. Skipping phases 3-8."
   PHASE_RESULTS+=("Phases 3-8: ${YELLOW}SKIPPED${NC} (no tokens)")
   append_phase_tsv "3-8" "-" "Phases 3-8 gated on auth tokens" "skipped" 1 0
   OVERALL_FAIL=$((OVERALL_FAIL + 1))
@@ -234,7 +252,7 @@ PY
 fi
 
 run_soak_test() {
-  if [[ ! -f /tmp/raccoon_test_tokens.env ]]; then
+  if [[ ! -f "$TOKEN_FILE" ]]; then
     echo -e "${RED}Cannot start soak test: no token file.${NC}"
     return 1
   fi

@@ -44,6 +44,36 @@ defmodule RaccoonGatewayWeb.ConversationAccessControlTest do
         "content" => %{"text" => "seed message"}
       })
 
+    {:ok, other_conversation} =
+      RaccoonChat.create_conversation(%{
+        "type" => "group",
+        "title" => "Secondary Conversation",
+        "creator_id" => owner.id
+      })
+
+    {:ok, _other_owner_membership} =
+      RaccoonChat.add_member(%{
+        conversation_id: other_conversation.id,
+        user_id: owner.id,
+        role: :owner,
+        joined_at: DateTime.utc_now()
+      })
+
+    {:ok, _other_outsider_membership} =
+      RaccoonChat.add_member(%{
+        conversation_id: other_conversation.id,
+        user_id: outsider.id,
+        role: :member,
+        joined_at: DateTime.utc_now()
+      })
+
+    {:ok, other_message} =
+      RaccoonChat.send_message(other_conversation.id, owner.id, %{
+        "sender_type" => "human",
+        "type" => "text",
+        "content" => %{"text" => "other conversation message"}
+      })
+
     {:ok, %{access_token: owner_token}} = Token.create_tokens(owner)
     {:ok, %{access_token: member_token}} = Token.create_tokens(member)
     {:ok, %{access_token: outsider_token}} = Token.create_tokens(outsider)
@@ -56,7 +86,9 @@ defmodule RaccoonGatewayWeb.ConversationAccessControlTest do
      conversation: conversation,
      owner_token: owner_token,
      member_token: member_token,
-     outsider_token: outsider_token}
+     outsider_token: outsider_token,
+     other_conversation: other_conversation,
+     other_message: other_message}
   end
 
   test "outsider cannot read or send messages", %{
@@ -161,6 +193,64 @@ defmodule RaccoonGatewayWeb.ConversationAccessControlTest do
       |> delete("/api/v1/conversations/#{conversation.id}/members/#{owner.id}")
 
     assert json_response(conn, 403)["error"]["code"] == "forbidden"
+  end
+
+  test "message update/delete requires message to belong to path conversation", %{
+    conn: conn,
+    conversation: conversation,
+    other_message: other_message,
+    owner_token: owner_token
+  } do
+    conn =
+      conn
+      |> authed_json_conn(owner_token)
+      |> patch("/api/v1/conversations/#{conversation.id}/messages/#{other_message.id}", %{
+        "content" => %{"text" => "invalid path update"}
+      })
+
+    assert json_response(conn, 404)["error"]["code"] == "not_found"
+
+    conn =
+      conn
+      |> authed_json_conn(owner_token)
+      |> delete("/api/v1/conversations/#{conversation.id}/messages/#{other_message.id}")
+
+    assert json_response(conn, 404)["error"]["code"] == "not_found"
+  end
+
+  test "dm creation validates member_id and is idempotent", %{
+    conn: conn,
+    owner: owner,
+    member: member,
+    owner_token: owner_token
+  } do
+    conn =
+      conn
+      |> authed_json_conn(owner_token)
+      |> post("/api/v1/conversations", %{"type" => "dm"})
+
+    assert conn.status == 422
+    assert json_response(conn, 422)["error"]["code"] == "validation_failed"
+
+    conn =
+      conn
+      |> authed_json_conn(owner_token)
+      |> post("/api/v1/conversations", %{"type" => "dm", "member_id" => member.id})
+
+    assert conn.status == 201
+    created_id = json_response(conn, 201)["conversation"]["id"]
+
+    assert %{} = RaccoonChat.get_membership(created_id, owner.id)
+    assert %{} = RaccoonChat.get_membership(created_id, member.id)
+
+    conn =
+      conn
+      |> authed_json_conn(owner_token)
+      |> post("/api/v1/conversations", %{"type" => "dm", "member_id" => member.id})
+
+    assert conn.status == 200
+    assert json_response(conn, 200)["conversation"]["id"] == created_id
+    assert length(RaccoonChat.list_members(created_id)) == 2
   end
 
   defp authed_json_conn(conn, token) do

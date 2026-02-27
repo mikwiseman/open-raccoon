@@ -3,7 +3,7 @@
 
 set -uo pipefail
 
-BASE="${BASE_URL:-http://157.180.72.249:4000/api/v1}"
+BASE="${BASE_URL:-https://openraccoon.com/api/v1}"
 PASS=0
 FAIL=0
 TOTAL=0

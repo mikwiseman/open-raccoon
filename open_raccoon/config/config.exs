@@ -62,7 +62,7 @@ config :swoosh, :api_client, Swoosh.ApiClient.Req
 config :raccoon_shared, RaccoonShared.Mailer, adapter: Swoosh.Adapters.Resend
 
 # Base URL for magic links and email callbacks
-config :raccoon_gateway, :base_url, "http://157.180.72.249:4000"
+config :raccoon_gateway, :base_url, "https://openraccoon.com"
 
 # JSON library
 config :phoenix, :json_library, Jason

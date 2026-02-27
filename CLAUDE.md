@@ -2,7 +2,7 @@
 
 ## Backend
 
-- **API Base:** `http://157.180.72.249:4000/api/v1` (health: `GET /health`)
+- **API Base:** `https://openraccoon.com/api/v1` (health: `GET /health`)
 - **SSH:** `root@157.180.72.249`
 - **Services (systemd):** `raccoon-api.service` (Elixir/Phoenix), `raccoon-agent.service` (Python gRPC)
 - **Database:** PostgreSQL `raccoon_prod`, user `raccoon`, localhost
@@ -29,7 +29,7 @@
 
 ## WebSocket
 
-- URL: `ws://157.180.72.249:4000/socket/websocket?token=JWT`
+- URL: `wss://openraccoon.com/socket/websocket?token=JWT`
 - Phoenix channels: `conversation:{id}`, `agent:{conversation_id}`
 
 ## Key Endpoints

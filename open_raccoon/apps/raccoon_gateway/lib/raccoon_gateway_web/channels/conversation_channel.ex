@@ -18,6 +18,7 @@ defmodule RaccoonGatewayWeb.ConversationChannel do
 
   use RaccoonGatewayWeb, :channel
 
+  alias RaccoonChat
   alias RaccoonChat.Delivery
   alias RaccoonChat.Typing
   alias RaccoonChat.ReadReceipts
@@ -67,6 +68,12 @@ defmodule RaccoonGatewayWeb.ConversationChannel do
     {:noreply, socket}
   end
 
+  @impl true
+  def handle_info({:message_deleted, message}, socket) do
+    push(socket, "message_deleted", %{message: message_json(message)})
+    {:noreply, socket}
+  end
+
   # Client sends new message
   @impl true
   def handle_in("new_message", payload, socket) do
@@ -111,15 +118,21 @@ defmodule RaccoonGatewayWeb.ConversationChannel do
   @impl true
   def handle_in("react", %{"message_id" => message_id, "emoji" => emoji}, socket) do
     user_id = socket.assigns.user_id
+    conversation_id = socket.assigns.conversation_id
 
-    case RaccoonChat.add_reaction(%{message_id: message_id, user_id: user_id, emoji: emoji}) do
-      {:ok, reaction} ->
-        broadcast!(socket, "message_updated", %{
-          message_id: message_id,
-          reaction: reaction_json(reaction)
-        })
+    with %{} <- RaccoonChat.get_message_in_conversation(conversation_id, message_id),
+         {:ok, _reaction} <-
+           RaccoonChat.add_reaction(%{message_id: message_id, user_id: user_id, emoji: emoji}),
+         %{} = updated_message <-
+           RaccoonChat.get_message_with_reactions(conversation_id, message_id) do
+      broadcast!(socket, "message_updated", %{
+        message: message_json(updated_message)
+      })
 
-        {:reply, :ok, socket}
+      {:reply, :ok, socket}
+    else
+      nil ->
+        {:reply, {:error, %{reason: "not_found"}}, socket}
 
       {:error, reason} ->
         {:reply, {:error, %{reason: format_error(reason)}}, socket}
@@ -129,7 +142,7 @@ defmodule RaccoonGatewayWeb.ConversationChannel do
   # --- Private helpers ---
 
   defp message_json(message) do
-    %{
+    base = %{
       id: message.id,
       conversation_id: message.conversation_id,
       sender_id: message.sender_id,
@@ -137,8 +150,16 @@ defmodule RaccoonGatewayWeb.ConversationChannel do
       type: message.type,
       content: message.content,
       metadata: message.metadata,
+      edited_at: message.edited_at,
+      deleted_at: message.deleted_at,
       created_at: message.created_at
     }
+
+    if Map.has_key?(message, :reactions) and Ecto.assoc_loaded?(message.reactions) do
+      Map.put(base, :reactions, Enum.map(message.reactions, &reaction_json/1))
+    else
+      base
+    end
   end
 
   defp reaction_json(reaction) do

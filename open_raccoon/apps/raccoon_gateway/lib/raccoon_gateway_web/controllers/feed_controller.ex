@@ -8,8 +8,8 @@ defmodule RaccoonGatewayWeb.FeedController do
   plug RaccoonGatewayWeb.Plugs.Idempotency when action in [:create, :fork]
 
   def index(conn, params) do
-    {_cursor, limit} = Pagination.parse_params(params)
-    items = RaccoonFeed.list_feed(limit: limit + 1)
+    {cursor, limit} = Pagination.parse_params(params)
+    items = RaccoonFeed.list_feed(limit: limit + 1, cursor: cursor)
     {items, page_info} = Pagination.build_page_info(items, limit)
 
     json(conn, %{
@@ -19,8 +19,8 @@ defmodule RaccoonGatewayWeb.FeedController do
   end
 
   def trending(conn, params) do
-    {_cursor, limit} = Pagination.parse_params(params)
-    items = RaccoonFeed.list_trending(limit: limit + 1)
+    {cursor, limit} = Pagination.parse_params(params)
+    items = RaccoonFeed.list_trending(limit: limit + 1, cursor: cursor)
     {items, page_info} = Pagination.build_page_info(items, limit)
 
     json(conn, %{
@@ -31,8 +31,8 @@ defmodule RaccoonGatewayWeb.FeedController do
 
   def following(conn, params) do
     user_id = conn.assigns.user_id
-    {_cursor, limit} = Pagination.parse_params(params)
-    items = RaccoonFeed.get_following(user_id, limit: limit + 1)
+    {cursor, limit} = Pagination.parse_params(params)
+    items = RaccoonFeed.get_following(user_id, limit: limit + 1, cursor: cursor)
     {items, page_info} = Pagination.build_page_info(items, limit)
 
     json(conn, %{
@@ -42,8 +42,8 @@ defmodule RaccoonGatewayWeb.FeedController do
   end
 
   def new_items(conn, params) do
-    {_cursor, limit} = Pagination.parse_params(params)
-    items = RaccoonFeed.list_new(limit: limit + 1)
+    {cursor, limit} = Pagination.parse_params(params)
+    items = RaccoonFeed.list_new(limit: limit + 1, cursor: cursor)
     {items, page_info} = Pagination.build_page_info(items, limit)
 
     json(conn, %{

@@ -4,6 +4,7 @@ defmodule RaccoonGatewayWeb.AgentController do
 
   alias RaccoonAgents
   alias RaccoonChat
+  alias RaccoonChat.Conversation
   alias RaccoonShared.Pagination
 
   def index(conn, params) do
@@ -100,32 +101,42 @@ defmodule RaccoonGatewayWeb.AgentController do
         {:error, :forbidden}
 
       agent ->
-        # Create an agent conversation with the user as owner
-        with {:ok, conversation} <-
-               RaccoonChat.create_conversation(%{
-                 type: :agent,
-                 title: agent.name,
-                 creator_id: user_id,
-                 agent_id: agent.id
-               }),
-             {:ok, _member} <-
-               RaccoonChat.add_member(%{
-                 conversation_id: conversation.id,
-                 user_id: user_id,
-                 role: :owner,
-                 joined_at: DateTime.utc_now()
-               }) do
-          conn
-          |> put_status(:created)
-          |> json(%{
-            conversation: %{
-              id: conversation.id,
-              type: conversation.type,
-              title: conversation.title,
-              agent_id: conversation.agent_id,
-              created_at: conversation.inserted_at
-            }
-          })
+        # Reuse existing agent conversation if one exists (idempotency)
+        case RaccoonChat.find_agent_conversation(user_id, agent.id) do
+          %Conversation{} = existing ->
+            json(conn, %{
+              conversation: %{
+                id: existing.id,
+                type: existing.type,
+                title: existing.title,
+                agent_id: existing.agent_id,
+                created_at: existing.inserted_at
+              }
+            })
+
+          nil ->
+            with {:ok, conversation} <-
+                   RaccoonChat.create_conversation_with_members(
+                     %{
+                       type: :agent,
+                       title: agent.name,
+                       creator_id: user_id,
+                       agent_id: agent.id
+                     },
+                     [%{user_id: user_id, role: :owner}]
+                   ) do
+              conn
+              |> put_status(:created)
+              |> json(%{
+                conversation: %{
+                  id: conversation.id,
+                  type: conversation.type,
+                  title: conversation.title,
+                  agent_id: conversation.agent_id,
+                  created_at: conversation.inserted_at
+                }
+              })
+            end
         end
     end
   end

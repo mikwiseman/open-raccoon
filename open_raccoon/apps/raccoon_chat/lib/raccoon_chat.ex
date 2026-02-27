@@ -6,6 +6,7 @@ defmodule RaccoonChat do
   alias RaccoonShared.Repo
   alias RaccoonShared.Pagination
   alias RaccoonChat.{Conversation, ConversationMember, Message, MessageReaction}
+  alias Ecto.Multi
   import Ecto.Query
 
   # --- Conversations ---
@@ -14,6 +15,48 @@ defmodule RaccoonChat do
     %Conversation{}
     |> Conversation.changeset(attrs)
     |> Repo.insert()
+  end
+
+  @doc """
+  Create a conversation and all of its memberships atomically.
+  """
+  def create_conversation_with_members(attrs, member_specs) when is_list(member_specs) do
+    normalized_members =
+      member_specs
+      |> Enum.map(&normalize_member_spec/1)
+      |> Enum.uniq_by(& &1.user_id)
+
+    Multi.new()
+    |> Multi.insert(:conversation, Conversation.changeset(%Conversation{}, attrs))
+    |> Multi.run(:members, fn repo, %{conversation: conversation} ->
+      insert_members(repo, conversation.id, normalized_members)
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{conversation: conversation}} ->
+        {:ok, conversation}
+
+      {:error, :conversation, changeset, _changes} ->
+        {:error, changeset}
+
+      {:error, :members, reason, _changes} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Find an existing agent conversation for a user with a specific agent.
+  Returns the conversation or nil.
+  """
+  def find_agent_conversation(user_id, agent_id) do
+    from(c in Conversation,
+      join: m in ConversationMember,
+      on: m.conversation_id == c.id,
+      where: c.type == :agent and c.agent_id == ^agent_id and m.user_id == ^user_id,
+      order_by: [desc: c.inserted_at],
+      limit: 1
+    )
+    |> Repo.one()
   end
 
   @doc """
@@ -68,16 +111,29 @@ defmodule RaccoonChat do
     limit = Keyword.get(opts, :limit, 50)
     cursor = Keyword.get(opts, :cursor, nil)
 
-    from(m in Message,
+    from(
+      m in Message,
       where: m.conversation_id == ^conversation_id,
-      order_by: [desc: m.created_at],
-      limit: ^(limit + 1)
+      order_by: [desc: m.created_at, desc: m.id]
     )
-    |> Pagination.apply_cursor(cursor, :id)
+    |> apply_message_cursor(conversation_id, cursor)
+    |> limit(^(limit + 1))
     |> Repo.all()
   end
 
   def get_message(id), do: Repo.get(Message, id)
+
+  def get_message_in_conversation(conversation_id, message_id) do
+    Repo.get_by(Message, id: message_id, conversation_id: conversation_id)
+  end
+
+  def get_message_with_reactions(conversation_id, message_id) do
+    from(m in Message,
+      where: m.id == ^message_id and m.conversation_id == ^conversation_id,
+      preload: [:reactions]
+    )
+    |> Repo.one()
+  end
 
   def update_message(%Message{} = message, attrs) do
     message |> Message.edit_changeset(attrs) |> Repo.update()
@@ -131,4 +187,60 @@ defmodule RaccoonChat do
     )
     |> Repo.delete_all()
   end
+
+  defp apply_message_cursor(query, _conversation_id, nil), do: query
+
+  defp apply_message_cursor(query, conversation_id, cursor) do
+    with {:ok, cursor_id} <- Pagination.decode_cursor(cursor),
+         %Message{created_at: cursor_created_at} <-
+           Repo.get_by(Message, id: cursor_id, conversation_id: conversation_id) do
+      from(m in query,
+        where:
+          m.created_at < ^cursor_created_at or
+            (m.created_at == ^cursor_created_at and m.id < ^cursor_id)
+      )
+    else
+      _ -> query
+    end
+  end
+
+  defp insert_members(repo, conversation_id, member_specs) do
+    now = DateTime.utc_now()
+
+    member_specs
+    |> Enum.reduce_while({:ok, []}, fn spec, {:ok, acc} ->
+      attrs = %{
+        conversation_id: conversation_id,
+        user_id: spec.user_id,
+        role: spec.role,
+        joined_at: spec.joined_at || now
+      }
+
+      case %ConversationMember{} |> ConversationMember.changeset(attrs) |> repo.insert() do
+        {:ok, member} ->
+          {:cont, {:ok, [member | acc]}}
+
+        {:error, changeset} ->
+          {:halt, {:error, changeset}}
+      end
+    end)
+    |> case do
+      {:ok, members} -> {:ok, Enum.reverse(members)}
+      error -> error
+    end
+  end
+
+  defp normalize_member_spec(spec) do
+    %{
+      user_id: Map.get(spec, :user_id) || Map.get(spec, "user_id"),
+      role: normalize_member_role(Map.get(spec, :role) || Map.get(spec, "role") || :member),
+      joined_at: Map.get(spec, :joined_at) || Map.get(spec, "joined_at")
+    }
+  end
+
+  defp normalize_member_role(role) when role in [:owner, :admin, :member], do: role
+  defp normalize_member_role("owner"), do: :owner
+  defp normalize_member_role("admin"), do: :admin
+  defp normalize_member_role("member"), do: :member
+  defp normalize_member_role(_), do: :member
 end

@@ -29,18 +29,21 @@ defmodule RaccoonGatewayWeb.ConversationController do
 
     # DM idempotency: if creating a DM, check if one already exists between these users
     case check_dm_idempotency(attrs, user_id) do
+      {:error, :member_id_required} ->
+        validation_error(conn, "member_id", "is required for dm conversations")
+
+      {:error, :member_id_self} ->
+        validation_error(conn, "member_id", "must be another user")
+
       {:existing, conversation} ->
         json(conn, %{conversation: conversation_json(conversation)})
 
-      :proceed ->
-        with {:ok, conversation} <- RaccoonChat.create_conversation(attrs),
-             {:ok, _member} <-
-               RaccoonChat.add_member(%{
-                 conversation_id: conversation.id,
-                 user_id: user_id,
-                 role: :owner,
-                 joined_at: DateTime.utc_now()
-               }) do
+      {:proceed, dm_member_id} ->
+        members =
+          [%{user_id: user_id, role: :owner}] ++
+            if(dm_member_id, do: [%{user_id: dm_member_id, role: :member}], else: [])
+
+        with {:ok, conversation} <- RaccoonChat.create_conversation_with_members(attrs, members) do
           conn
           |> put_status(:created)
           |> json(%{conversation: conversation_json(conversation)})
@@ -95,14 +98,29 @@ defmodule RaccoonGatewayWeb.ConversationController do
     end
   end
 
-  defp check_dm_idempotency(%{"type" => "dm", "member_id" => other_user_id}, user_id) do
-    case RaccoonChat.find_dm_between(user_id, other_user_id) do
-      nil -> :proceed
-      conversation -> {:existing, conversation}
+  defp check_dm_idempotency(attrs, user_id) do
+    case normalize_conversation_type(attrs) do
+      :dm ->
+        other_user_id = Map.get(attrs, "member_id") || Map.get(attrs, :member_id)
+
+        cond do
+          is_nil(other_user_id) ->
+            {:error, :member_id_required}
+
+          other_user_id == user_id ->
+            {:error, :member_id_self}
+
+          true ->
+            case RaccoonChat.find_dm_between(user_id, other_user_id) do
+              nil -> {:proceed, other_user_id}
+              conversation -> {:existing, conversation}
+            end
+        end
+
+      _ ->
+        {:proceed, nil}
     end
   end
-
-  defp check_dm_idempotency(_attrs, _user_id), do: :proceed
 
   defp maybe_apply_cursor(conversations, nil), do: conversations
 
@@ -145,5 +163,26 @@ defmodule RaccoonGatewayWeb.ConversationController do
       created_at: conversation.inserted_at,
       updated_at: conversation.updated_at
     }
+  end
+
+  defp normalize_conversation_type(attrs) do
+    case Map.get(attrs, "type") || Map.get(attrs, :type) do
+      :dm -> :dm
+      "dm" -> :dm
+      _ -> :other
+    end
+  end
+
+  defp validation_error(conn, field, message) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{
+      error: %{
+        code: "validation_failed",
+        message: "Validation failed",
+        details: %{field => [message]}
+      }
+    })
+    |> halt()
   end
 end

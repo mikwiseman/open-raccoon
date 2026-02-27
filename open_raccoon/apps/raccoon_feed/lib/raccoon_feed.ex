@@ -4,6 +4,7 @@ defmodule RaccoonFeed do
   """
 
   alias RaccoonShared.Repo
+  alias RaccoonShared.Pagination
   alias RaccoonFeed.{FeedItem, FeedLike, UserFollow}
   alias RaccoonFeed.{SubmissionPipeline, Trending, Ranking}
   import Ecto.Query
@@ -41,6 +42,7 @@ defmodule RaccoonFeed do
   """
   def get_following(user_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
+    cursor = Keyword.get(opts, :cursor)
 
     following_ids =
       from(f in UserFollow,
@@ -50,9 +52,10 @@ defmodule RaccoonFeed do
 
     from(fi in FeedItem,
       where: fi.creator_id in subquery(following_ids) and fi.quality_score >= 0.3,
-      order_by: [desc: fi.inserted_at],
+      order_by: [desc: fi.inserted_at, desc: fi.id],
       limit: ^limit
     )
+    |> apply_inserted_at_cursor(cursor)
     |> Repo.all()
   end
 
@@ -61,12 +64,14 @@ defmodule RaccoonFeed do
   """
   def get_new(opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
+    cursor = Keyword.get(opts, :cursor)
 
     from(fi in FeedItem,
       where: fi.quality_score >= 0.3,
-      order_by: [desc: fi.inserted_at],
+      order_by: [desc: fi.inserted_at, desc: fi.id],
       limit: ^limit
     )
+    |> apply_inserted_at_cursor(cursor)
     |> Repo.all()
   end
 
@@ -80,31 +85,37 @@ defmodule RaccoonFeed do
 
   def list_feed(opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
+    cursor = Keyword.get(opts, :cursor)
 
     from(fi in FeedItem,
-      order_by: [desc: fi.quality_score, desc: fi.inserted_at],
+      order_by: [desc: fi.quality_score, desc: fi.inserted_at, desc: fi.id],
       limit: ^limit
     )
+    |> apply_ranked_cursor(cursor, :quality_score)
     |> Repo.all()
   end
 
   def list_trending(opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
+    cursor = Keyword.get(opts, :cursor)
 
     from(fi in FeedItem,
-      order_by: [desc: fi.trending_score],
+      order_by: [desc: fi.trending_score, desc: fi.inserted_at, desc: fi.id],
       limit: ^limit
     )
+    |> apply_ranked_cursor(cursor, :trending_score)
     |> Repo.all()
   end
 
   def list_new(opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
+    cursor = Keyword.get(opts, :cursor)
 
     from(fi in FeedItem,
-      order_by: [desc: fi.inserted_at],
+      order_by: [desc: fi.inserted_at, desc: fi.id],
       limit: ^limit
     )
+    |> apply_inserted_at_cursor(cursor)
     |> Repo.all()
   end
 
@@ -213,5 +224,40 @@ defmodule RaccoonFeed do
       preload: [:follower]
     )
     |> Repo.all()
+  end
+
+  defp apply_inserted_at_cursor(query, nil), do: query
+
+  defp apply_inserted_at_cursor(query, cursor) do
+    with {:ok, cursor_id} <- Pagination.decode_cursor(cursor),
+         %FeedItem{inserted_at: cursor_inserted_at} <- Repo.get(FeedItem, cursor_id) do
+      from(fi in query,
+        where:
+          fi.inserted_at < ^cursor_inserted_at or
+            (fi.inserted_at == ^cursor_inserted_at and fi.id < ^cursor_id)
+      )
+    else
+      _ -> query
+    end
+  end
+
+  defp apply_ranked_cursor(query, nil, _metric), do: query
+
+  defp apply_ranked_cursor(query, cursor, metric) do
+    with {:ok, cursor_id} <- Pagination.decode_cursor(cursor),
+         %FeedItem{} = cursor_item <- Repo.get(FeedItem, cursor_id) do
+      metric_value = Map.get(cursor_item, metric)
+      cursor_inserted_at = cursor_item.inserted_at
+
+      from(fi in query,
+        where:
+          field(fi, ^metric) < ^metric_value or
+            (field(fi, ^metric) == ^metric_value and fi.inserted_at < ^cursor_inserted_at) or
+            (field(fi, ^metric) == ^metric_value and fi.inserted_at == ^cursor_inserted_at and
+               fi.id < ^cursor_id)
+      )
+    else
+      _ -> query
+    end
   end
 end

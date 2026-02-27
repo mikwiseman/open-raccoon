@@ -57,7 +57,7 @@ defmodule RaccoonGatewayWeb.MessageController do
     user_id = conn.assigns.user_id
 
     with :ok <- ensure_member(conversation_id, user_id),
-         %{} = message <- RaccoonChat.get_message(message_id),
+         {:ok, message} <- fetch_conversation_message(conversation_id, message_id),
          :ok <- ensure_sender(message, user_id),
          {:ok, updated} <-
            RaccoonChat.update_message(message, %{
@@ -81,7 +81,7 @@ defmodule RaccoonGatewayWeb.MessageController do
     user_id = conn.assigns.user_id
 
     with :ok <- ensure_member(conversation_id, user_id),
-         %{} = message <- RaccoonChat.get_message(message_id),
+         {:ok, message} <- fetch_conversation_message(conversation_id, message_id),
          :ok <- ensure_sender_or_admin(message, conversation_id, user_id),
          {:ok, deleted} <- RaccoonChat.soft_delete_message(message) do
       Phoenix.PubSub.broadcast(
@@ -92,7 +92,6 @@ defmodule RaccoonGatewayWeb.MessageController do
 
       json(conn, %{message: message_json(deleted)})
     else
-      nil -> {:error, :not_found}
       error -> error
     end
   end
@@ -132,5 +131,12 @@ defmodule RaccoonGatewayWeb.MessageController do
       deleted_at: message.deleted_at,
       created_at: message.created_at
     }
+  end
+
+  defp fetch_conversation_message(conversation_id, message_id) do
+    case RaccoonChat.get_message_in_conversation(conversation_id, message_id) do
+      nil -> {:error, :not_found}
+      message -> {:ok, message}
+    end
   end
 end

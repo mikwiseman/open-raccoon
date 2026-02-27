@@ -21,7 +21,7 @@ public final class AppState {
     public var webSocketClient: WebSocketClient?
     private let baseURL: URL
 
-    public init(baseURL: URL = URL(string: "http://157.180.72.249")!) {
+    public init(baseURL: URL = URL(string: "https://openraccoon.com")!) {
         self.baseURL = baseURL
         self.conversationStore = ConversationStore()
         self.messageStore = MessageStore()

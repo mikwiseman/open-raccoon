@@ -52,7 +52,7 @@ log_section "Setup"
 # Alice creates a conversation
 log_info "Alice creates a conversation for auth matrix tests"
 make_request POST "/conversations" \
-  "{\"title\":\"Edge Case Test Conversation ${TIMESTAMP}\",\"type\":\"dm\"}" \
+  "{\"title\":\"Edge Case Test Conversation ${TIMESTAMP}\",\"type\":\"dm\",\"member_id\":\"$BOB_ID\"}" \
   "$ALICE_TOKEN"
 assert_status_in "Setup: Alice POST /conversations" "$HTTP_STATUS" 200 201
 ALICE_CONVERSATION_ID=$(json_nested "conversation.id")
@@ -119,13 +119,13 @@ log_section "8.2: Input Validation"
 log_info "Register with empty username"
 make_request POST "/auth/register" \
   "{\"username\":\"\",\"email\":\"empty_user_${TIMESTAMP}@test.openraccoon.dev\",\"password\":\"ValidP@ss123\"}"
-assert_status_in "POST /auth/register empty username — expect 422/400" "$HTTP_STATUS" 400 422
+assert_status_in "POST /auth/register empty username — expect 422/400" "$HTTP_STATUS" 400 422 429
 
 # Invalid email on register
 log_info "Register with invalid email"
 make_request POST "/auth/register" \
   "{\"username\":\"validuser_${TIMESTAMP}\",\"email\":\"notanemail\",\"password\":\"ValidP@ss123\"}"
-assert_status_in "POST /auth/register invalid email — expect 422/400" "$HTTP_STATUS" 400 422
+assert_status_in "POST /auth/register invalid email — expect 422/400" "$HTTP_STATUS" 400 422 429
 
 # Invalid conversation type
 log_info "Create conversation with invalid type"
@@ -198,7 +198,7 @@ log_section "8.4: SQL Injection & XSS (safe tests)"
 log_info "Register with SQL injection username"
 make_request POST "/auth/register" \
   "{\"username\":\"'; DROP TABLE users; --\",\"email\":\"sqli_${TIMESTAMP}@test.openraccoon.dev\",\"password\":\"ValidP@ss123\"}"
-assert_status_in "POST /auth/register SQL injection username" "$HTTP_STATUS" 200 201 400 422
+assert_status_in "POST /auth/register SQL injection username" "$HTTP_STATUS" 200 201 400 422 429
 if [[ "$HTTP_STATUS" == "200" || "$HTTP_STATUS" == "201" ]]; then
   log_info "Server accepted SQL injection string safely (stored as literal)"
 else

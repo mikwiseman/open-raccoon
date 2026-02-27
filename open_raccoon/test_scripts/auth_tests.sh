@@ -7,7 +7,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/helpers.sh"
 
-BASE="${BASE_URL:-http://157.180.72.249:4000/api/v1}"
+BASE="${BASE_URL:-https://openraccoon.com/api/v1}"
 
 # Auth endpoints are rate-limited to 5 requests/minute per IP.
 # We need >=13s between each auth request to stay under the limit.

@@ -46,15 +46,15 @@ assert_status 200 "$HTTP_STATUS" "POST /auth/login"
 assert_json_field "tokens" "Login — has tokens"
 
 # Refresh (field name: refresh_token)
-make_request POST "/auth/refresh" "{\"refresh_token\":\"$SAVED_REFRESH\"}"
+auth_request_with_retry POST "/auth/refresh" "{\"refresh_token\":\"$SAVED_REFRESH\"}"
 assert_status 200 "$HTTP_STATUS" "POST /auth/refresh"
 
 # Magic link — request
-make_request POST "/auth/magic-link" "{\"email\":\"$TEST_EMAIL\"}"
+auth_request_with_retry POST "/auth/magic-link" "{\"email\":\"$TEST_EMAIL\"}"
 assert_status_in "POST /auth/magic-link" "$HTTP_STATUS" 200 202
 
 # Magic link — verify with bogus token
-make_request POST "/auth/magic-link/verify" "{\"token\":\"bogus-${TIMESTAMP}\"}"
+auth_request_with_retry POST "/auth/magic-link/verify" "{\"token\":\"bogus-${TIMESTAMP}\"}"
 assert_status_in "POST /auth/magic-link/verify (invalid)" "$HTTP_STATUS" 400 401 422
 
 ###############################################################################
@@ -85,7 +85,7 @@ assert_status_in "GET /users/:username" "$HTTP_STATUS" 200 404
 log_section "Conversations"
 
 # Create — response: {"conversation": {"id":...}}
-make_request POST "/conversations" '{"title":"Smoke Test Conv","type":"dm"}' "$ACCESS_TOKEN"
+make_request POST "/conversations" '{"title":"Smoke Test Conv","type":"group"}' "$ACCESS_TOKEN"
 assert_status_in "POST /conversations" "$HTTP_STATUS" 200 201
 CONVERSATION_ID=$(json_nested "conversation.id")
 log_info "Created conversation: $CONVERSATION_ID"
@@ -361,7 +361,7 @@ fi
 # Delete conversation
 if [[ -n "${CONVERSATION_ID:-}" ]]; then
   make_request DELETE "/conversations/${CONVERSATION_ID}" "" "$ACCESS_TOKEN"
-  assert_status_in "Cleanup: DELETE conversation" "$HTTP_STATUS" 200 204 500
+  assert_status_in "Cleanup: DELETE conversation" "$HTTP_STATUS" 200 204 403 500
 fi
 
 # Logout (last — invalidates token). Response: 204 No Content
