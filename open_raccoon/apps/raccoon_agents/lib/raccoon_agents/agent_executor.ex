@@ -107,10 +107,8 @@ defmodule RaccoonAgents.AgentExecutor do
             conversation_id: state.conversation_id
           )
 
-          case consume_stream(event_stream, topic, state, channel) do
-            :ok -> GRPC.Stub.disconnect(channel)
-            :timed_out -> :ok
-          end
+          consume_stream(event_stream, topic, state, channel)
+          GRPC.Stub.disconnect(channel)
 
         {:error, reason} ->
           Logger.error("[exec] gRPC execute_agent failed: #{inspect(reason)}",
@@ -148,53 +146,33 @@ defmodule RaccoonAgents.AgentExecutor do
 
   # -- Private ---------------------------------------------------------------
 
-  defp consume_stream(event_stream, topic, state, channel) do
-    task =
-      Task.async(fn ->
-        Enum.reduce(event_stream, [], fn
-          {:ok, response}, tokens_acc ->
-            event = GRPCClient.response_to_event(response)
-            broadcast_event(topic, event, state)
+  defp consume_stream(event_stream, topic, state, _channel) do
+    tokens_acc =
+      Enum.reduce(event_stream, [], fn
+        {:ok, response}, acc ->
+          event = GRPCClient.response_to_event(response)
+          broadcast_event(topic, event, state)
 
-            case event do
-              %{type: "token", text: text} -> [text | tokens_acc]
-              _ -> tokens_acc
-            end
+          case event do
+            %{type: "token", text: text} -> [text | acc]
+            _ -> acc
+          end
 
-          {:error, error}, tokens_acc ->
-            Logger.error("gRPC stream error",
-              conversation_id: state.conversation_id,
-              error: inspect(error)
-            )
+        {:error, error}, acc ->
+          Logger.error("[exec] gRPC stream error: #{inspect(error)}",
+            conversation_id: state.conversation_id
+          )
 
-            broadcast(topic, "error", %{
-              code: "stream_error",
-              message: "Agent stream error: #{inspect(error)}"
-            })
+          broadcast(topic, "error", %{
+            code: "stream_error",
+            message: "Agent stream error: #{inspect(error)}"
+          })
 
-            tokens_acc
-        end)
+          acc
       end)
 
-    case Task.yield(task, @stream_timeout) || Task.shutdown(task) do
-      {:ok, tokens_acc} ->
-        save_agent_response(tokens_acc, state)
-        :ok
-
-      nil ->
-        GRPC.Stub.disconnect(channel)
-
-        Logger.error("Agent execution timed out, sent cancellation signal",
-          conversation_id: state.conversation_id
-        )
-
-        broadcast(topic, "error", %{
-          code: "deadline_exceeded",
-          message: "Agent execution timed out after #{div(@stream_timeout, 1_000)}s"
-        })
-
-        :timed_out
-    end
+    save_agent_response(tokens_acc, state)
+    :ok
   end
 
   defp save_agent_response(tokens_acc, state) do
