@@ -191,36 +191,29 @@ defmodule RaccoonAgents.AgentExecutor do
 
     if String.trim(text) != "" do
       now = DateTime.utc_now()
+      message_id = Ecto.UUID.generate()
 
-      %RaccoonChat.Message{}
-      |> Ecto.Changeset.change(%{
-        conversation_id: state.conversation_id,
-        sender_id: nil,
-        sender_type: :agent,
-        type: :text,
-        content: %{"text" => text},
-        metadata: %{"agent_id" => state.agent_id}
-      })
-      |> Repo.insert()
-      |> case do
-        {:ok, message} ->
-          # Update conversation's last_message_at
-          from(c in RaccoonChat.Conversation, where: c.id == ^state.conversation_id)
-          |> Repo.update_all(set: [last_message_at: now, updated_at: now])
-
-          # Broadcast so conversation list updates for other members
-          Phoenix.PubSub.broadcast(
-            RaccoonGateway.PubSub,
-            "conversation:#{state.conversation_id}",
-            {:new_message, message}
-          )
-
-        {:error, changeset} ->
-          Logger.error("Failed to save agent response",
+      {1, _} =
+        Repo.insert_all("messages", [
+          %{
+            id: message_id,
             conversation_id: state.conversation_id,
-            error: inspect(changeset.errors)
-          )
-      end
+            sender_id: nil,
+            sender_type: "agent",
+            type: "text",
+            content: %{"text" => text},
+            metadata: %{"agent_id" => state.agent_id},
+            created_at: now
+          }
+        ])
+
+      from(c in "conversations", where: c.id == ^state.conversation_id)
+      |> Repo.update_all(set: [last_message_at: now, updated_at: now])
+
+      Logger.info("Saved agent response",
+        conversation_id: state.conversation_id,
+        message_id: message_id
+      )
     end
   end
 
