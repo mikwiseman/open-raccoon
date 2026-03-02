@@ -180,13 +180,14 @@ defmodule RaccoonAgents.AgentExecutor do
 
     if String.trim(text) != "" do
       now = DateTime.utc_now()
-      message_id = Ecto.UUID.generate()
+      {:ok, message_id_bin} = Ecto.UUID.dump(Ecto.UUID.generate())
+      {:ok, conversation_id_bin} = Ecto.UUID.dump(state.conversation_id)
 
       {1, _} =
         Repo.insert_all("messages", [
           %{
-            id: message_id,
-            conversation_id: state.conversation_id,
+            id: message_id_bin,
+            conversation_id: conversation_id_bin,
             sender_id: nil,
             sender_type: "agent",
             type: "text",
@@ -196,12 +197,11 @@ defmodule RaccoonAgents.AgentExecutor do
           }
         ])
 
-      from(c in "conversations", where: c.id == ^state.conversation_id)
+      from(c in "conversations", where: c.id == ^conversation_id_bin)
       |> Repo.update_all(set: [last_message_at: now, updated_at: now])
 
-      Logger.info("Saved agent response",
-        conversation_id: state.conversation_id,
-        message_id: message_id
+      Logger.info("[exec] Saved agent response",
+        conversation_id: state.conversation_id
       )
     end
   end
