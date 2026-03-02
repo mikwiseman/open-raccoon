@@ -19,7 +19,6 @@ defmodule RaccoonAgents.GRPCClient do
   }
 
   @default_addr "localhost:50051"
-  @connect_timeout 5_000
 
   @doc """
   Connect to the agent sidecar and return a gRPC channel.
@@ -27,7 +26,7 @@ defmodule RaccoonAgents.GRPCClient do
   @spec connect() :: {:ok, GRPC.Channel.t()} | {:error, term()}
   def connect do
     addr = System.get_env("AGENT_SIDECAR_ADDR", @default_addr)
-    GRPC.Stub.connect(addr, timeout: @connect_timeout)
+    GRPC.Stub.connect(addr)
   end
 
   @doc """
