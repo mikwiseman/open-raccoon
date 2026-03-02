@@ -72,6 +72,10 @@ defmodule RaccoonAgents.AgentExecutor do
     with :ok <- check_agent_visibility(state.agent_id, state.user_id),
          # 2. Check cost limit before execution
          :ok <- CostTracker.check_limit(state.user_id) do
+      Logger.info("[exec] Passed checks, connecting to gRPC",
+        conversation_id: state.conversation_id
+      )
+
       broadcast(topic, "status", %{
         message: "connecting to agent runtime...",
         category: "thinking"
@@ -93,17 +97,24 @@ defmodule RaccoonAgents.AgentExecutor do
         user_api_key: Map.get(config, :user_api_key, Map.get(config, "user_api_key", ""))
       }
 
+      Logger.info("[exec] Calling GRPCClient.execute_agent",
+        conversation_id: state.conversation_id
+      )
+
       case GRPCClient.execute_agent(request_params) do
         {:ok, event_stream, channel} ->
+          Logger.info("[exec] Got stream, consuming events",
+            conversation_id: state.conversation_id
+          )
+
           case consume_stream(event_stream, topic, state, channel) do
             :ok -> GRPC.Stub.disconnect(channel)
             :timed_out -> :ok
           end
 
         {:error, reason} ->
-          Logger.error("gRPC connection failed",
-            conversation_id: state.conversation_id,
-            error: inspect(reason)
+          Logger.error("[exec] gRPC execute_agent failed: #{inspect(reason)}",
+            conversation_id: state.conversation_id
           )
 
           broadcast(topic, "error", %{
