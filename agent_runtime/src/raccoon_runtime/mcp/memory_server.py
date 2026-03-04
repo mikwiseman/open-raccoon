@@ -7,7 +7,6 @@ Run via: python -m raccoon_runtime.mcp.memory_server
 import asyncio
 import json
 import os
-import sys
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server

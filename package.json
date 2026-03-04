@@ -1,0 +1,28 @@
+{
+  "name": "open-raccoon",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "dev:api": "pnpm --filter @open-raccoon/api dev",
+    "dev:mcp-memory": "pnpm --filter @open-raccoon/mcp-memory dev",
+    "dev:mcp-web-search": "pnpm --filter @open-raccoon/mcp-web-search dev",
+    "dev:mcp-pr-tools": "pnpm --filter @open-raccoon/mcp-pr-tools dev",
+    "dev:mcp-agent-comm": "pnpm --filter @open-raccoon/mcp-agent-comm dev",
+    "dev:web": "pnpm --filter open-raccoon-web dev"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "argon2",
+      "esbuild",
+      "msgpackr-extract",
+      "msw"
+    ]
+  }
+}

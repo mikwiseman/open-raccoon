@@ -36,3 +36,11 @@ class Settings(BaseSettings):
     metrics_port: int = 9090
 
     model_config = {"env_prefix": "RACCOON_"}
+
+    def validate_api_keys(self) -> None:
+        """Raise RuntimeError if required API keys are missing."""
+        if not self.anthropic_api_key:
+            raise RuntimeError(
+                "RACCOON_ANTHROPIC_API_KEY is not set. "
+                "The agent runtime cannot start without a valid Anthropic API key."
+            )

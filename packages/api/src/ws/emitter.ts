@@ -1,0 +1,56 @@
+import type { Server as SocketIOServer } from 'socket.io';
+import type { AgentEvent } from '@open-raccoon/shared';
+
+let io: SocketIOServer | null = null;
+
+export function setIO(server: SocketIOServer): void {
+  io = server;
+}
+
+export function emitAgentEvent(conversationId: string, event: AgentEvent): void {
+  if (!io) throw new Error('Socket.IO not initialized');
+  io.to(`agent:${conversationId}`).emit('agent:event', event);
+}
+
+export function emitMessage(conversationId: string, message: unknown): void {
+  if (!io) throw new Error('Socket.IO not initialized');
+  io.to(`conversation:${conversationId}`).emit('message:new', message);
+}
+
+export function emitMessageUpdated(conversationId: string, message: unknown): void {
+  if (!io) throw new Error('Socket.IO not initialized');
+  io.to(`conversation:${conversationId}`).emit('message:updated', message);
+}
+
+export function emitMessageDeleted(conversationId: string, messageId: string): void {
+  if (!io) throw new Error('Socket.IO not initialized');
+  io.to(`conversation:${conversationId}`).emit('message:deleted', { id: messageId });
+}
+
+export function emitNotification(userId: string, notification: unknown): void {
+  if (!io) throw new Error('Socket.IO not initialized');
+  io.to(`user:${userId}`).emit('notification', notification);
+}
+
+export function emitConversationUpdated(userId: string, conversation: unknown): void {
+  if (!io) throw new Error('Socket.IO not initialized');
+  io.to(`user:${userId}`).emit('conversation:updated', conversation);
+}
+
+export function emitA2AEvent(conversationId: string, event: {
+  type: 'a2a_call_start' | 'a2a_call_end';
+  caller_agent_id: string;
+  callee_agent_id: string;
+  callee_name?: string;
+  task_summary?: string;
+  status?: string;
+  duration_ms?: number;
+}): void {
+  if (!io) throw new Error('Socket.IO not initialized');
+  io.to(`agent:${conversationId}`).emit('a2a:event', event);
+}
+
+export function emitFeedbackEvent(conversationId: string, event: unknown): void {
+  if (!io) throw new Error('Socket.IO not initialized');
+  io.to(`conversation:${conversationId}`).emit('feedback:event', event);
+}

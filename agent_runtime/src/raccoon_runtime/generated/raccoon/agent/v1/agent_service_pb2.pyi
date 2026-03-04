@@ -155,14 +155,84 @@ class CompleteEvent(_message.Message):
     stop_reason: str
     def __init__(self, input_tokens: _Optional[int] = ..., output_tokens: _Optional[int] = ..., model: _Optional[str] = ..., stop_reason: _Optional[str] = ...) -> None: ...
 
+class ApprovalDecision(_message.Message):
+    __slots__ = ("conversation_id", "request_id", "approved", "scope")
+    CONVERSATION_ID_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_ID_FIELD_NUMBER: _ClassVar[int]
+    APPROVED_FIELD_NUMBER: _ClassVar[int]
+    SCOPE_FIELD_NUMBER: _ClassVar[int]
+    conversation_id: str
+    request_id: str
+    approved: bool
+    scope: str
+    def __init__(self, conversation_id: _Optional[str] = ..., request_id: _Optional[str] = ..., approved: bool = ..., scope: _Optional[str] = ...) -> None: ...
+
+class ApprovalAck(_message.Message):
+    __slots__ = ("accepted", "error")
+    ACCEPTED_FIELD_NUMBER: _ClassVar[int]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    accepted: bool
+    error: str
+    def __init__(self, accepted: bool = ..., error: _Optional[str] = ...) -> None: ...
+
+class HealthCheckRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class HealthCheckResponse(_message.Message):
+    __slots__ = ("status", "version", "active_executions", "anthropic_key_set", "openai_key_set")
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    VERSION_FIELD_NUMBER: _ClassVar[int]
+    ACTIVE_EXECUTIONS_FIELD_NUMBER: _ClassVar[int]
+    ANTHROPIC_KEY_SET_FIELD_NUMBER: _ClassVar[int]
+    OPENAI_KEY_SET_FIELD_NUMBER: _ClassVar[int]
+    status: str
+    version: str
+    active_executions: int
+    anthropic_key_set: bool
+    openai_key_set: bool
+    def __init__(self, status: _Optional[str] = ..., version: _Optional[str] = ..., active_executions: _Optional[int] = ..., anthropic_key_set: bool = ..., openai_key_set: bool = ...) -> None: ...
+
 class AgentConfigRequest(_message.Message):
     __slots__ = ("agent_id",)
     AGENT_ID_FIELD_NUMBER: _ClassVar[int]
     agent_id: str
     def __init__(self, agent_id: _Optional[str] = ...) -> None: ...
 
+class MCPServerConfig(_message.Message):
+    __slots__ = ("name", "transport", "command", "args", "url", "env", "headers")
+    class EnvEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: str
+        value: str
+        def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
+    class HeadersEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: str
+        value: str
+        def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    TRANSPORT_FIELD_NUMBER: _ClassVar[int]
+    COMMAND_FIELD_NUMBER: _ClassVar[int]
+    ARGS_FIELD_NUMBER: _ClassVar[int]
+    URL_FIELD_NUMBER: _ClassVar[int]
+    ENV_FIELD_NUMBER: _ClassVar[int]
+    HEADERS_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    transport: str
+    command: str
+    args: _containers.RepeatedScalarFieldContainer[str]
+    url: str
+    env: _containers.ScalarMap[str, str]
+    headers: _containers.ScalarMap[str, str]
+    def __init__(self, name: _Optional[str] = ..., transport: _Optional[str] = ..., command: _Optional[str] = ..., args: _Optional[_Iterable[str]] = ..., url: _Optional[str] = ..., env: _Optional[_Mapping[str, str]] = ..., headers: _Optional[_Mapping[str, str]] = ...) -> None: ...
+
 class AgentConfig(_message.Message):
-    __slots__ = ("agent_id", "system_prompt", "model", "temperature", "max_tokens", "tools", "visibility")
+    __slots__ = ("agent_id", "system_prompt", "model", "temperature", "max_tokens", "tools", "visibility", "execution_mode", "mcp_servers")
     AGENT_ID_FIELD_NUMBER: _ClassVar[int]
     SYSTEM_PROMPT_FIELD_NUMBER: _ClassVar[int]
     MODEL_FIELD_NUMBER: _ClassVar[int]
@@ -170,6 +240,8 @@ class AgentConfig(_message.Message):
     MAX_TOKENS_FIELD_NUMBER: _ClassVar[int]
     TOOLS_FIELD_NUMBER: _ClassVar[int]
     VISIBILITY_FIELD_NUMBER: _ClassVar[int]
+    EXECUTION_MODE_FIELD_NUMBER: _ClassVar[int]
+    MCP_SERVERS_FIELD_NUMBER: _ClassVar[int]
     agent_id: str
     system_prompt: str
     model: str
@@ -177,7 +249,9 @@ class AgentConfig(_message.Message):
     max_tokens: int
     tools: _containers.RepeatedCompositeFieldContainer[ToolConfig]
     visibility: str
-    def __init__(self, agent_id: _Optional[str] = ..., system_prompt: _Optional[str] = ..., model: _Optional[str] = ..., temperature: _Optional[float] = ..., max_tokens: _Optional[int] = ..., tools: _Optional[_Iterable[_Union[ToolConfig, _Mapping]]] = ..., visibility: _Optional[str] = ...) -> None: ...
+    execution_mode: str
+    mcp_servers: _containers.RepeatedCompositeFieldContainer[MCPServerConfig]
+    def __init__(self, agent_id: _Optional[str] = ..., system_prompt: _Optional[str] = ..., model: _Optional[str] = ..., temperature: _Optional[float] = ..., max_tokens: _Optional[int] = ..., tools: _Optional[_Iterable[_Union[ToolConfig, _Mapping]]] = ..., visibility: _Optional[str] = ..., execution_mode: _Optional[str] = ..., mcp_servers: _Optional[_Iterable[_Union[MCPServerConfig, _Mapping]]] = ...) -> None: ...
 
 class ToolConfig(_message.Message):
     __slots__ = ("name", "description", "input_schema", "requires_approval")

@@ -138,7 +138,10 @@ class RawRunner(BaseAgentRunner):
                     if event["type"] == "token":
                         text = event["text"]
 
-                        # Detect code blocks in streaming text
+                        # Detect code blocks in streaming text.
+                        # Only buffer text when looking for a triple-backtick boundary;
+                        # reset the buffer after each successful detection to prevent
+                        # unbounded growth.
                         code_buffer += text
                         if "```" in code_buffer and not in_code_block:
                             parts = code_buffer.split("```", 1)
@@ -163,6 +166,11 @@ class RawRunner(BaseAgentRunner):
                             )
                             in_code_block = False
                             code_buffer = remaining
+                        elif not in_code_block:
+                            # Not inside a code block and no backtick found yet.
+                            # Keep only the last 3 chars (enough to detect a split ```)
+                            # to prevent unbounded buffer growth.
+                            code_buffer = code_buffer[-3:]
 
                         yield AgentEvent(type="token", data={"text": text})
 

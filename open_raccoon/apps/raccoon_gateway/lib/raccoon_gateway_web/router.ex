@@ -65,6 +65,8 @@ defmodule RaccoonGatewayWeb.Router do
 
     # Agents
     get "/agents", AgentController, :index
+    get "/agents/templates", AgentController, :templates
+    post "/agents/templates/:template_id", AgentController, :create_from_template
     post "/agents", AgentController, :create
     get "/agents/:id", AgentController, :show
     patch "/agents/:id", AgentController, :update

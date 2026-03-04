@@ -54,47 +54,53 @@ defmodule RaccoonGatewayWeb.ConversationController do
   def show(conn, %{"id" => id}) do
     user_id = conn.assigns.user_id
 
-    case RaccoonChat.get_conversation(id) do
-      nil ->
-        {:error, :not_found}
+    with {:ok, id} <- validate_uuid(id) do
+      case RaccoonChat.get_conversation(id) do
+        nil ->
+          {:error, :not_found}
 
-      conversation ->
-        with :ok <- ensure_member(id, user_id) do
-          json(conn, %{conversation: conversation_json(conversation)})
-        end
+        conversation ->
+          with :ok <- ensure_member(id, user_id) do
+            json(conn, %{conversation: conversation_json(conversation)})
+          end
+      end
     end
   end
 
   def update(conn, %{"id" => id} = params) do
     user_id = conn.assigns.user_id
 
-    case RaccoonChat.get_conversation(id) do
-      nil ->
-        {:error, :not_found}
+    with {:ok, id} <- validate_uuid(id) do
+      case RaccoonChat.get_conversation(id) do
+        nil ->
+          {:error, :not_found}
 
-      conversation ->
-        allowed_keys = ["title", "avatar_url", "metadata"]
-        update_params = Map.take(params, allowed_keys)
+        conversation ->
+          allowed_keys = ["title", "avatar_url", "metadata"]
+          update_params = Map.take(params, allowed_keys)
 
-        with :ok <- ensure_moderator(id, user_id),
-             {:ok, updated} <- RaccoonChat.update_conversation(conversation, update_params) do
-          json(conn, %{conversation: conversation_json(updated)})
-        end
+          with :ok <- ensure_moderator(id, user_id),
+               {:ok, updated} <- RaccoonChat.update_conversation(conversation, update_params) do
+            json(conn, %{conversation: conversation_json(updated)})
+          end
+      end
     end
   end
 
   def delete(conn, %{"id" => id}) do
     user_id = conn.assigns.user_id
 
-    case RaccoonChat.get_conversation(id) do
-      nil ->
-        {:error, :not_found}
+    with {:ok, id} <- validate_uuid(id) do
+      case RaccoonChat.get_conversation(id) do
+        nil ->
+          {:error, :not_found}
 
-      conversation ->
-        with :ok <- ensure_moderator(id, user_id),
-             {:ok, _} <- RaccoonChat.delete_conversation(conversation) do
-          send_resp(conn, :no_content, "")
-        end
+        conversation ->
+          with :ok <- ensure_moderator(id, user_id),
+               {:ok, _} <- RaccoonChat.delete_conversation_with_messages(conversation) do
+            send_resp(conn, :no_content, "")
+          end
+      end
     end
   end
 
@@ -170,6 +176,13 @@ defmodule RaccoonGatewayWeb.ConversationController do
       :dm -> :dm
       "dm" -> :dm
       _ -> :other
+    end
+  end
+
+  defp validate_uuid(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> {:ok, uuid}
+      :error -> {:error, :not_found}
     end
   end
 

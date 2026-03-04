@@ -214,7 +214,7 @@ public struct AgentChatView: View {
             guard isAgentStreaming else { return }
             streamingResetTask?.cancel()
             streamingResetTask = Task {
-                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
                 guard !Task.isCancelled else { return }
                 isAgentStreaming = false
                 agentStatus = ""
@@ -222,6 +222,10 @@ public struct AgentChatView: View {
         }
         .task {
             guard let currentUserID = appState.currentUserID else { return }
+            // Register handlers FIRST to avoid missing early events
+            subscribeToAgentEvents()
+            appState.webSocketClient?.joinAgentChannel(conversationID: conversationID)
+
             if viewModel == nil {
                 let vm = ConversationDetailViewModel(
                     conversationID: conversationID,
@@ -230,13 +234,9 @@ public struct AgentChatView: View {
                     webSocketClient: appState.webSocketClient
                 )
                 viewModel = vm
-                await vm.loadMessages()
                 vm.subscribeToChannel()
+                await vm.loadMessages()
             }
-
-            // Join agent channel for streaming events
-            subscribeToAgentEvents()
-            appState.webSocketClient?.joinAgentChannel(conversationID: conversationID)
         }
         .onDisappear {
             viewModel?.unsubscribeFromChannel()
@@ -341,14 +341,12 @@ public struct AgentChatView: View {
         }
 
         ws?.onComplete = { _ in
-            isAgentStreaming = false
-            agentStatus = ""
-            streamingText = ""
-            // Re-fetch messages to pick up the persisted agent response.
-            // The conversation channel should deliver it in real-time, but
-            // this re-fetch acts as a safety net for race conditions.
+            streamingResetTask?.cancel()
             Task {
                 await viewModel?.loadMessages()
+                isAgentStreaming = false
+                agentStatus = ""
+                streamingText = ""
             }
         }
 

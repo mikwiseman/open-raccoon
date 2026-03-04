@@ -47,3 +47,38 @@ class TestRunnerFactory:
         runner = factory.create("claude_sdk", api_key="test-key")
         assert isinstance(runner, ClaudeRunner)
         assert runner.api_key == "test-key"
+
+    def test_auto_detect_claude_model(self, factory):
+        from raccoon_runtime.runners.claude_runner import ClaudeRunner
+
+        runner = factory.create("raw", model="claude-sonnet-4-6")
+        assert isinstance(runner, ClaudeRunner)
+
+    def test_auto_detect_claude_opus_model(self, factory):
+        from raccoon_runtime.runners.claude_runner import ClaudeRunner
+
+        runner = factory.create("raw", model="claude-opus-4-6")
+        assert isinstance(runner, ClaudeRunner)
+
+    def test_auto_detect_gpt_model(self, factory):
+        from raccoon_runtime.runners.openai_runner import OpenAIRunner
+
+        runner = factory.create("raw", model="gpt-5.2")
+        assert isinstance(runner, OpenAIRunner)
+
+    def test_auto_detect_o1_model(self, factory):
+        from raccoon_runtime.runners.openai_runner import OpenAIRunner
+
+        runner = factory.create("raw", model="o1-preview")
+        assert isinstance(runner, OpenAIRunner)
+
+    def test_auto_detect_unknown_model_raises(self, factory):
+        with pytest.raises(ValueError, match="Cannot auto-detect"):
+            factory.create("raw", model="llama-3.1-70b")
+
+    def test_explicit_mode_overrides_auto_detect(self, factory):
+        from raccoon_runtime.runners.claude_runner import ClaudeRunner
+
+        # Even with gpt model name, explicit claude_sdk mode wins
+        runner = factory.create("claude_sdk", model="gpt-5.2")
+        assert isinstance(runner, ClaudeRunner)

@@ -22,6 +22,12 @@ async def serve(settings: Settings) -> None:
         ],
     )
 
+    settings.validate_api_keys()
+    logger.info(
+        "config_validated",
+        anthropic_key_set=bool(settings.anthropic_api_key),
+    )
+
     # Instantiate service implementations
     agent_service = AgentServiceServicer(settings)
     sandbox_service = SandboxServiceServicer(settings)

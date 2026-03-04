@@ -105,23 +105,25 @@ class MCPServerManager:
         )
 
     async def disconnect_all(self) -> None:
-        """Disconnect from all MCP servers."""
-        for name, session in self._sessions.items():
-            try:
-                await session.__aexit__(None, None, None)
-                logger.info("mcp_disconnected", server=name)
-            except Exception as e:
-                logger.warning("mcp_disconnect_error", server=name, error=str(e))
+        """Disconnect from all MCP servers.
 
+        Closes transport context managers which tears down the underlying
+        stdio/SSE connections. Sessions are not entered as context managers
+        (only .initialize() is called), so we don't call __aexit__ on them.
+        """
         for transport_ctx in self._transports:
             try:
                 await transport_ctx.__aexit__(None, None, None)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("mcp_transport_close_error", error=str(e))
 
+        names = list(self._sessions.keys())
         self._sessions.clear()
         self._tools.clear()
         self._transports.clear()
+
+        for name in names:
+            logger.info("mcp_disconnected", server=name)
 
     @property
     def connected_servers(self) -> list[str]:

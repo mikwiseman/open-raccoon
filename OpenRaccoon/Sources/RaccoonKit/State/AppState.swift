@@ -11,6 +11,8 @@ public final class AppState {
     public var selectedMarketplaceAgent: Agent?
     public var isWorkspaceOpen: Bool = false
     public var connectionState: WebSocketClient.ConnectionState = .disconnected
+    public var feedViewModel: FeedViewModel?
+    public var marketplaceViewModel: MarketplaceViewModel?
 
     public let conversationStore: ConversationStore
     public let messageStore: MessageStore
@@ -67,6 +69,8 @@ public final class AppState {
         disconnectWebSocket()
         currentUser = nil
         selectedConversationID = nil
+        feedViewModel = nil
+        marketplaceViewModel = nil
         try? await authStore.logout()
     }
 

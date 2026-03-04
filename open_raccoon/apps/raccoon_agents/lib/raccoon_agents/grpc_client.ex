@@ -15,6 +15,7 @@ defmodule RaccoonAgents.GRPCClient do
     Message,
     AgentService,
     ApprovalDecision,
+    HealthCheckRequest,
     MCPServerConfig
   }
 
@@ -89,6 +90,37 @@ defmodule RaccoonAgents.GRPCClient do
         result = AgentService.Stub.submit_approval(channel, request)
         GRPC.Stub.disconnect(channel)
         result
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Check health of the Python agent sidecar.
+
+  Returns `{:ok, %{status, version, active_executions, ...}}` or `{:error, reason}`.
+  """
+  def check_health do
+    case connect() do
+      {:ok, channel} ->
+        result = AgentService.Stub.check_health(channel, %HealthCheckRequest{})
+        GRPC.Stub.disconnect(channel)
+
+        case result do
+          {:ok, response} ->
+            {:ok,
+             %{
+               status: response.status,
+               version: response.version,
+               active_executions: response.active_executions,
+               anthropic_key_set: response.anthropic_key_set,
+               openai_key_set: response.openai_key_set
+             }}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
 
       {:error, reason} ->
         {:error, reason}

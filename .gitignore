@@ -36,6 +36,23 @@ Thumbs.db
 *.swp
 *.swo
 
+# TypeScript / Node.js
+node_modules/
+dist/
+*.tsbuildinfo
+.turbo/
+coverage/
+
+# Next.js
+.next/
+
+# pnpm
+.pnpm-store/
+
+# Playwright MCP
+.playwright-mcp/
+
 # Environment
 .env
 .env.local
+.env.production

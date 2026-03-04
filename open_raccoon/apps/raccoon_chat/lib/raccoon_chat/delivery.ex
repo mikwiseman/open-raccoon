@@ -121,8 +121,6 @@ defmodule RaccoonChat.Delivery do
 
     config =
       if agent do
-        agent_metadata = agent.metadata || %{}
-
         %{
           agent_id: agent_id,
           system_prompt: agent.system_prompt,
@@ -130,7 +128,7 @@ defmodule RaccoonChat.Delivery do
           temperature: agent.temperature,
           max_tokens: agent.max_tokens,
           visibility: to_string(agent.visibility),
-          user_api_key: Map.get(agent_metadata, "user_api_key", "")
+          user_api_key: ""
         }
       else
         %{agent_id: agent_id}

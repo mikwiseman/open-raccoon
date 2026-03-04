@@ -6,6 +6,7 @@ Deadline policy: 60s per turn (configurable by deployment).
 """
 
 import asyncio
+import sys
 from typing import Any
 
 import grpc
@@ -18,6 +19,72 @@ from raccoon_runtime.runners.base_runner import AgentEvent, BaseAgentRunner
 from raccoon_runtime.runners.runner_factory import RunnerFactory
 
 logger = structlog.get_logger()
+
+# Built-in MCP server definitions keyed by capability name.
+# Agents can reference these by name (e.g., {"name": "memory"}) and
+# the service auto-fills the command/args for stdio transport.
+BUILTIN_MCP_SERVERS: dict[str, dict[str, Any]] = {
+    "memory": {
+        "name": "memory",
+        "transport": "stdio",
+        "command": sys.executable,
+        "args": ["-m", "raccoon_runtime.mcp.memory_server"],
+        "env": {},
+    },
+    "web_search": {
+        "name": "web_search",
+        "transport": "stdio",
+        "command": sys.executable,
+        "args": ["-m", "raccoon_runtime.mcp.web_search_server"],
+        "env": {},
+    },
+    "code_exec": {
+        "name": "code_exec",
+        "transport": "stdio",
+        "command": sys.executable,
+        "args": ["-m", "raccoon_runtime.mcp.code_exec_server"],
+        "env": {},
+    },
+    "filesystem": {
+        "name": "filesystem",
+        "transport": "stdio",
+        "command": sys.executable,
+        "args": ["-m", "raccoon_runtime.mcp.filesystem_server"],
+        "env": {},
+    },
+}
+
+
+def _resolve_builtin_mcp(
+    mcp_configs: list[dict[str, Any]],
+    conversation_id: str,
+    agent_id: str,
+    user_id: str,
+) -> list[dict[str, Any]]:
+    """Resolve built-in MCP server names to full configs.
+
+    If a config has a name matching a built-in but no command, fill in
+    the command/args from the registry. Injects context env vars.
+    """
+    resolved = []
+    for cfg in mcp_configs:
+        name = cfg.get("name", "")
+        # If this is a built-in name and has no command set, auto-fill
+        if name in BUILTIN_MCP_SERVERS and not cfg.get("command"):
+            builtin = BUILTIN_MCP_SERVERS[name].copy()
+            # Inject context env vars for built-in servers
+            builtin["env"] = {
+                "RACCOON_AGENT_ID": agent_id,
+                "RACCOON_USER_ID": user_id,
+                "RACCOON_CONVERSATION_ID": conversation_id,
+            }
+            # Merge any extra env from the user config
+            builtin["env"].update(cfg.get("env", {}))
+            resolved.append(builtin)
+            logger.info("resolved_builtin_mcp", name=name)
+        else:
+            resolved.append(cfg)
+    return resolved
 
 
 def _dict_to_struct(d: dict[str, Any]) -> struct_pb2.Struct:
@@ -140,8 +207,9 @@ class AgentServiceServicer:
         # Determine execution mode
         mode = config.execution_mode or "raw"
 
-        # Create runner
-        runner = self.factory.create(mode, user_api_key or None)
+        # Create runner (pass model for auto-detection when mode is "raw")
+        model = config.model or self.settings.default_model
+        runner = self.factory.create(mode, user_api_key or None, model=model)
         async with self._runners_lock:
             self._active_runners[conversation_id] = runner
 
@@ -187,6 +255,14 @@ class AgentServiceServicer:
                 for s in config.mcp_servers
             ]
 
+            # Resolve built-in MCP servers (e.g., {"name": "memory"} → full config)
+            mcp_configs = _resolve_builtin_mcp(
+                mcp_configs,
+                conversation_id=conversation_id,
+                agent_id=agent_id,
+                user_id="",  # user_id not in proto; context env is best-effort
+            )
+
             # Stream events from runner
             async for event in runner.execute(
                 messages=msg_dicts,
@@ -223,6 +299,23 @@ class AgentServiceServicer:
             return pb2.ApprovalAck(accepted=True)
         except ValueError as e:
             return pb2.ApprovalAck(accepted=False, error=str(e))
+
+    async def CheckHealth(  # noqa: N802
+        self,
+        request: pb2.HealthCheckRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> pb2.HealthCheckResponse:
+        """Return health status of the agent runtime."""
+        async with self._runners_lock:
+            active_count = len(self._active_runners)
+
+        return pb2.HealthCheckResponse(
+            status="serving",
+            version="0.1.0",
+            active_executions=active_count,
+            anthropic_key_set=bool(self.settings.anthropic_api_key),
+            openai_key_set=bool(self.settings.openai_api_key),
+        )
 
     async def GetAgentConfig(  # noqa: N802
         self,

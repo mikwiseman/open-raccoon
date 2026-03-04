@@ -157,6 +157,45 @@ defmodule RaccoonGatewayWeb.AgentController do
     end
   end
 
+  def templates(conn, _params) do
+    templates = RaccoonAgents.AgentTemplates.list_templates()
+    json(conn, %{items: templates})
+  end
+
+  def create_from_template(conn, %{"template_id" => template_id}) do
+    user_id = conn.assigns.user_id
+
+    case RaccoonAgents.AgentTemplates.get_template(template_id) do
+      nil ->
+        {:error, :not_found}
+
+      template ->
+        slug = "#{template.id}-#{:crypto.strong_rand_bytes(4) |> Base.hex_encode32(case: :lower, padding: false) |> binary_part(0, 8)}"
+
+        attrs = %{
+          "creator_id" => user_id,
+          "name" => template.name,
+          "slug" => slug,
+          "description" => template.description,
+          "system_prompt" => template.system_prompt,
+          "model" => template.model,
+          "temperature" => template.temperature,
+          "max_tokens" => template.max_tokens,
+          "category" => template.category,
+          "mcp_servers" => template.mcp_servers,
+          "tools" => template.tools,
+          "visibility" => "private",
+          "metadata" => %{"template_id" => template.id}
+        }
+
+        with {:ok, agent} <- RaccoonAgents.create_agent(attrs) do
+          conn
+          |> put_status(:created)
+          |> json(%{agent: agent_json(agent)})
+        end
+    end
+  end
+
   defp validate_uuid(id) do
     case Ecto.UUID.cast(id) do
       {:ok, uuid} -> {:ok, uuid}

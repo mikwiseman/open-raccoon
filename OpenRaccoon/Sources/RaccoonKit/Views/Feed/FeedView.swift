@@ -5,7 +5,6 @@ import SwiftUI
 /// Pill-style tab selection indicator, pull to refresh, infinite scroll.
 public struct FeedView: View {
     @Environment(AppState.self) private var appState
-    @State private var viewModel: FeedViewModel?
     @State private var selectedTab: FeedViewModel.FeedTab = .forYou
 
     @Environment(\.colorScheme) private var colorScheme
@@ -18,7 +17,7 @@ public struct FeedView: View {
             tabBar
 
             // Content
-            if let vm = viewModel {
+            if let vm = appState.feedViewModel {
                 if vm.isLoading && vm.feedItems.isEmpty {
                     LoadingView()
                         .frame(maxHeight: .infinity)
@@ -43,9 +42,9 @@ public struct FeedView: View {
         }
         .background(bgPrimary)
         .task {
-            if viewModel == nil {
+            if appState.feedViewModel == nil {
                 let vm = FeedViewModel(apiClient: appState.apiClient)
-                viewModel = vm
+                appState.feedViewModel = vm
                 await vm.loadFeed(tab: selectedTab)
             }
         }
@@ -60,7 +59,7 @@ public struct FeedView: View {
                             selectedTab = tab
                         }
                         Task {
-                            await viewModel?.loadFeed(tab: tab)
+                            await appState.feedViewModel?.loadFeed(tab: tab)
                         }
                     } label: {
                         Text(tab.rawValue)

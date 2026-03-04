@@ -23,6 +23,9 @@ service AgentService {
 
   // SubmitApproval sends an approval decision to a running execution.
   rpc SubmitApproval (ApprovalDecision) returns (ApprovalAck);
+
+  // CheckHealth returns the health status of the agent runtime.
+  rpc CheckHealth (HealthCheckRequest) returns (HealthCheckResponse);
 }
 
 // SandboxService manages E2B sandbox lifecycle and code execution.
@@ -153,6 +156,20 @@ message ApprovalDecision {
 message ApprovalAck {
   bool accepted = 1;
   string error = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Health check
+// ---------------------------------------------------------------------------
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;          // "serving", "not_serving"
+  string version = 2;         // Runtime version string
+  int32 active_executions = 3; // Number of currently running agent executions
+  bool anthropic_key_set = 4; // Whether Anthropic API key is configured
+  bool openai_key_set = 5;    // Whether OpenAI API key is configured
 }
 
 // ---------------------------------------------------------------------------

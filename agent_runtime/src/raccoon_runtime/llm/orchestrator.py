@@ -37,8 +37,7 @@ class LLMOrchestrator:
             raise ValueError("No active runner")
         import asyncio
 
-        loop = asyncio.get_event_loop()
-        loop.create_task(self._runner.submit_approval(request_id, approved, scope))
+        asyncio.create_task(self._runner.submit_approval(request_id, approved, scope))
 
     async def execute(
         self,

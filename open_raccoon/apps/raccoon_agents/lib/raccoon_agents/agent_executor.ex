@@ -27,7 +27,7 @@ defmodule RaccoonAgents.AgentExecutor do
 
   defstruct [:conversation_id, :agent_id, :user_id, :channel_pid]
 
-  @stream_timeout 120_000
+  @stream_timeout 65_000
 
   # -- Public API ------------------------------------------------------------
 

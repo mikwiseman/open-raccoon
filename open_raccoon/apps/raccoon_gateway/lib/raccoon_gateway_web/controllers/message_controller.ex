@@ -11,7 +11,8 @@ defmodule RaccoonGatewayWeb.MessageController do
     user_id = conn.assigns.user_id
     {cursor, limit} = Pagination.parse_params(params)
 
-    with :ok <- ensure_member(conversation_id, user_id) do
+    with {:ok, conversation_id} <- validate_uuid(conversation_id),
+         :ok <- ensure_member(conversation_id, user_id) do
       messages = RaccoonChat.get_messages(conversation_id, limit: limit, cursor: cursor)
       {items, page_info} = Pagination.build_page_info(messages, limit)
 
@@ -32,7 +33,8 @@ defmodule RaccoonGatewayWeb.MessageController do
       "metadata" => params["metadata"] || %{}
     }
 
-    with :ok <- ensure_member(conversation_id, user_id),
+    with {:ok, conversation_id} <- validate_uuid(conversation_id),
+         :ok <- ensure_member(conversation_id, user_id),
          {:ok, message} <- RaccoonChat.send_message(conversation_id, user_id, message_params) do
       # Store idempotency result
       if idempotency_key = conn.assigns[:idempotency_key] do
@@ -56,7 +58,9 @@ defmodule RaccoonGatewayWeb.MessageController do
   def update(conn, %{"conversation_id" => conversation_id, "id" => message_id} = params) do
     user_id = conn.assigns.user_id
 
-    with :ok <- ensure_member(conversation_id, user_id),
+    with {:ok, conversation_id} <- validate_uuid(conversation_id),
+         {:ok, message_id} <- validate_uuid(message_id),
+         :ok <- ensure_member(conversation_id, user_id),
          {:ok, message} <- fetch_conversation_message(conversation_id, message_id),
          :ok <- ensure_sender(message, user_id),
          {:ok, updated} <-
@@ -80,7 +84,9 @@ defmodule RaccoonGatewayWeb.MessageController do
   def delete(conn, %{"conversation_id" => conversation_id, "id" => message_id}) do
     user_id = conn.assigns.user_id
 
-    with :ok <- ensure_member(conversation_id, user_id),
+    with {:ok, conversation_id} <- validate_uuid(conversation_id),
+         {:ok, message_id} <- validate_uuid(message_id),
+         :ok <- ensure_member(conversation_id, user_id),
          {:ok, message} <- fetch_conversation_message(conversation_id, message_id),
          :ok <- ensure_sender_or_admin(message, conversation_id, user_id),
          {:ok, deleted} <- RaccoonChat.soft_delete_message(message) do
@@ -137,6 +143,13 @@ defmodule RaccoonGatewayWeb.MessageController do
     case RaccoonChat.get_message_in_conversation(conversation_id, message_id) do
       nil -> {:error, :not_found}
       message -> {:ok, message}
+    end
+  end
+
+  defp validate_uuid(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> {:ok, uuid}
+      :error -> {:error, :not_found}
     end
   end
 end

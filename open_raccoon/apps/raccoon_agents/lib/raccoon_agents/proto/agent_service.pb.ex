@@ -348,6 +348,22 @@ defmodule Raccoon.Agent.V1.DestroySandboxRequest do
   field(:sandbox_id, 1, type: :string, json_name: "sandboxId")
 end
 
+defmodule Raccoon.Agent.V1.HealthCheckRequest do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.13.0", syntax: :proto3
+end
+
+defmodule Raccoon.Agent.V1.HealthCheckResponse do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.13.0", syntax: :proto3
+
+  field(:status, 1, type: :string)
+  field(:version, 2, type: :string)
+  field(:active_executions, 3, type: :int32, json_name: "activeExecutions")
+  field(:anthropic_key_set, 4, type: :bool, json_name: "anthropicKeySet")
+  field(:openai_key_set, 5, type: :bool, json_name: "openaiKeySet")
+end
+
 defmodule Raccoon.Agent.V1.AgentService.Service do
   @moduledoc false
   use GRPC.Service, name: "raccoon.agent.v1.AgentService"
@@ -365,6 +381,12 @@ defmodule Raccoon.Agent.V1.AgentService.Service do
     :SubmitApproval,
     Raccoon.Agent.V1.ApprovalDecision,
     Raccoon.Agent.V1.ApprovalAck
+  )
+
+  rpc(
+    :CheckHealth,
+    Raccoon.Agent.V1.HealthCheckRequest,
+    Raccoon.Agent.V1.HealthCheckResponse
   )
 end
 

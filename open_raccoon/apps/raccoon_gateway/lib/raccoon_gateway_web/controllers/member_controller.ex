@@ -11,7 +11,8 @@ defmodule RaccoonGatewayWeb.MemberController do
     user_id = conn.assigns.user_id
     {_cursor, limit} = Pagination.parse_params(params)
 
-    with :ok <- ensure_member(conversation_id, user_id) do
+    with {:ok, conversation_id} <- validate_uuid(conversation_id),
+         :ok <- ensure_member(conversation_id, user_id) do
       members = RaccoonChat.list_members(conversation_id)
       {items, page_info} = Pagination.build_page_info(Enum.take(members, limit + 1), limit)
 
@@ -41,7 +42,8 @@ defmodule RaccoonGatewayWeb.MemberController do
         joined_at: DateTime.utc_now()
       }
 
-      with :ok <- ensure_moderator(conversation_id, user_id),
+      with {:ok, conversation_id} <- validate_uuid(conversation_id),
+           :ok <- ensure_moderator(conversation_id, user_id),
            {:ok, member} <- RaccoonChat.add_member(attrs) do
         conn
         |> put_status(:created)
@@ -53,7 +55,8 @@ defmodule RaccoonGatewayWeb.MemberController do
   def delete(conn, %{"conversation_id" => conversation_id, "user_id" => user_id}) do
     requester_id = conn.assigns.user_id
 
-    with :ok <- ensure_moderator(conversation_id, requester_id) do
+    with {:ok, conversation_id} <- validate_uuid(conversation_id),
+         :ok <- ensure_moderator(conversation_id, requester_id) do
       {_count, _} = RaccoonChat.remove_member(conversation_id, user_id)
       send_resp(conn, :no_content, "")
     end
@@ -70,6 +73,13 @@ defmodule RaccoonGatewayWeb.MemberController do
     case RaccoonChat.get_membership(conversation_id, user_id) do
       %{role: role} when role in [:owner, :admin] -> :ok
       _ -> {:error, :forbidden}
+    end
+  end
+
+  defp validate_uuid(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> {:ok, uuid}
+      :error -> {:error, :not_found}
     end
   end
 

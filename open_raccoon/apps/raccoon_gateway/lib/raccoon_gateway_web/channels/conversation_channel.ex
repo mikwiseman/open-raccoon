@@ -74,6 +74,11 @@ defmodule RaccoonGatewayWeb.ConversationChannel do
     {:noreply, socket}
   end
 
+  @impl true
+  def handle_info(_msg, socket) do
+    {:noreply, socket}
+  end
+
   # Client sends new message
   @impl true
   def handle_in("new_message", payload, socket) do

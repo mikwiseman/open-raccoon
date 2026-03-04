@@ -4,7 +4,6 @@ import SwiftUI
 /// and grid of agent cards.
 public struct MarketplaceView: View {
     @Environment(AppState.self) private var appState
-    @State private var viewModel: MarketplaceViewModel?
     @State private var searchText = ""
     @State private var selectedCategory: String?
     @State private var searchTask: Task<Void, Never>?
@@ -31,7 +30,7 @@ public struct MarketplaceView: View {
                     searchTask = Task {
                         try? await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
                         guard !Task.isCancelled else { return }
-                        await viewModel?.searchAgents(query: searchText)
+                        await appState.marketplaceViewModel?.searchAgents(query: searchText)
                     }
                 }
 
@@ -39,7 +38,7 @@ public struct MarketplaceView: View {
             categoryPills
 
             // Agent grid
-            if let vm = viewModel {
+            if let vm = appState.marketplaceViewModel {
                 if vm.isLoading && vm.agents.isEmpty {
                     LoadingView()
                         .frame(maxHeight: .infinity)
@@ -97,9 +96,9 @@ public struct MarketplaceView: View {
             #endif
         }
         .task {
-            if viewModel == nil {
+            if appState.marketplaceViewModel == nil {
                 let vm = MarketplaceViewModel(apiClient: appState.apiClient)
-                viewModel = vm
+                appState.marketplaceViewModel = vm
                 await vm.loadAgents()
             }
         }
@@ -262,7 +261,7 @@ public struct MarketplaceView: View {
     }
 
     private var filteredAgents: [Agent] {
-        var result = viewModel?.agents ?? []
+        var result = appState.marketplaceViewModel?.agents ?? []
         if let category = selectedCategory {
             result = result.filter { $0.category == category }
         }

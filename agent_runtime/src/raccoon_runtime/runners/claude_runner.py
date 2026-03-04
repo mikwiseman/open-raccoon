@@ -6,6 +6,7 @@ MCP integration, and streaming events.
 
 import asyncio
 from collections.abc import AsyncIterator
+import json
 from typing import Any
 
 import structlog
@@ -132,7 +133,8 @@ class ClaudeRunner(BaseAgentRunner):
 
                     # Stream the response
                     collected_text = ""
-                    tool_uses: list[dict[str, Any]] = []
+                    tool_use_blocks: dict[str, dict[str, Any]] = {}
+                    emitted_tool_ids: set[str] = set()
 
                     async with client.messages.stream(**kwargs) as stream:
                         async for event in stream:
@@ -144,13 +146,46 @@ class ClaudeRunner(BaseAgentRunner):
                                 return
 
                             if hasattr(event, "type"):
-                                if event.type == "content_block_delta":
+                                if event.type == "content_block_start":
+                                    if hasattr(event.content_block, "type") and event.content_block.type == "tool_use":
+                                        tool_id = event.content_block.id
+                                        tool_name = event.content_block.name
+                                        tool_use_blocks[tool_id] = {
+                                            "id": tool_id,
+                                            "name": tool_name,
+                                            "input_json": "",
+                                        }
+                                        yield AgentEvent(
+                                            type="status",
+                                            data={"message": f"Using tool: {tool_name}", "category": "tool_use"},
+                                        )
+
+                                elif event.type == "content_block_delta":
                                     if hasattr(event.delta, "text"):
                                         yield AgentEvent(type="token", data={"text": event.delta.text})
                                         collected_text += event.delta.text
+                                    elif hasattr(event.delta, "partial_json"):
+                                        if tool_use_blocks:
+                                            last_id = list(tool_use_blocks.keys())[-1]
+                                            tool_use_blocks[last_id]["input_json"] += event.delta.partial_json
 
-                    # Get the final message
-                    response: Message = await stream.get_final_message()
+                                elif event.type == "content_block_stop":
+                                    for tool_id, block in tool_use_blocks.items():
+                                        if tool_id not in emitted_tool_ids:
+                                            raw_json = block["input_json"]
+                                            if raw_json:
+                                                try:
+                                                    json.loads(raw_json)
+                                                except json.JSONDecodeError:
+                                                    logger.error(
+                                                        "malformed_tool_json",
+                                                        tool_id=tool_id,
+                                                        raw_json=raw_json[:200],
+                                                    )
+                                            emitted_tool_ids.add(tool_id)
+
+                        # Get the final message INSIDE the async with block
+                        response: Message = await stream.get_final_message()
 
                     # Process content blocks
                     has_tool_use = False
