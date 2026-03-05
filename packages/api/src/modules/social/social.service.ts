@@ -296,7 +296,7 @@ export async function forkAgent(agentId: string, userId: string) {
 
   const source = agentRows[0] as Record<string, unknown>;
   const newAgentId = randomUUID();
-  const now = new Date();
+  const now = new Date().toISOString();
 
   // Generate a unique slug for the fork
   const baseSlug = `${source['slug']}-fork`;

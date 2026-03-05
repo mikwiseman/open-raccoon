@@ -149,7 +149,7 @@ export async function listConversations(userId: string) {
 
 export async function createConversation(userId: string, input: CreateConversationInput) {
   const conversationId = randomUUID();
-  const now = new Date();
+  const now = new Date().toISOString();
 
   await sql`
     INSERT INTO conversations (id, type, title, creator_id, metadata, inserted_at, updated_at)
@@ -289,7 +289,7 @@ export async function sendMessage(
   }
 
   const messageId = randomUUID();
-  const now = new Date();
+  const now = new Date().toISOString();
   const contentJson = JSON.stringify(input.content);
 
   await sql`
@@ -318,7 +318,7 @@ export async function sendMessage(
   }
 
   // Save idempotency key
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   await sql`
     INSERT INTO idempotency_keys (id, key, user_id, response_code, response_body, expires_at, inserted_at)
     VALUES (${randomUUID()}, ${idempotencyKey}, ${userId}, 201, ${JSON.stringify(message)}::jsonb, ${expiresAt}, NOW())
@@ -368,7 +368,7 @@ export async function listMembers(conversationId: string, userId: string) {
 export async function addMember(conversationId: string, userId: string, input: AddMemberInput) {
   await assertAdminOrOwner(conversationId, userId);
 
-  const now = new Date();
+  const now = new Date().toISOString();
   const role = input.role ?? 'member';
 
   await sql`

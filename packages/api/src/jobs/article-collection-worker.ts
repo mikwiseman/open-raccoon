@@ -89,12 +89,12 @@ export const articleCollectionWorker = createWorker(
         (existingRows as Array<Record<string, unknown>>).map((r) => r['url'] as string),
       );
 
-      const now = new Date();
+      const now = new Date().toISOString();
 
       for (const item of items) {
         if (existingUrls.has(item.link)) continue;
 
-        const publishedAt = item.pubDate ? new Date(item.pubDate) : null;
+        const publishedAt = item.pubDate ? new Date(item.pubDate).toISOString() : null;
 
         await sql`
           INSERT INTO agent_articles (

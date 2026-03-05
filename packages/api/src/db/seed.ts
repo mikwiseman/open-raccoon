@@ -41,7 +41,7 @@ async function seed() {
 
     const id = randomUUID();
     const role = u.username === 'quinn_admin' ? 'admin' : 'user';
-    const now = new Date();
+    const now = new Date().toISOString();
 
     await sql`
       INSERT INTO users (id, username, email, display_name, bio, role, inserted_at, updated_at)
@@ -117,7 +117,7 @@ async function seed() {
 
     const id = randomUUID();
     const creatorId = userMap[a.creator];
-    const now = new Date();
+    const now = new Date().toISOString();
 
     await sql`
       INSERT INTO agents (id, creator_id, name, slug, description, system_prompt, model, category, visibility, tools, mcp_servers, metadata, inserted_at, updated_at)
@@ -165,7 +165,7 @@ async function seed() {
     }
 
     const convId = randomUUID();
-    const now = new Date();
+    const now = new Date().toISOString();
 
     await sql`
       INSERT INTO conversations (id, type, title, creator_id, agent_id, metadata, inserted_at, updated_at)
@@ -182,10 +182,11 @@ async function seed() {
     }
 
     // Insert messages
+    const nowDate = new Date(now);
     let lastTs = now;
     for (let i = 0; i < msgs.length; i++) {
       const msg = msgs[i];
-      const ts = new Date(now.getTime() - (msgs.length - i) * 60_000);
+      const ts = new Date(nowDate.getTime() - (msgs.length - i) * 60_000).toISOString();
       const content = JSON.stringify([{ type: 'text', text: msg.text }]);
 
       await sql`

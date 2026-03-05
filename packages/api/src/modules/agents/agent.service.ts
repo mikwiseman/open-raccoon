@@ -116,7 +116,7 @@ export async function createAgent(userId: string, input: CreateAgentInput) {
   }
 
   const agentId = randomUUID();
-  const now = new Date();
+  const now = new Date().toISOString();
   const toolsJson = JSON.stringify(tools);
   const mcpServersJson = JSON.stringify(mcpServers);
 
@@ -259,7 +259,7 @@ export async function startConversation(agentId: string, userId: string) {
 
   // Create new agent conversation
   const conversationId = randomUUID();
-  const now = new Date();
+  const now = new Date().toISOString();
 
   await sql`
     INSERT INTO conversations (id, type, title, creator_id, agent_id, metadata, inserted_at, updated_at)

@@ -193,7 +193,7 @@ export async function logout(_userId: string): Promise<void> {
 
 export async function createMagicLink(email: string): Promise<{ token: string }> {
   const token = randomBytes(32).toString('base64url');
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
 
   // Find user by email (magic links only for existing users)
   const userRows = await sql`SELECT id FROM users WHERE email = ${email} LIMIT 1`;
