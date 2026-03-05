@@ -4,6 +4,12 @@ import { emitMessage } from '../../ws/emitter.js';
 import { runAgentLoop } from '../agents/loop.js';
 import type { CreateConversationInput, UpdateConversationInput, AddMemberInput, SendMessageInput } from './conversation.schema.js';
 
+function toISO(val: unknown): string | null {
+  if (!val) return null;
+  const d = val instanceof Date ? val : new Date(String(val));
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function formatConversation(row: Record<string, unknown>) {
   return {
     id: row['id'],
@@ -13,9 +19,9 @@ function formatConversation(row: Record<string, unknown>) {
     creator_id: row['creator_id'],
     agent_id: row['agent_id'],
     metadata: row['metadata'],
-    last_message_at: row['last_message_at'],
-    inserted_at: row['inserted_at'],
-    updated_at: row['updated_at'],
+    last_message_at: toISO(row['last_message_at']),
+    created_at: toISO(row['inserted_at']),
+    updated_at: toISO(row['updated_at']),
   };
 }
 
@@ -28,9 +34,9 @@ function formatMessage(row: Record<string, unknown>) {
     type: row['type'],
     content: row['content'],
     metadata: row['metadata'],
-    edited_at: row['edited_at'],
-    deleted_at: row['deleted_at'],
-    created_at: row['created_at'],
+    edited_at: toISO(row['edited_at']),
+    deleted_at: toISO(row['deleted_at']),
+    created_at: toISO(row['created_at']),
   };
 }
 
@@ -41,8 +47,8 @@ function formatMember(row: Record<string, unknown>) {
     user_id: row['user_id'],
     role: row['role'],
     muted: row['muted'],
-    last_read_at: row['last_read_at'],
-    joined_at: row['joined_at'],
+    last_read_at: toISO(row['last_read_at']),
+    joined_at: toISO(row['joined_at']),
     user: row['username']
       ? {
           id: row['user_id'],

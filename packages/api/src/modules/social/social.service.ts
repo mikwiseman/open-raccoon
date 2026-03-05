@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { sql } from '../../db/connection.js';
 
+function toISO(val: unknown): string | null {
+  if (!val) return null;
+  const d = val instanceof Date ? val : new Date(String(val));
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Helpers                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -20,8 +26,8 @@ function formatFeedItem(row: Record<string, unknown>) {
     like_count: row['like_count'],
     fork_count: row['fork_count'],
     view_count: row['view_count'],
-    inserted_at: row['inserted_at'],
-    updated_at: row['updated_at'],
+    created_at: toISO(row['inserted_at']),
+    updated_at: toISO(row['updated_at']),
     creator: {
       id: row['creator_id'],
       username: row['username'],
@@ -371,8 +377,8 @@ export async function forkAgent(agentId: string, userId: string) {
     visibility: row['visibility'],
     category: row['category'],
     metadata: row['metadata'],
-    inserted_at: row['inserted_at'],
-    updated_at: row['updated_at'],
+    created_at: toISO(row['inserted_at']),
+    updated_at: toISO(row['updated_at']),
   };
 }
 
@@ -574,8 +580,8 @@ export async function getMarketplaceAgent(slugOrId: string) {
     rating_count: row['rating_count'],
     rating_avg: row['rating_avg'],
     metadata: row['metadata'],
-    inserted_at: row['inserted_at'],
-    updated_at: row['updated_at'],
+    created_at: toISO(row['inserted_at']),
+    updated_at: toISO(row['updated_at']),
     creator: {
       id: row['creator_id'],
       username: row['username'],
@@ -732,8 +738,8 @@ function formatMarketplaceAgent(row: Record<string, unknown>) {
     rating_sum: row['rating_sum'],
     rating_count: row['rating_count'],
     rating_avg: row['rating_avg'],
-    inserted_at: row['inserted_at'],
-    updated_at: row['updated_at'],
+    created_at: toISO(row['inserted_at']),
+    updated_at: toISO(row['updated_at']),
     creator: {
       id: row['creator_id'],
       username: row['username'],

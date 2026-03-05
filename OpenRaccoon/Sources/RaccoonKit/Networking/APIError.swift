@@ -9,21 +9,23 @@ public enum APIError: Error, Sendable {
 }
 
 public struct APIErrorResponse: Codable, Sendable {
-    public let error: ErrorDetail
+    public let error: String
+    public let message: String?
+    public let details: ValidationDetails?
 
-    public struct ErrorDetail: Codable, Sendable {
-        public let code: String
-        public let message: String
-        public let details: [String: AnyCodable]?
-
-        public init(code: String, message: String, details: [String: AnyCodable]? = nil) {
-            self.code = code
-            self.message = message
-            self.details = details
-        }
+    public struct ValidationDetails: Codable, Sendable {
+        public let formErrors: [String]?
+        public let fieldErrors: [String: [String]]?
     }
 
-    public init(error: ErrorDetail) {
-        self.error = error
+    /// Human-readable error message: uses `message` if present,
+    /// otherwise flattens validation field errors into a single string.
+    public var displayMessage: String? {
+        if let message { return message }
+        if let fieldErrors = details?.fieldErrors {
+            let messages = fieldErrors.sorted(by: { $0.key < $1.key }).flatMap { $0.value }
+            if !messages.isEmpty { return messages.joined(separator: ". ") }
+        }
+        return nil
     }
 }

@@ -71,11 +71,9 @@ public actor AuthManager {
     /// In-flight refresh task to coalesce concurrent refresh requests.
     private var activeRefreshTask: Task<String, Error>?
 
-    /// Response from the /auth/refresh endpoint.
+    /// Response from the /auth/refresh endpoint: `{ "tokens": { ... } }`.
     private struct RefreshResponse: Codable, Sendable {
-        let accessToken: String
-        let refreshToken: String
-        let expiresIn: TimeInterval
+        let tokens: TokenResponse
     }
 
     public init(serviceName: String = "com.openraccoon.app", baseURL: URL? = nil) {
@@ -169,13 +167,14 @@ public actor AuthManager {
             throw APIError.unauthorized
         }
 
+        let tokens = refreshResponse.tokens
         try setTokens(
-            access: refreshResponse.accessToken,
-            refresh: refreshResponse.refreshToken,
-            expiresIn: refreshResponse.expiresIn
+            access: tokens.accessToken,
+            refresh: tokens.refreshToken,
+            expiresIn: tokens.expiresIn
         )
 
-        return refreshResponse.accessToken
+        return tokens.accessToken
     }
 
     public func setTokens(access: String, refresh: String, expiresIn: TimeInterval) throws {

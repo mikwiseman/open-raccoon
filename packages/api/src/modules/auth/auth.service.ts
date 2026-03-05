@@ -42,10 +42,12 @@ export async function verifyPassword(password: string, storedHash: string): Prom
   return timingSafeEqual(hashBuffer, derivedHash);
 }
 
+const ACCESS_TOKEN_EXPIRY_SECONDS = 900; // 15 minutes
+
 export async function generateTokens(
   userId: string,
   role: string,
-): Promise<{ access_token: string; refresh_token: string }> {
+): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
   const now = Math.floor(Date.now() / 1000);
 
   const access_token = await new SignJWT({ sub: userId, role })
@@ -60,7 +62,7 @@ export async function generateTokens(
     .setExpirationTime('7d')
     .sign(JWT_SECRET);
 
-  return { access_token, refresh_token };
+  return { access_token, refresh_token, expires_in: ACCESS_TOKEN_EXPIRY_SECONDS };
 }
 
 export async function verifyAccessToken(token: string): Promise<{ sub: string; role: string }> {
@@ -79,6 +81,12 @@ export async function verifyRefreshToken(token: string): Promise<{ sub: string }
   return { sub: payload.sub };
 }
 
+function toISO(val: unknown): string | null {
+  if (!val) return null;
+  const d = val instanceof Date ? val : new Date(String(val));
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function formatUser(row: Record<string, unknown>) {
   return {
     id: row['id'],
@@ -91,14 +99,14 @@ function formatUser(row: Record<string, unknown>) {
     role: row['role'],
     settings: row['settings'],
     plan: row['plan'],
-    inserted_at: row['inserted_at'],
-    updated_at: row['updated_at'],
+    created_at: toISO(row['inserted_at']),
+    updated_at: toISO(row['updated_at']),
   };
 }
 
 export async function register(
   input: RegisterInput,
-): Promise<{ user: ReturnType<typeof formatUser>; tokens: { access_token: string; refresh_token: string } }> {
+): Promise<{ user: ReturnType<typeof formatUser>; tokens: { access_token: string; refresh_token: string; expires_in: number } }> {
   const { username, email, password } = input;
 
   // Check for existing user
@@ -135,7 +143,7 @@ export async function register(
 
 export async function login(
   input: LoginInput,
-): Promise<{ user: ReturnType<typeof formatUser>; tokens: { access_token: string; refresh_token: string } }> {
+): Promise<{ user: ReturnType<typeof formatUser>; tokens: { access_token: string; refresh_token: string; expires_in: number } }> {
   const { email, password } = input;
 
   const rows = await sql`
@@ -164,7 +172,7 @@ export async function login(
 
 export async function refreshTokens(
   refreshToken: string,
-): Promise<{ access_token: string; refresh_token: string }> {
+): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
   const { sub } = await verifyRefreshToken(refreshToken);
 
   const rows = await sql`
@@ -207,7 +215,7 @@ export async function createMagicLink(email: string): Promise<{ token: string }>
 
 export async function verifyMagicLink(
   token: string,
-): Promise<{ user: ReturnType<typeof formatUser>; tokens: { access_token: string; refresh_token: string } }> {
+): Promise<{ user: ReturnType<typeof formatUser>; tokens: { access_token: string; refresh_token: string; expires_in: number } }> {
   const rows = await sql`
     SELECT mlt.id AS token_id, mlt.user_id, mlt.expires_at, mlt.used,
            u.id, u.username, u.display_name, u.email, u.avatar_url, u.bio, u.status, u.role, u.settings, u.plan, u.inserted_at, u.updated_at

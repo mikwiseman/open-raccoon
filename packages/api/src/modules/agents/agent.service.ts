@@ -3,6 +3,12 @@ import { sql } from '../../db/connection.js';
 import { getTemplate } from './templates.js';
 import type { CreateAgentInput, UpdateAgentInput } from './agent.schema.js';
 
+function toISO(val: unknown): string | null {
+  if (!val) return null;
+  const d = val instanceof Date ? val : new Date(String(val));
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -31,8 +37,8 @@ function formatAgent(row: Record<string, unknown>) {
     rating_count: row['rating_count'],
     execution_mode: row['execution_mode'],
     metadata: row['metadata'],
-    inserted_at: row['inserted_at'],
-    updated_at: row['updated_at'],
+    created_at: toISO(row['inserted_at']),
+    updated_at: toISO(row['updated_at']),
   };
 }
 
@@ -42,8 +48,8 @@ function formatCoreMemory(row: Record<string, unknown>) {
     agent_id: row['agent_id'],
     block_label: row['block_label'],
     content: row['content'],
-    inserted_at: row['inserted_at'],
-    updated_at: row['updated_at'],
+    created_at: toISO(row['inserted_at']),
+    updated_at: toISO(row['updated_at']),
   };
 }
 
@@ -282,9 +288,9 @@ function formatConversation(row: Record<string, unknown>) {
     creator_id: row['creator_id'],
     agent_id: row['agent_id'],
     metadata: row['metadata'],
-    last_message_at: row['last_message_at'],
-    inserted_at: row['inserted_at'],
-    updated_at: row['updated_at'],
+    last_message_at: toISO(row['last_message_at']),
+    created_at: toISO(row['inserted_at']),
+    updated_at: toISO(row['updated_at']),
   };
 }
 

@@ -164,7 +164,7 @@ public final class AuthStore {
         case APIError.unauthorized:
             return "Invalid email or password."
         case APIError.httpError(_, let errorResponse):
-            return errorResponse?.error.message ?? "Server error. Please try again."
+            return errorResponse?.displayMessage ?? "Server error. Please try again."
         case APIError.networkError:
             return "Network error. Check your connection."
         case APIError.decodingError:
