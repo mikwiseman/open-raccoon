@@ -10,7 +10,7 @@ import {
   uniqueIdempotencyKey,
   uniqueLabel,
   waitForChannelEvent
-} from "./helpers/raccoon";
+} from "./helpers/waiagents";
 
 test("api/ws messaging: DM create, send, react, edit, delete", async ({ request }) => {
   const alex = await getSeedSession(request, "alex");

@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from raccoon_runtime.config import Settings
-from raccoon_runtime.runners.base_runner import AgentEvent
-from raccoon_runtime.runners.raw_runner import RawRunner
+from wai_agents_runtime.config import Settings
+from wai_agents_runtime.runners.base_runner import AgentEvent
+from wai_agents_runtime.runners.raw_runner import RawRunner
 
 
 @pytest.fixture

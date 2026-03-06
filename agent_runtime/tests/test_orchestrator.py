@@ -2,8 +2,8 @@
 
 import pytest
 
-from raccoon_runtime.config import Settings
-from raccoon_runtime.llm.orchestrator import LLMOrchestrator
+from wai_agents_runtime.config import Settings
+from wai_agents_runtime.llm.orchestrator import LLMOrchestrator
 
 
 class TestOrchestrator:

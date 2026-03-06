@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { seededUser } from "./helpers/raccoon";
+import { seededUser } from "./helpers/waiagents";
 
 async function loginThroughUi(page: Page, email: string, password: string) {
   await page.getByLabel("Email").fill(email);

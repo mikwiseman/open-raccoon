@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from raccoon_runtime.memory.embeddings import EMBEDDING_DIM, EMBEDDING_MODEL, generate_embedding
+from wai_agents_runtime.memory.embeddings import EMBEDDING_DIM, EMBEDDING_MODEL, generate_embedding
 
 
 class TestEmbeddings:
@@ -25,7 +25,7 @@ class TestEmbeddings:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("raccoon_runtime.memory.embeddings.httpx.AsyncClient", return_value=mock_client):
+        with patch("wai_agents_runtime.memory.embeddings.httpx.AsyncClient", return_value=mock_client):
             result = await generate_embedding("test text", "fake-api-key")
 
         assert len(result) == EMBEDDING_DIM
@@ -43,13 +43,13 @@ class TestMemoryToolSave:
         mock_conn.close = AsyncMock()
 
         with (
-            patch("raccoon_runtime.memory.memory_tool._get_connection", return_value=mock_conn),
+            patch("wai_agents_runtime.memory.memory_tool._get_connection", return_value=mock_conn),
             patch(
-                "raccoon_runtime.memory.memory_tool.generate_embedding",
+                "wai_agents_runtime.memory.memory_tool.generate_embedding",
                 return_value=[0.1] * EMBEDDING_DIM,
             ),
         ):
-            from raccoon_runtime.memory.memory_tool import save_memory
+            from wai_agents_runtime.memory.memory_tool import save_memory
 
             memory_id = await save_memory(
                 agent_id="00000000-0000-0000-0000-000000000001",
@@ -85,13 +85,13 @@ class TestMemoryToolSearch:
         mock_conn.close = AsyncMock()
 
         with (
-            patch("raccoon_runtime.memory.memory_tool._get_connection", return_value=mock_conn),
+            patch("wai_agents_runtime.memory.memory_tool._get_connection", return_value=mock_conn),
             patch(
-                "raccoon_runtime.memory.memory_tool.generate_embedding",
+                "wai_agents_runtime.memory.memory_tool.generate_embedding",
                 return_value=[0.1] * EMBEDDING_DIM,
             ),
         ):
-            from raccoon_runtime.memory.memory_tool import search_memories
+            from wai_agents_runtime.memory.memory_tool import search_memories
 
             results = await search_memories(
                 agent_id="00000000-0000-0000-0000-000000000001",
@@ -113,8 +113,8 @@ class TestMemoryToolForget:
         mock_conn.execute = AsyncMock(return_value="DELETE 1")
         mock_conn.close = AsyncMock()
 
-        with patch("raccoon_runtime.memory.memory_tool._get_connection", return_value=mock_conn):
-            from raccoon_runtime.memory.memory_tool import forget_memory
+        with patch("wai_agents_runtime.memory.memory_tool._get_connection", return_value=mock_conn):
+            from wai_agents_runtime.memory.memory_tool import forget_memory
 
             result = await forget_memory("00000000-0000-0000-0000-000000000099")
 
@@ -126,8 +126,8 @@ class TestMemoryToolForget:
         mock_conn.execute = AsyncMock(return_value="DELETE 0")
         mock_conn.close = AsyncMock()
 
-        with patch("raccoon_runtime.memory.memory_tool._get_connection", return_value=mock_conn):
-            from raccoon_runtime.memory.memory_tool import forget_memory
+        with patch("wai_agents_runtime.memory.memory_tool._get_connection", return_value=mock_conn):
+            from wai_agents_runtime.memory.memory_tool import forget_memory
 
             result = await forget_memory("00000000-0000-0000-0000-000000000099")
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { RaccoonApi } from "@/lib/api";
+import type { WaiAgentsApi } from "@/lib/api";
 import type {
   AgentRating,
   MarketplaceAgent,
@@ -16,7 +16,7 @@ import { toIsoLocal } from "@/lib/utils";
 /* ------------------------------------------------------------------ */
 
 type MarketplaceViewProps = {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
   currentUser: SessionUser;
   onOpenConversation: (conversationId: string) => void;
 };

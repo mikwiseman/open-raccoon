@@ -1,4 +1,0 @@
-# OpenRaccoon
-
-**TODO: Add description**
-

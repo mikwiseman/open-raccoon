@@ -259,7 +259,7 @@ describe('handleSummarizeUrl', () => {
 describe('health endpoint', () => {
   it('health response shape is correct', () => {
     // Verify the expected health response structure
-    const expectedResponse = { status: 'ok', server: 'raccoon-web-search' };
-    expect(expectedResponse).toMatchObject({ status: 'ok', server: 'raccoon-web-search' });
+    const expectedResponse = { status: 'ok', server: 'waiagents-web-search' };
+    expect(expectedResponse).toMatchObject({ status: 'ok', server: 'waiagents-web-search' });
   });
 });

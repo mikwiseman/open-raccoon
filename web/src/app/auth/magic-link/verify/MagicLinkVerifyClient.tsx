@@ -15,7 +15,7 @@ export function MagicLinkVerifyClient() {
 
   const tokenRaw = searchParams.get("token") ?? "";
   const token = sanitizeToken(tokenRaw);
-  const appDeepLink = token ? `openraccoon://auth/magic-link/verify?token=${encodeURIComponent(token)}` : "";
+  const appDeepLink = token ? `waiagents://auth/magic-link/verify?token=${encodeURIComponent(token)}` : "";
 
   const setSession = useSessionStore((state) => state.setSession);
   const api = useMemo(() => createRaccoonApi(), []);

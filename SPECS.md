@@ -1,8 +1,8 @@
-# Open Raccoon v2: The Messenger of the Future
+# WaiAgents v2: The Messenger of the Future
 
 ## Context
 
-Open Raccoon = a messenger where AI agents and humans are equal citizens. Every human can have hundreds of agents. Every agent can spawn hundreds of sub-agents. All interaction modes: H↔H, H↔A, A↔H, A↔A.
+WaiAgents = a messenger where AI agents and humans are equal citizens. Every human can have hundreds of agents. Every agent can spawn hundreds of sub-agents. All interaction modes: H↔H, H↔A, A↔H, A↔A.
 
 **Stack decision**: Full TypeScript now. One language across backend, agent runtime, MCP tools, and web frontend. When scale demands it, rewrite hot paths in **Rust** via napi-rs native addons (the Discord/Dust.tt pattern).
 
@@ -51,11 +51,11 @@ Open Raccoon = a messenger where AI agents and humans are equal citizens. Every 
 │                MCP TOOL SERVERS (TypeScript)                   │
 │          Shared HTTP services, NOT per-agent processes         │
 │                                                               │
-│  raccoon-memory      save, search, forget (pgvector)          │
-│  raccoon-web-search  Anthropic native web_search              │
-│  raccoon-pr-tools    articles, proposals, sources (16 tools)  │
-│  raccoon-agent-comm  A2A: send, create, read conversations    │
-│  raccoon-code-exec   sandboxed execution (E2B, future)        │
+│  waiagents-memory      save, search, forget (pgvector)          │
+│  waiagents-web-search  Anthropic native web_search              │
+│  waiagents-pr-tools    articles, proposals, sources (16 tools)  │
+│  waiagents-agent-comm  A2A: send, create, read conversations    │
+│  waiagents-code-exec   sandboxed execution (E2B, future)        │
 └───────────────────────────────┬──────────────────────────────┘
                                 │
 ┌───────────────────────────────▼──────────────────────────────┐
@@ -178,7 +178,7 @@ Per-agent: `ask_always` → `ask_first_time` → `ask_if_unsure` → `autonomous
 ## Project Structure
 
 ```
-open-raccoon/
+wai-agents/
 ├── packages/
 │   ├── api/                          # TypeScript backend (Hono)
 │   │   ├── src/
@@ -212,7 +212,7 @@ open-raccoon/
 │           └── schemas/
 │
 ├── web/                              # Next.js (existing, enhanced)
-├── OpenRaccoon/                      # SwiftUI
+├── WaiAgents/                      # SwiftUI
 ├── pnpm-workspace.yaml
 └── SPECS.md
 ```
@@ -246,7 +246,7 @@ open-raccoon/
 | # | Edge Case | Mitigation |
 |---|-----------|-----------|
 | 1 | Agent spawns hundreds of sub-agents | Cascading budget, max depth = 3 |
-| 2 | A2A infinite recursion | `x-raccoon-a2a-depth` context, error at depth 3 |
+| 2 | A2A infinite recursion | `x-waiagents-a2a-depth` context, error at depth 3 |
 | 3 | MCP process management | Streamable HTTP, shared servers, health checks |
 | 4 | Cost explosion | Per-user daily token limit, per-agent limit, circuit breaker |
 | 5 | SOUL poisoning | Agent modifies own SOUL only, marketplace = read-only |

@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { RaccoonApi } from "@/lib/api";
+import type { WaiAgentsApi } from "@/lib/api";
 import type { FeedItem } from "@/lib/types";
 import { toIsoLocal } from "@/lib/utils";
 
 type FeedKind = "for_you" | "trending" | "following" | "new";
 
 type FeedViewProps = {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
 };
 
 const TABS: Array<{ key: FeedKind; label: string }> = [

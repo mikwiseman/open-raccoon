@@ -1,5 +1,5 @@
 {
-  "name": "@open-raccoon/mcp-pr-tools",
+  "name": "@wai-agents/mcp-pr-tools",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
-    "@open-raccoon/shared": "workspace:*",
+    "@wai-agents/shared": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.13.0",
     "drizzle-orm": "^0.44.2",
     "postgres": "^3.4.7",

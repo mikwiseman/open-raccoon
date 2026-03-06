@@ -27,7 +27,7 @@ export type CursorParams = {
   limit?: number;
 };
 
-export class RaccoonApi {
+export class WaiAgentsApi {
   constructor(private readonly client: ApiClient) {}
 
   register(payload: { username: string; email: string; password: string; display_name?: string }) {
@@ -95,9 +95,9 @@ export class RaccoonApi {
   }
 
   listConversations(params: CursorParams = {}) {
-    return this.client.request<ApiListResponse<Conversation>>(
+    return this.client.request<unknown>(
       `/conversations${toQueryString(params)}`
-    );
+    ).then((payload) => normalizeListResponse<Conversation>(payload, ["conversations"]));
   }
 
   createConversation(payload: {
@@ -110,7 +110,7 @@ export class RaccoonApi {
   }) {
     return this.client.request<{ conversation: Conversation }>("/conversations", {
       method: "POST",
-      body: JSON.stringify(payload)
+      body: JSON.stringify(normalizeCreateConversationPayload(payload))
     });
   }
 
@@ -119,9 +119,9 @@ export class RaccoonApi {
   }
 
   listMembers(conversationId: string, params: CursorParams = {}) {
-    return this.client.request<ApiListResponse<ConversationMember>>(
+    return this.client.request<unknown>(
       `/conversations/${conversationId}/members${toQueryString(params)}`
-    );
+    ).then((payload) => normalizeListResponse<ConversationMember>(payload, ["members"]));
   }
 
   addMember(conversationId: string, userId: string, role: "owner" | "admin" | "member" = "member") {
@@ -141,9 +141,9 @@ export class RaccoonApi {
   }
 
   listMessages(conversationId: string, params: CursorParams = {}) {
-    return this.client.request<ApiListResponse<Message>>(
+    return this.client.request<unknown>(
       `/conversations/${conversationId}/messages${toQueryString(params)}`
-    );
+    ).then((payload) => normalizeListResponse<Message>(payload, ["messages"]));
   }
 
   sendTextMessage(conversationId: string, text: string, metadata: Record<string, unknown> = {}) {
@@ -153,9 +153,8 @@ export class RaccoonApi {
         "Idempotency-Key": createIdempotencyKey()
       },
       body: JSON.stringify({
-        type: "text",
-        content: { text },
-        metadata
+        content: [{ type: "text", text }],
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {})
       })
     });
   }
@@ -165,7 +164,7 @@ export class RaccoonApi {
       `/conversations/${conversationId}/messages/${messageId}`,
       {
         method: "PATCH",
-        body: JSON.stringify({ content: { text } })
+        body: JSON.stringify({ content: [{ type: "text", text }] })
       }
     );
   }
@@ -180,7 +179,11 @@ export class RaccoonApi {
   }
 
   listAgents(params: CursorParams = {}) {
-    return this.client.request<ApiListResponse<MarketplaceAgent>>(`/agents${toQueryString(params)}`);
+    return this.client
+      .request<unknown>(`/agents${toQueryString(params)}`)
+      .then((payload) =>
+        normalizeListResponse<MarketplaceAgent>(payload, ["agents"], normalizeMarketplaceAgent)
+      );
   }
 
   startAgentConversation(agentId: string) {
@@ -202,7 +205,9 @@ export class RaccoonApi {
             ? "/feed/following"
             : "/feed/new";
 
-    return this.client.request<ApiListResponse<FeedItem>>(`${path}${toQueryString(params)}`);
+    return this.client
+      .request<unknown>(`${path}${toQueryString(params)}`)
+      .then((payload) => normalizeListResponse<FeedItem>(payload, ["items"]));
   }
 
   likeFeedItem(id: string) {
@@ -227,7 +232,9 @@ export class RaccoonApi {
   }
 
   listPages(params: CursorParams = {}) {
-    return this.client.request<ApiListResponse<Page>>(`/pages${toQueryString(params)}`);
+    return this.client
+      .request<unknown>(`/pages${toQueryString(params)}`)
+      .then((payload) => normalizeListResponse<Page>(payload, ["pages"]));
   }
 
   createPage(payload: {
@@ -275,7 +282,9 @@ export class RaccoonApi {
   }
 
   listPageVersions(id: string) {
-    return this.client.request<{ items: PageVersion[] }>(`/pages/${id}/versions`);
+    return this.client.request<unknown>(`/pages/${id}/versions`).then((payload) => ({
+      items: extractArray(payload, ["items", "versions"]) as PageVersion[]
+    }));
   }
 
   forkPage(id: string, slug?: string) {
@@ -289,22 +298,32 @@ export class RaccoonApi {
   }
 
   listMarketplace(params: CursorParams = {}) {
-    return this.client.request<ApiListResponse<MarketplaceAgent>>(
+    return this.client.request<unknown>(
       `/marketplace${toQueryString(params)}`
+    ).then((payload) =>
+      normalizeListResponse<MarketplaceAgent>(payload, ["agents"], normalizeMarketplaceAgent)
     );
   }
 
   searchMarketplace(query: string, params: CursorParams = {}) {
     const search = toQueryString({ ...params, q: query });
-    return this.client.request<ApiListResponse<MarketplaceAgent>>(`/marketplace/search${search}`);
+    return this.client
+      .request<unknown>(`/marketplace/search${search}`)
+      .then((payload) =>
+        normalizeListResponse<MarketplaceAgent>(payload, ["agents"], normalizeMarketplaceAgent)
+      );
   }
 
   marketplaceCategories() {
-    return this.client.request<{ categories: MarketplaceCategory[] }>("/marketplace/categories");
+    return this.client
+      .request<unknown>("/marketplace/categories")
+      .then((payload) => normalizeMarketplaceCategoriesResponse(payload));
   }
 
   marketplaceAgent(slug: string) {
-    return this.client.request<MarketplaceAgentProfileResponse>(`/marketplace/agents/${slug}`);
+    return this.client
+      .request<unknown>(`/marketplace/agents/${slug}`)
+      .then((payload) => normalizeMarketplaceAgentProfileResponse(payload));
   }
 
   rateAgent(agentId: string, rating: number, review?: string) {
@@ -318,7 +337,9 @@ export class RaccoonApi {
   }
 
   listBridges(params: CursorParams = {}) {
-    return this.client.request<ApiListResponse<BridgeConnection>>(`/bridges${toQueryString(params)}`);
+    return this.client
+      .request<unknown>(`/bridges${toQueryString(params)}`)
+      .then((payload) => normalizeListResponse<BridgeConnection>(payload, ["bridges"]));
   }
 
   connectTelegram(metadata: Record<string, unknown>) {
@@ -388,7 +409,9 @@ export class RaccoonApi {
   }
 
   listMyAgents(params: CursorParams = {}) {
-    return this.client.request<ApiListResponse<Agent>>(`/agents${toQueryString(params)}`);
+    return this.client
+      .request<unknown>(`/agents${toQueryString(params)}`)
+      .then((payload) => normalizeListResponse<Agent>(payload, ["agents"]));
   }
 
   // Agent Schedules
@@ -506,5 +529,171 @@ function toQueryString(params: QueryParams): string {
 export function createRaccoonApi(getAccessToken?: () => string | undefined | Promise<string | undefined>) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
   const client = new ApiClient({ baseUrl, getAccessToken });
-  return new RaccoonApi(client);
+  return new WaiAgentsApi(client);
+}
+
+function normalizeCreateConversationPayload(payload: {
+  type: "dm" | "group" | "agent" | "bridge";
+  title?: string;
+  member_id?: string;
+  agent_id?: string;
+  bridge_id?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const normalized: Record<string, unknown> = {
+    type: payload.type
+  };
+
+  if (payload.title) {
+    normalized.title = payload.title;
+  }
+
+  if (payload.member_id) {
+    normalized.member_ids = [payload.member_id];
+  }
+
+  if (payload.agent_id) {
+    normalized.agent_id = payload.agent_id;
+  }
+
+  if (payload.bridge_id) {
+    normalized.bridge_id = payload.bridge_id;
+  }
+
+  if (payload.metadata && Object.keys(payload.metadata).length > 0) {
+    normalized.metadata = payload.metadata;
+  }
+
+  return normalized;
+}
+
+function normalizeListResponse<T>(
+  payload: unknown,
+  alternativeCollectionKeys: string[],
+  mapItem?: (item: unknown) => T
+): ApiListResponse<T> {
+  const rawItems = extractArray(payload, ["items", ...alternativeCollectionKeys]);
+  const items = mapItem ? rawItems.map((item) => mapItem(item)) : (rawItems as T[]);
+
+  return {
+    items,
+    page_info: normalizePageInfo(payload)
+  };
+}
+
+function normalizePageInfo(payload: unknown): ApiListResponse<unknown>["page_info"] {
+  if (!isRecord(payload)) {
+    return { next_cursor: null, has_more: false };
+  }
+
+  const pageInfo = isRecord(payload.page_info)
+    ? payload.page_info
+    : isRecord(payload.pageInfo)
+      ? payload.pageInfo
+      : null;
+
+  if (!pageInfo) {
+    return { next_cursor: null, has_more: false };
+  }
+
+  return {
+    next_cursor: asNullableString(pageInfo.next_cursor ?? pageInfo.nextCursor),
+    has_more: asBoolean(pageInfo.has_more ?? pageInfo.hasMore)
+  };
+}
+
+function normalizeMarketplaceCategoriesResponse(payload: unknown): { categories: MarketplaceCategory[] } {
+  const categories = extractArray(payload, ["categories"]).map((item) => {
+    if (isRecord(item)) {
+      const name = asNonEmptyString(item.name) ?? asNonEmptyString(item.category) ?? "Other";
+      return {
+        slug: asNonEmptyString(item.slug) ?? slugify(name),
+        name,
+        description: asNonEmptyString(item.description) ?? ""
+      };
+    }
+
+    const name = typeof item === "string" && item.trim().length > 0 ? item.trim() : "Other";
+    return {
+      slug: slugify(name),
+      name,
+      description: ""
+    };
+  });
+
+  return { categories };
+}
+
+function normalizeMarketplaceAgentProfileResponse(payload: unknown): MarketplaceAgentProfileResponse {
+  if (isRecord(payload) && isRecord(payload.agent)) {
+    return {
+      agent: normalizeMarketplaceAgent(payload.agent),
+      ratings: extractArray(payload, ["ratings"]) as MarketplaceAgentProfileResponse["ratings"]
+    };
+  }
+
+  return {
+    agent: normalizeMarketplaceAgent(payload),
+    ratings: []
+  };
+}
+
+function normalizeMarketplaceAgent(item: unknown): MarketplaceAgent {
+  const record = isRecord(item) ? item : {};
+  const ratingCount = asNumber(record.rating_count) ?? 0;
+  const ratingSum = asNumber(record.rating_sum) ?? 0;
+  const averageRating =
+    asNumber(record.average_rating) ??
+    asNumber(record.rating_avg) ??
+    (ratingCount > 0 ? ratingSum / ratingCount : 0);
+
+  return {
+    ...(record as unknown as MarketplaceAgent),
+    rating_count: ratingCount,
+    usage_count: asNumber(record.usage_count) ?? 0,
+    average_rating: averageRating
+  };
+}
+
+function extractArray(payload: unknown, keys: string[]): unknown[] {
+  if (!isRecord(payload)) {
+    return [];
+  }
+
+  for (const key of keys) {
+    const candidate = payload[key];
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
+  }
+
+  return [];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function asNullableString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function asNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function asBoolean(value: unknown): boolean {
+  return value === true;
+}
+
+function asNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }

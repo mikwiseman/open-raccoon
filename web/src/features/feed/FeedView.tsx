@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { RaccoonApi } from "@/lib/api";
+import type { WaiAgentsApi } from "@/lib/api";
 import type { SessionUser } from "@/lib/state/session-store";
 import type { FeedItem } from "@/lib/types";
 
@@ -12,7 +12,7 @@ import type { FeedItem } from "@/lib/types";
 type FeedKind = "for_you" | "trending" | "following" | "new";
 
 interface FeedViewProps {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
   currentUser: SessionUser;
 }
 

@@ -1,5 +1,5 @@
 {
-  "name": "open-raccoon",
+  "name": "wai-agents",
   "private": true,
   "scripts": {
     "build": "pnpm -r build",
@@ -7,12 +7,12 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "dev:api": "pnpm --filter @open-raccoon/api dev",
-    "dev:mcp-memory": "pnpm --filter @open-raccoon/mcp-memory dev",
-    "dev:mcp-web-search": "pnpm --filter @open-raccoon/mcp-web-search dev",
-    "dev:mcp-pr-tools": "pnpm --filter @open-raccoon/mcp-pr-tools dev",
-    "dev:mcp-agent-comm": "pnpm --filter @open-raccoon/mcp-agent-comm dev",
-    "dev:web": "pnpm --filter open-raccoon-web dev"
+    "dev:api": "pnpm --filter @wai-agents/api dev",
+    "dev:mcp-memory": "pnpm --filter @wai-agents/mcp-memory dev",
+    "dev:mcp-web-search": "pnpm --filter @wai-agents/mcp-web-search dev",
+    "dev:mcp-pr-tools": "pnpm --filter @wai-agents/mcp-pr-tools dev",
+    "dev:mcp-agent-comm": "pnpm --filter @wai-agents/mcp-agent-comm dev",
+    "dev:web": "pnpm --filter wai-agents-web dev"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0"

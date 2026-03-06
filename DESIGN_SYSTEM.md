@@ -1,4 +1,4 @@
-# Open Raccoon Design System Specification
+# WaiAgents Design System Specification
 
 **Version:** 1.0.0
 **Date:** February 2026
@@ -106,7 +106,7 @@ Each AI agent gets a unique, muted accent for avatar rings, status indicators, a
 
 | Agent | Hex | Description |
 |---|---|---|
-| Default / Raccoon | `#6E56CF` | Muted violet (primary brand accent) |
+| Default / WaiAgents | `#6E56CF` | Muted violet (primary brand accent) |
 | Code Agent | `#3B82F6` | Muted blue |
 | Research Agent | `#0EA5E9` | Muted cyan |
 | Creative Agent | `#D946EF` | Muted fuchsia |
@@ -518,7 +518,7 @@ The workspace panel (code editor, preview, terminal) slides over from the right.
 
 ```
 +-------------------------+
-| [logo]  Open Raccoon    |   -- 48px, app header
+| [logo]  WaiAgents    |   -- 48px, app header
 +-------------------------+
 | [search icon] Search    |   -- 36px, search bar
 +-------------------------+
@@ -533,7 +533,7 @@ The workspace panel (code editor, preview, terminal) slides over from the right.
 |  ...                    |   -- scrollable
 +-------------------------+
 |  AGENTS                 |   -- section header
-|  [ic] Raccoon (default) |
+|  [ic] WaiAgents (default) |
 |  [ic] Code Agent        |
 |  [ic] Research Agent    |
 +-------------------------+
@@ -612,7 +612,7 @@ Fun, minimalist, developer-humor status messages. These appear as small text ind
 **Thinking / Reasoning**
 - "thinking about this..."
 - "untangling your requirements..."
-- "consulting the raccoon council..."
+- "consulting the waiagents council..."
 - "reading between the lines..."
 - "pondering the edge cases..."
 - "considering 14 possible approaches, discarding 13..."
@@ -656,7 +656,7 @@ Fun, minimalist, developer-humor status messages. These appear as small text ind
 - "hmm, that didn't work. plan B."
 - "retrying with more optimism..."
 - "something broke. fixing it before you notice."
-- "the raccoon tripped. getting back up."
+- "the waiagents tripped. getting back up."
 - "adjusting expectations..."
 
 ### 6.3 Status Message Rotation Rules
@@ -760,13 +760,13 @@ When the user has `prefers-reduced-motion: reduce` enabled:
 
 ## 8. Branding
 
-### 8.1 Logo Concept: Abstract Geometric Raccoon
+### 8.1 Logo Concept: Abstract Geometric WaiAgents
 
-**Design direction:** A raccoon face abstracted into clean geometric shapes. Not cute, not cartoonish. Think: a tech company logo that happens to be inspired by a raccoon.
+**Design direction:** A waiagents face abstracted into clean geometric shapes. Not cute, not cartoonish. Think: a tech company logo that happens to be inspired by a waiagents.
 
 **Construction principles:**
 - Built from circles, arcs, and straight lines on a grid
-- The iconic raccoon mask (dark patches around the eyes) is the key recognizable element
+- The iconic waiagents mask (dark patches around the eyes) is the key recognizable element
 - Two angled shapes suggesting the mask, with negative space forming the face
 - Can be reduced to a single mark that works at 16px (favicon) and 512px (app icon)
 - Monochrome by default. Uses `text-primary` on `bg-primary`
@@ -780,16 +780,16 @@ When the user has `prefers-reduced-motion: reduce` enabled:
 | Wordmark only | Settings page header, legal |
 
 **Wordmark typography:**
-- "Open Raccoon" or "raccoon" (lowercase)
+- "WaiAgents" or "waiagents" (lowercase)
 - Set in Inter, Semibold 600, with -0.02em letter spacing
-- If using "raccoon" alone, the double-o can subtly reference the raccoon eyes (two circles)
+- If using "waiagents" alone, the double-o can subtly reference the waiagents eyes (two circles)
 
 **Logo clear space:**
 - Minimum clear space: 1x the height of the mark on all sides
 - Never place the logo on busy backgrounds
 
 **App icon:**
-- macOS: Rounded rectangle (system squircle), geometric raccoon mark centered, `bg-primary` background, subtle shadow
+- macOS: Rounded rectangle (system squircle), geometric waiagents mark centered, `bg-primary` background, subtle shadow
 - iOS: Same mark, slightly larger relative to the icon boundary
 - The mark should feel like it belongs next to Linear, Notion, Things, and Raycast in a dock
 

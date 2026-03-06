@@ -1,6 +1,6 @@
 """Tests for application configuration."""
 
-from raccoon_runtime.config import Settings
+from wai_agents_runtime.config import Settings
 
 
 class TestSettings:
@@ -14,7 +14,7 @@ class TestSettings:
         assert settings.code_execution_deadline == 45
 
     def test_env_override(self, monkeypatch):
-        monkeypatch.setenv("RACCOON_GRPC_PORT", "9999")
+        monkeypatch.setenv("WAI_AGENTS_GRPC_PORT", "9999")
         settings = Settings()
         assert settings.grpc_port == 9999
 
@@ -35,8 +35,8 @@ class TestSettings:
         assert settings.e2b_api_key == ""
 
     def test_env_prefix(self, monkeypatch):
-        """Verify RACCOON_ prefix is required for env vars."""
-        monkeypatch.setenv("RACCOON_DEFAULT_MODEL", "gpt-5.2")
+        """Verify WAI_AGENTS_ prefix is required for env vars."""
+        monkeypatch.setenv("WAI_AGENTS_DEFAULT_MODEL", "gpt-5.2")
         settings = Settings()
         assert settings.default_model == "gpt-5.2"
 

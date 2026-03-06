@@ -33,6 +33,7 @@ vi.mock('../../../db/schema/conversations.js', () => ({
 // Mock emitter
 vi.mock('../../../ws/emitter.js', () => ({
   emitAgentEvent: vi.fn(),
+  emitMessage: vi.fn(),
 }));
 
 // Mock LLM
@@ -56,7 +57,7 @@ vi.mock('../mcp-manager.js', () => ({
 }));
 
 import { db } from '../../../db/connection.js';
-import { emitAgentEvent } from '../../../ws/emitter.js';
+import { emitAgentEvent, emitMessage } from '../../../ws/emitter.js';
 import { callLLM } from '../llm/index.js';
 
 const mockAgent = {
@@ -144,6 +145,12 @@ describe('runAgentLoop', () => {
     expect(emitAgentEvent).toHaveBeenCalledWith('conv-1', expect.objectContaining({
       type: 'run_finished',
       usage: { input_tokens: 10, output_tokens: 20 },
+    }));
+    expect(emitMessage).toHaveBeenCalledWith('conv-1', expect.objectContaining({
+      conversation_id: 'conv-1',
+      sender_id: 'agent-1',
+      sender_type: 'agent',
+      type: 'text',
     }));
     expect(result.usage.input_tokens).toBe(10);
     expect(result.usage.output_tokens).toBe(20);

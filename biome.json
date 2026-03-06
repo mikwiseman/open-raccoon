@@ -36,9 +36,9 @@
       ".next",
       "build",
       "*.min.js",
-      "open_raccoon",
+      "wai_agents",
       "agent_runtime",
-      "OpenRaccoon"
+      "WaiAgents"
     ]
   }
 }

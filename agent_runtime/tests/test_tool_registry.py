@@ -2,7 +2,7 @@
 
 import pytest
 
-from raccoon_runtime.mcp.tool_registry import ToolRegistry
+from wai_agents_runtime.mcp.tool_registry import ToolRegistry
 
 
 class TestToolRegistry:

@@ -16,9 +16,9 @@ type Props = {
 };
 
 const MODELS = [
-  { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
-  { value: "claude-opus-4-20250514", label: "Claude Opus 4" },
-  { value: "claude-haiku-4-20250514", label: "Claude Haiku 4" },
+  { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+  { value: "claude-opus-4-6", label: "Claude Opus 4.6" },
+  { value: "claude-haiku-4-6", label: "Claude Haiku 4.6" },
   { value: "gpt-4o", label: "GPT-4o" },
   { value: "gpt-4o-mini", label: "GPT-4o Mini" },
 ];

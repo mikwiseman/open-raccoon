@@ -11,7 +11,7 @@ const s3 = new S3Client({
   forcePathStyle: true, // Required for Hetzner S3
 });
 
-const BUCKET = process.env.S3_BUCKET || 'open-raccoon';
+const BUCKET = process.env.S3_BUCKET || 'wai-agents';
 
 export async function getUploadUrl(key: string, contentType: string, expiresIn = 3600): Promise<string> {
   const command = new PutObjectCommand({

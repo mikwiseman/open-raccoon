@@ -2,11 +2,11 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/state/session-store";
-import type { RaccoonApi } from "@/lib/api";
+import type { WaiAgentsApi } from "@/lib/api";
 import type { SessionTokens } from "@/lib/types";
 
 type AuthViewProps = {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
   onAuthenticated: (payload: { user: SessionUser; tokens: SessionTokens }) => void;
 };
 

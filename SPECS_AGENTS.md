@@ -1,8 +1,8 @@
-# SPECS_AGENTS.md — Open Raccoon Agent Platform Technical Specification
+# SPECS_AGENTS.md — WaiAgents Agent Platform Technical Specification
 
 ## 1. Executive Summary
 
-Open Raccoon is an Elixir/Phoenix + Python gRPC + Next.js + SwiftUI platform that currently supports basic agent chat via LLM streaming. This spec transforms it into a full **event-driven agent platform** with:
+WaiAgents is an Elixir/Phoenix + Python gRPC + Next.js + SwiftUI platform that currently supports basic agent chat via LLM streaming. This spec transforms it into a full **event-driven agent platform** with:
 
 - **MCP tool ecosystem** — agents use real tools (web search, filesystem, code execution, memory, 30+ integrations) via the Model Context Protocol
 - **Persistent agent memory** — PostgreSQL + pgvector for per-agent, per-user memory with vector similarity retrieval
@@ -23,7 +23,7 @@ Open Raccoon is an Elixir/Phoenix + Python gRPC + Next.js + SwiftUI platform tha
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Agent CRUD | Working | `raccoon_agents/agent.ex` — schema with name, slug, system_prompt, model, temperature, max_tokens, tools, mcp_servers, visibility, category, metadata |
+| Agent CRUD | Working | `wai_agents_agents/agent.ex` — schema with name, slug, system_prompt, model, temperature, max_tokens, tools, mcp_servers, visibility, category, metadata |
 | gRPC streaming | Working | `agent_executor.ex` → `grpc_client.ex` → Python `agent_service.py` → `orchestrator.py` |
 | LLM providers | Working | `AnthropicProvider` (Claude) + `OpenAIProvider` (GPT) with BYOK support |
 | Event pipeline | Working | 8 event types: token, status, tool_call, tool_result, code_block, approval_requested, complete, error |
@@ -38,7 +38,7 @@ Open Raccoon is an Elixir/Phoenix + Python gRPC + Next.js + SwiftUI platform tha
 ### 2.2 What's Broken or Missing
 
 #### Tool registry is empty
-The Python `ToolRegistry` (`agent_runtime/src/raccoon_runtime/mcp/tool_registry.py`) has full register/validate/execute logic but **zero tools are registered at startup**. The `LLMOrchestrator` instantiates `ToolRegistry()` with no registrations, so `execute_tool()` always raises `ValueError("No handler registered for tool: ...")`.
+The Python `ToolRegistry` (`agent_runtime/src/wai_agents_runtime/mcp/tool_registry.py`) has full register/validate/execute logic but **zero tools are registered at startup**. The `LLMOrchestrator` instantiates `ToolRegistry()` with no registrations, so `execute_tool()` always raises `ValueError("No handler registered for tool: ...")`.
 
 #### Tool approval bridge is incomplete
 The approval flow is split across two processes that never connect:
@@ -118,7 +118,7 @@ field(:execution_mode, Ecto.Enum,
 ### 3.2 Python Module Structure
 
 ```
-agent_runtime/src/raccoon_runtime/
+agent_runtime/src/wai_agents_runtime/
 ├── runners/
 │   ├── __init__.py
 │   ├── base_runner.py        # Abstract interface
@@ -330,12 +330,12 @@ EventRouter (GenServer) — routes triggers to AgentProcess instances
 ProcessRegistry (Registry) — lookup by {conversation_id, agent_id}
 ```
 
-### 4.2 Module: `RaccoonAgents.AgentSupervisor`
+### 4.2 Module: `WaiAgentsAgents.AgentSupervisor`
 
-New umbrella app location: `open_raccoon/apps/raccoon_agents/lib/raccoon_agents/agent_supervisor.ex`
+New umbrella app location: `wai_agents/apps/wai_agents_agents/lib/wai_agents_agents/agent_supervisor.ex`
 
 ```elixir
-defmodule RaccoonAgents.AgentSupervisor do
+defmodule WaiAgentsAgents.AgentSupervisor do
   use DynamicSupervisor
 
   def start_link(_opts) do
@@ -352,7 +352,7 @@ defmodule RaccoonAgents.AgentSupervisor do
 
   def start_agent(conversation_id, agent_id, user_id, opts \\ []) do
     spec = {
-      RaccoonAgents.AgentProcess,
+      WaiAgentsAgents.AgentProcess,
       %{
         conversation_id: conversation_id,
         agent_id: agent_id,
@@ -377,10 +377,10 @@ defmodule RaccoonAgents.AgentSupervisor do
 end
 ```
 
-### 4.3 Module: `RaccoonAgents.AgentProcess`
+### 4.3 Module: `WaiAgentsAgents.AgentProcess`
 
 ```elixir
-defmodule RaccoonAgents.AgentProcess do
+defmodule WaiAgentsAgents.AgentProcess do
   use GenServer, restart: :temporary
 
   @idle_timeout :timer.minutes(5)
@@ -419,7 +419,7 @@ defmodule RaccoonAgents.AgentProcess do
   # Callbacks
   @impl true
   def init(args) do
-    agent = RaccoonAgents.get_agent!(args.agent_id)
+    agent = WaiAgentsAgents.get_agent!(args.agent_id)
     now = System.monotonic_time(:millisecond)
 
     state = %__MODULE__{
@@ -437,7 +437,7 @@ defmodule RaccoonAgents.AgentProcess do
   @impl true
   def handle_call({:execute, messages, config}, _from, state) do
     # Delegate to AgentExecutor (existing gRPC streaming logic)
-    {:ok, pid} = RaccoonAgents.AgentExecutor.execute(
+    {:ok, pid} = WaiAgentsAgents.AgentExecutor.execute(
       state.conversation_id,
       state.agent_id,
       state.user_id,
@@ -456,7 +456,7 @@ defmodule RaccoonAgents.AgentProcess do
   @impl true
   def handle_cast({:submit_approval, request_id, approved, scope}, state) do
     # Forward to Python sidecar via new SubmitApproval RPC
-    RaccoonAgents.GRPCClient.submit_approval(
+    WaiAgentsAgents.GRPCClient.submit_approval(
       state.conversation_id,
       request_id,
       approved,
@@ -473,24 +473,24 @@ defmodule RaccoonAgents.AgentProcess do
   end
 
   defp via(conversation_id, agent_id) do
-    {:via, Registry, {RaccoonAgents.ProcessRegistry, {conversation_id, agent_id}}}
+    {:via, Registry, {WaiAgentsAgents.ProcessRegistry, {conversation_id, agent_id}}}
   end
 end
 ```
 
-### 4.4 Module: `RaccoonAgents.ProcessRegistry`
+### 4.4 Module: `WaiAgentsAgents.ProcessRegistry`
 
 ```elixir
 # In application.ex children:
-{Registry, keys: :unique, name: RaccoonAgents.ProcessRegistry}
+{Registry, keys: :unique, name: WaiAgentsAgents.ProcessRegistry}
 ```
 
-### 4.5 Module: `RaccoonAgents.EventRouter`
+### 4.5 Module: `WaiAgentsAgents.EventRouter`
 
 Routes inbound triggers to the correct `AgentProcess`:
 
 ```elixir
-defmodule RaccoonAgents.EventRouter do
+defmodule WaiAgentsAgents.EventRouter do
   use GenServer
 
   @trigger_types [:user_message, :cron_schedule, :webhook,
@@ -506,7 +506,7 @@ defmodule RaccoonAgents.EventRouter do
       messages: messages, config: config} = payload
 
     # Find or start agent process
-    case Registry.lookup(RaccoonAgents.ProcessRegistry, {conv_id, agent_id}) do
+    case Registry.lookup(WaiAgentsAgents.ProcessRegistry, {conv_id, agent_id}) do
       [{_pid, _}] ->
         AgentProcess.execute(conv_id, agent_id, messages, config)
 
@@ -547,7 +547,7 @@ Replace the empty MCP integration with the official `mcp` Python SDK.
 ### 5.2 MCPServerManager
 
 ```python
-# agent_runtime/src/raccoon_runtime/mcp/mcp_server_manager.py
+# agent_runtime/src/wai_agents_runtime/mcp/mcp_server_manager.py
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -664,10 +664,10 @@ These ship with the platform and are available to all agents:
 
 | Server | Transport | Purpose | Command |
 |--------|-----------|---------|---------|
-| `raccoon-memory` | stdio | Agent memory (save/search/forget) | `python -m raccoon_runtime.mcp.memory_server` |
-| `raccoon-web-search` | stdio | Web search via Exa API | `python -m raccoon_runtime.mcp.web_search_server` |
-| `raccoon-code-exec` | stdio | Sandboxed code execution | `python -m raccoon_runtime.mcp.code_exec_server` |
-| `raccoon-filesystem` | stdio | Sandboxed file read/write | `python -m raccoon_runtime.mcp.filesystem_server` |
+| `waiagents-memory` | stdio | Agent memory (save/search/forget) | `python -m wai_agents_runtime.mcp.memory_server` |
+| `waiagents-web-search` | stdio | Web search via Exa API | `python -m wai_agents_runtime.mcp.web_search_server` |
+| `waiagents-code-exec` | stdio | Sandboxed code execution | `python -m wai_agents_runtime.mcp.code_exec_server` |
+| `waiagents-filesystem` | stdio | Sandboxed file read/write | `python -m wai_agents_runtime.mcp.filesystem_server` |
 
 ### 5.5 User-Configurable MCP Servers
 
@@ -690,7 +690,7 @@ The `{{integration:service:field}}` syntax is resolved at execution time from th
 ### 5.6 Security
 
 - **Command whitelist for stdio:** Only allow known commands (`python`, `node`, `npx`, `uvx`, `docker`). Reject arbitrary binaries.
-- **Sandbox directories:** Filesystem MCP server restricted to `/tmp/raccoon-sandbox/{conversation_id}/`.
+- **Sandbox directories:** Filesystem MCP server restricted to `/tmp/waiagents-sandbox/{conversation_id}/`.
 - **Network isolation:** MCP servers run in the same process space. Future: Docker isolation per execution.
 - **Credential injection:** Integration tokens are resolved server-side; never sent to the client.
 
@@ -728,15 +728,15 @@ CREATE INDEX idx_agent_schedules_next_run ON agent_schedules(next_run_at)
 ### 6.2 Ecto Schema
 
 ```elixir
-defmodule RaccoonAgents.AgentSchedule do
+defmodule WaiAgentsAgents.AgentSchedule do
   use Ecto.Schema
   import Ecto.Changeset
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "agent_schedules" do
-    belongs_to :agent, RaccoonAgents.Agent
-    belongs_to :user, RaccoonAccounts.User
+    belongs_to :agent, WaiAgentsAgents.Agent
+    belongs_to :user, WaiAgentsAccounts.User
 
     field :schedule_type, Ecto.Enum, values: [:cron, :interval, :once]
     field :cron_expression, :string
@@ -762,7 +762,7 @@ Uses the existing `:agents` queue (concurrency: 5).
 **Self-rescheduling pattern:** The worker executes the agent, then re-inserts the next job with the computed `scheduled_at` timestamp.
 
 ```elixir
-defmodule RaccoonAgents.Workers.AgentScheduleWorker do
+defmodule WaiAgentsAgents.Workers.AgentScheduleWorker do
   use Oban.Worker, queue: :agents, max_attempts: 2
 
   @impl Oban.Worker
@@ -876,7 +876,7 @@ Use OpenAI `text-embedding-3-small` (1536 dimensions):
 - ~100ms per embedding call
 
 ```python
-# agent_runtime/src/raccoon_runtime/memory/embeddings.py
+# agent_runtime/src/wai_agents_runtime/memory/embeddings.py
 
 import httpx
 
@@ -914,7 +914,7 @@ The top-K memories (default K=10) are injected into the system prompt as context
 
 ### 7.5 Memory Tools (MCP)
 
-The built-in `raccoon-memory` MCP server exposes these tools:
+The built-in `waiagents-memory` MCP server exposes these tools:
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
@@ -938,20 +938,20 @@ questions where past context might be relevant.
 
 ```elixir
 # Add to Oban cron config:
-{"0 2 * * *", RaccoonAgents.Workers.MemoryDecayWorker}
+{"0 2 * * *", WaiAgentsAgents.Workers.MemoryDecayWorker}
 ```
 
 ---
 
 ## 8. Integration Platform
 
-### 8.1 New Umbrella App: `raccoon_integrations`
+### 8.1 New Umbrella App: `wai_agents_integrations`
 
 ```
-open_raccoon/apps/raccoon_integrations/
+wai_agents/apps/wai_agents_integrations/
 ├── lib/
-│   ├── raccoon_integrations.ex           # Public API
-│   ├── raccoon_integrations/
+│   ├── wai_agents_integrations.ex           # Public API
+│   ├── wai_agents_integrations/
 │   │   ├── integration.ex                # Behaviour definition
 │   │   ├── registry.ex                   # Compile-time integration registry
 │   │   ├── oauth.ex                      # Generic OAuth 2.0 + PKCE flow
@@ -978,7 +978,7 @@ open_raccoon/apps/raccoon_integrations/
 ### 8.2 Integration Behaviour
 
 ```elixir
-defmodule RaccoonIntegrations.Integration do
+defmodule WaiAgentsIntegrations.Integration do
   @moduledoc "Behaviour that all integrations must implement."
 
   @type auth_method :: :oauth2 | :oauth2_pkce | :bot_token | :api_key
@@ -1017,7 +1017,7 @@ CREATE TABLE integration_credentials (
 );
 ```
 
-**Encryption:** Reuse `RaccoonBridges.CredentialEncryption` (AES-256-GCM with `BRIDGE_ENCRYPTION_KEY`). The encrypted payload is a JSON object containing `access_token`, `refresh_token`, and provider-specific fields.
+**Encryption:** Reuse `WaiAgentsBridges.CredentialEncryption` (AES-256-GCM with `BRIDGE_ENCRYPTION_KEY`). The encrypted payload is a JSON object containing `access_token`, `refresh_token`, and provider-specific fields.
 
 #### `integration_rate_limits`
 
@@ -1055,7 +1055,7 @@ CREATE TABLE integration_webhooks (
 Generic OAuth module with PKCE support:
 
 ```elixir
-defmodule RaccoonIntegrations.OAuth do
+defmodule WaiAgentsIntegrations.OAuth do
   @doc "Generate authorization URL with optional PKCE."
   def authorize_url(integration, user_id, opts \\ []) do
     config = integration.oauth_config()
@@ -1117,7 +1117,7 @@ Proactive Oban cron job refreshes tokens before they expire:
 
 ```elixir
 # Add to Oban cron config:
-{"*/5 * * * *", RaccoonIntegrations.Workers.TokenRefreshWorker}
+{"*/5 * * * *", WaiAgentsIntegrations.Workers.TokenRefreshWorker}
 ```
 
 The worker queries for credentials expiring within 10 minutes and refreshes them.
@@ -1330,7 +1330,7 @@ ChannelRouter.route(envelope)
 ### 9.4 Outbound Routing
 
 ```elixir
-defmodule RaccoonIntegrations.Workers.ChannelOutboundWorker do
+defmodule WaiAgentsIntegrations.Workers.ChannelOutboundWorker do
   use Oban.Worker, queue: :bridges, max_attempts: 3
 
   @impl Oban.Worker
@@ -1373,7 +1373,7 @@ Add to the webhook scope in `router.ex`:
 
 ```elixir
 # Generic webhook endpoint for all integrations
-scope "/api/v1/webhooks", RaccoonGatewayWeb do
+scope "/api/v1/webhooks", WaiAgentsGatewayWeb do
   pipe_through :api
 
   # Existing
@@ -1391,7 +1391,7 @@ end
 Per-service verification in `WebhookHandler`:
 
 ```elixir
-defmodule RaccoonIntegrations.WebhookHandler do
+defmodule WaiAgentsIntegrations.WebhookHandler do
   def verify_and_process(service, webhook_id, headers, body) do
     with {:ok, webhook} <- get_webhook(webhook_id),
          :ok <- verify_signature(service, webhook, headers, body),
@@ -1435,7 +1435,7 @@ end
 All webhook payloads are normalized into an `IntegrationEvent` struct:
 
 ```elixir
-defmodule RaccoonIntegrations.IntegrationEvent do
+defmodule WaiAgentsIntegrations.IntegrationEvent do
   defstruct [
     :service,        # "github", "slack", "discord", etc.
     :event_type,     # "push", "message", "issue_created", etc.
@@ -1466,13 +1466,13 @@ end
 def submit_approval(conversation_id, request_id, approved, scope) do
   case connect() do
     {:ok, channel} ->
-      request = Raccoon.Agent.V1.ApprovalDecision.new(
+      request = WaiAgents.Agent.V1.ApprovalDecision.new(
         conversation_id: conversation_id,
         request_id: request_id,
         approved: approved,
         scope: to_string(scope)
       )
-      Raccoon.Agent.V1.AgentService.Stub.submit_approval(channel, request)
+      WaiAgents.Agent.V1.AgentService.Stub.submit_approval(channel, request)
 
     {:error, reason} ->
       {:error, reason}
@@ -1536,7 +1536,7 @@ request_params = %{
 ```elixir
 mcp_servers =
   Enum.map(config.mcp_servers || [], fn server ->
-    Raccoon.Agent.V1.MCPServerConfig.new(
+    WaiAgents.Agent.V1.MCPServerConfig.new(
       name: server["name"],
       transport: server["transport"] || "stdio",
       command: server["command"] || "",
@@ -1753,7 +1753,7 @@ settings/
 2. Frontend calls `POST /api/v1/integrations/:service/authorize` → returns `{authorize_url}`
 3. Frontend opens `authorize_url` in a popup window
 4. User authorizes on the service's OAuth page
-5. Service redirects to `https://openraccoon.com/api/v1/integrations/callback/:service?code=...&state=...`
+5. Service redirects to `https://waiagents.com/api/v1/integrations/callback/:service?code=...&state=...`
 6. Backend exchanges code for tokens, encrypts, stores
 7. Popup closes, frontend polls for connection status
 
@@ -1987,7 +1987,7 @@ interface ChannelRoute {
 1. User taps "Connect" on integration
 2. App calls `POST /api/v1/integrations/:service/authorize`
 3. App opens `authorize_url` via `ASWebAuthenticationSession`
-4. After authorization, callback URL scheme `openraccoon://integrations/callback?service=...&code=...` triggers token exchange
+4. After authorization, callback URL scheme `waiagents://integrations/callback?service=...&code=...` triggers token exchange
 5. App refreshes integration status
 
 **UI:**
@@ -2123,7 +2123,7 @@ ALTER TABLE users ADD COLUMN stripe_subscription_id VARCHAR(100);
 5. Test all three modes end-to-end
 
 ### Phase 8: Integration Platform (3-4 weeks)
-1. Create `raccoon_integrations` umbrella app
+1. Create `wai_agents_integrations` umbrella app
 2. Implement generic OAuth 2.0 + PKCE flow
 3. Implement token refresh worker
 4. Build 10 priority integrations (Telegram upgrade, WhatsApp upgrade, Gmail, Calendar, Drive, GitHub, Slack, Discord, Notion, Twitter)

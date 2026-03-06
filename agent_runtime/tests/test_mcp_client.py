@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from raccoon_runtime.mcp.client import MCPClient
+from wai_agents_runtime.mcp.client import MCPClient
 
 
 class TestMCPClient:
@@ -58,7 +58,7 @@ class TestMCPClient:
             },
         }
 
-        with patch("raccoon_runtime.mcp.client.httpx.AsyncClient") as mock_httpx:
+        with patch("wai_agents_runtime.mcp.client.httpx.AsyncClient") as mock_httpx:
             mock_client_instance = AsyncMock()
             mock_client_instance.post = AsyncMock(return_value=mock_response)
             mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
@@ -93,7 +93,7 @@ class TestMCPClient:
             },
         }
 
-        with patch("raccoon_runtime.mcp.client.httpx.AsyncClient") as mock_httpx:
+        with patch("wai_agents_runtime.mcp.client.httpx.AsyncClient") as mock_httpx:
             mock_client_instance = AsyncMock()
             mock_client_instance.post = AsyncMock(return_value=mock_response)
             mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
@@ -125,7 +125,7 @@ class TestMCPClient:
             "error": {"code": -32600, "message": "Invalid request"},
         }
 
-        with patch("raccoon_runtime.mcp.client.httpx.AsyncClient") as mock_httpx:
+        with patch("wai_agents_runtime.mcp.client.httpx.AsyncClient") as mock_httpx:
             mock_client_instance = AsyncMock()
             mock_client_instance.post = AsyncMock(return_value=mock_response)
             mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)

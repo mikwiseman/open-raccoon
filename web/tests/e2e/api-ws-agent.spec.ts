@@ -8,7 +8,7 @@ import {
   leaveAndDisconnect,
   uniqueIdempotencyKey,
   uniqueLabel
-} from "./helpers/raccoon";
+} from "./helpers/waiagents";
 
 test("api/ws agent: start conversation and observe stream events", async ({ request }) => {
   const alex = await getSeedSession(request, "alex");

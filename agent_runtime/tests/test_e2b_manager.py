@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from raccoon_runtime.config import Settings
-from raccoon_runtime.sandbox.e2b_manager import E2BSandboxManager
+from wai_agents_runtime.config import Settings
+from wai_agents_runtime.sandbox.e2b_manager import E2BSandboxManager
 
 
 class TestE2BSandboxManager:
@@ -24,7 +24,7 @@ class TestE2BSandboxManager:
         return mock
 
     @pytest.mark.asyncio
-    @patch("raccoon_runtime.sandbox.e2b_manager.AsyncSandbox")
+    @patch("wai_agents_runtime.sandbox.e2b_manager.AsyncSandbox")
     async def test_create_sandbox(self, mock_sandbox_cls):
         mock_instance = self._make_mock_sandbox("sbx_conv_123")
         mock_sandbox_cls.create = AsyncMock(return_value=mock_instance)
@@ -50,7 +50,7 @@ class TestE2BSandboxManager:
             await mgr.create_sandbox("conv_123")
 
     @pytest.mark.asyncio
-    @patch("raccoon_runtime.sandbox.e2b_manager.AsyncSandbox")
+    @patch("wai_agents_runtime.sandbox.e2b_manager.AsyncSandbox")
     async def test_create_sandbox_custom_template(self, mock_sandbox_cls):
         mock_instance = self._make_mock_sandbox("sbx_node_123")
         mock_sandbox_cls.create = AsyncMock(return_value=mock_instance)
@@ -66,7 +66,7 @@ class TestE2BSandboxManager:
         )
 
     @pytest.mark.asyncio
-    @patch("raccoon_runtime.sandbox.e2b_manager.AsyncSandbox")
+    @patch("wai_agents_runtime.sandbox.e2b_manager.AsyncSandbox")
     async def test_destroy_sandbox(self, mock_sandbox_cls):
         mock_instance = self._make_mock_sandbox("sbx_destroy_test")
         mock_sandbox_cls.create = AsyncMock(return_value=mock_instance)
@@ -85,7 +85,7 @@ class TestE2BSandboxManager:
         await mgr.destroy_sandbox("sbx_nonexistent")
 
     @pytest.mark.asyncio
-    @patch("raccoon_runtime.sandbox.e2b_manager.AsyncSandbox")
+    @patch("wai_agents_runtime.sandbox.e2b_manager.AsyncSandbox")
     async def test_destroy_all(self, mock_sandbox_cls):
         mock1 = self._make_mock_sandbox("sbx_1")
         mock2 = self._make_mock_sandbox("sbx_2")
@@ -99,7 +99,7 @@ class TestE2BSandboxManager:
         assert mgr.active_count == 0
 
     @pytest.mark.asyncio
-    @patch("raccoon_runtime.sandbox.e2b_manager.AsyncSandbox")
+    @patch("wai_agents_runtime.sandbox.e2b_manager.AsyncSandbox")
     async def test_execute_code(self, mock_sandbox_cls):
         mock_instance = self._make_mock_sandbox("sbx_exec_test")
         mock_sandbox_cls.create = AsyncMock(return_value=mock_instance)
@@ -130,7 +130,7 @@ class TestE2BSandboxManager:
                 pass
 
     @pytest.mark.asyncio
-    @patch("raccoon_runtime.sandbox.e2b_manager.AsyncSandbox")
+    @patch("wai_agents_runtime.sandbox.e2b_manager.AsyncSandbox")
     async def test_execute_code_with_error(self, mock_sandbox_cls):
         mock_instance = self._make_mock_sandbox("sbx_err_test")
         mock_sandbox_cls.create = AsyncMock(return_value=mock_instance)
@@ -157,7 +157,7 @@ class TestE2BSandboxManager:
         assert error_event["code"] == "NameError"
 
     @pytest.mark.asyncio
-    @patch("raccoon_runtime.sandbox.e2b_manager.AsyncSandbox")
+    @patch("wai_agents_runtime.sandbox.e2b_manager.AsyncSandbox")
     async def test_upload_file(self, mock_sandbox_cls):
         mock_instance = self._make_mock_sandbox("sbx_upload_test")
         mock_sandbox_cls.create = AsyncMock(return_value=mock_instance)
@@ -176,7 +176,7 @@ class TestE2BSandboxManager:
             await mgr.upload_file("sbx_nonexistent", "/test.py", b"hello")
 
     @pytest.mark.asyncio
-    @patch("raccoon_runtime.sandbox.e2b_manager.AsyncSandbox")
+    @patch("wai_agents_runtime.sandbox.e2b_manager.AsyncSandbox")
     async def test_get_sandbox(self, mock_sandbox_cls):
         mock_instance = self._make_mock_sandbox("sbx_get_test")
         mock_sandbox_cls.create = AsyncMock(return_value=mock_instance)

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from raccoon_runtime.mcp.mcp_server_manager import ALLOWED_COMMANDS, MCPServerManager
+from wai_agents_runtime.mcp.mcp_server_manager import ALLOWED_COMMANDS, MCPServerManager
 
 
 class TestMCPServerManagerInit:

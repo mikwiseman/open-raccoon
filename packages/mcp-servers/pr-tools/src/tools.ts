@@ -257,7 +257,7 @@ export async function handleCollectArticles(input: z.infer<typeof CollectArticle
   for (const source of sources) {
     try {
       const response = await fetch(source.url, {
-        headers: { 'User-Agent': 'RaccoonPRAgent/1.0' },
+        headers: { 'User-Agent': 'WaiAgentsPRAgent/1.0' },
       });
 
       if (!response.ok) {

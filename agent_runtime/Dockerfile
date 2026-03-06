@@ -11,7 +11,7 @@ COPY src/ ./src/
 COPY protos/ ./protos/
 
 ENV PATH="/app/.venv/bin:$PATH"
-ENV RACCOON_GRPC_PORT=50051
+ENV WAI_AGENTS_GRPC_PORT=50051
 
 EXPOSE 50051
-CMD ["python", "-m", "raccoon_runtime"]
+CMD ["python", "-m", "wai_agents_runtime"]

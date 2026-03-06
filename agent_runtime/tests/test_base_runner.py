@@ -2,7 +2,7 @@
 
 import pytest
 
-from raccoon_runtime.runners.base_runner import AgentEvent, BaseAgentRunner
+from wai_agents_runtime.runners.base_runner import AgentEvent, BaseAgentRunner
 
 
 class TestAgentEvent:

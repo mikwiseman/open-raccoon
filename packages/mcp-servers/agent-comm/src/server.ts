@@ -18,7 +18,7 @@ import {
 } from './tools.js';
 
 const server = new McpServer({
-  name: 'raccoon-agent-comm',
+  name: 'waiagents-agent-comm',
   version: '0.1.0',
 });
 
@@ -107,7 +107,7 @@ const transport = new StreamableHTTPServerTransport({
 const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
   if (req.url === '/health' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', server: 'raccoon-agent-comm' }));
+    res.end(JSON.stringify({ status: 'ok', server: 'waiagents-agent-comm' }));
     return;
   }
 
@@ -128,5 +128,5 @@ const port = Number(process.env.MCP_AGENT_COMM_PORT) || 3103;
 await server.connect(transport);
 
 httpServer.listen(port, () => {
-  console.log(`raccoon-agent-comm MCP server on port ${port}`);
+  console.log(`waiagents-agent-comm MCP server on port ${port}`);
 });

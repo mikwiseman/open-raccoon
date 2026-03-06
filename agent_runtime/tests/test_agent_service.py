@@ -1,8 +1,8 @@
 """Tests for the AgentService servicer."""
 
-from raccoon_runtime.config import Settings
-from raccoon_runtime.runners.runner_factory import RunnerFactory
-from raccoon_runtime.services.agent_service import AgentServiceServicer
+from wai_agents_runtime.config import Settings
+from wai_agents_runtime.runners.runner_factory import RunnerFactory
+from wai_agents_runtime.services.agent_service import AgentServiceServicer
 
 
 class TestAgentServiceServicer:

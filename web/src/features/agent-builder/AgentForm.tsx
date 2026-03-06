@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { RaccoonApi } from "@/lib/api/services";
+import type { WaiAgentsApi } from "@/lib/api/services";
 import type { Agent, ToolConfig, McpServerConfig } from "@/lib/types";
 import { ModelSelector } from "./ModelSelector";
 import { SystemPromptEditor } from "./SystemPromptEditor";
@@ -11,7 +11,7 @@ import { ScheduleManager } from "./ScheduleManager";
 import { AgentTestSandbox } from "./AgentTestSandbox";
 
 type Props = {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
   accessToken: string;
   agent?: Agent;
   onSaved: (agent: Agent) => void;
@@ -43,7 +43,7 @@ export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props)
   const [slug, setSlug] = useState(agent?.slug ?? "");
   const [description, setDescription] = useState(agent?.description ?? "");
   const [category, setCategory] = useState(agent?.category ?? "general");
-  const [model, setModel] = useState(agent?.model ?? "claude-sonnet-4-20250514");
+  const [model, setModel] = useState(agent?.model ?? "claude-sonnet-4-6");
   const [executionMode, setExecutionMode] = useState<Agent["execution_mode"]>(
     agent?.execution_mode ?? "raw"
   );

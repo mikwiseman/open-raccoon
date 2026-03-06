@@ -2,7 +2,7 @@
 
 import pytest
 
-from raccoon_runtime.config import Settings
+from wai_agents_runtime.config import Settings
 
 
 @pytest.fixture

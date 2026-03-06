@@ -20,13 +20,13 @@ app.use('*', logger());
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:3000', 'https://openraccoon.com'],
+    origin: ['http://localhost:3000', 'https://waiagents.com'],
     credentials: true,
   }),
 );
 
 app.get('/api/v1/health', (c) => {
-  return c.json({ status: 'ok', service: 'open-raccoon-api', timestamp: new Date().toISOString() });
+  return c.json({ status: 'ok', service: 'wai-agents-api', timestamp: new Date().toISOString() });
 });
 
 app.route('/api/v1/auth', authRoutes);
@@ -92,7 +92,7 @@ app.post('/api/v1/internal/agent/execute', async (c) => {
 const port = Number(process.env.PORT) || 4000;
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`Open Raccoon API running on port ${info.port}`);
+  console.log(`WaiAgents API running on port ${info.port}`);
 });
 
 const io = createSocketServer(server as any);

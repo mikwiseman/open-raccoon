@@ -1,112 +1,166 @@
-# Open Raccoon — Developer Reference
+# WaiAgents — TS/Web Deployment Guide
 
-## Architecture
+Snapshot date: 2026-03-06
 
-TypeScript monorepo (pnpm workspaces):
-- `packages/api` — Hono REST API + Socket.IO WebSocket (port 4000)
-- `packages/shared` — Shared types, schemas, Zod validators
-- `packages/mcp-servers/agent-comm` — Agent-to-agent communication MCP (port 3103)
-- `packages/mcp-servers/memory` — Agent memory MCP (port 3100)
-- `packages/mcp-servers/web-search` — Web search MCP (port 3101)
-- `packages/mcp-servers/pr-tools` — PR tools MCP (port 3102)
-- `web/` — Next.js 14 web app (port 3000)
+## Scope
 
-## Backend
+This file covers the root pnpm workspace and the public `waiagents.com` deployment:
+- `packages/api`
+- `packages/shared`
+- `packages/mcp-servers/*`
+- `web/`
 
-- **API Base:** `https://openraccoon.com/api/v1` (health: `GET /health`)
-- **SSH:** `root@157.180.72.249`
-- **Services (systemd):** `raccoon-api`, `raccoon-web`, `raccoon-mcp-memory`, `raccoon-mcp-web-search`, `raccoon-mcp-pr-tools`, `raccoon-mcp-agent-comm`
-- **Database:** PostgreSQL `raccoon_prod`, user `raccoon`, localhost
-- **Redis:** localhost:6379 (BullMQ job queues, rate limiting)
-- **Code:** `/opt/open-raccoon/` (mirrors this repo)
-- **Env:** `/opt/open-raccoon/.env`
-- **S3:** Hetzner Object Storage at `hel1.your-objectstorage.com`, bucket `open-raccoon`
+This repo also contains a separate Elixir/Python/Swift stack in `wai_agents/`, `agent_runtime/`, and `WaiAgents/`. For that stack, use `AGENTS.md` and `wai_agents/AGENTS.md`.
 
-## Swift App
+## Monorepo Map
 
-- **Project:** `OpenRaccoon/project.yml` (XcodeGen)
-- **Targets:** `OpenRaccoon-macOS`, `OpenRaccoon-iOS`
-- **Build:**
-  ```bash
-  cd OpenRaccoon && xcodegen generate && xcodebuild -scheme OpenRaccoon-macOS -configuration Debug -derivedDataPath build/DerivedData -destination 'platform=macOS' build
-  ```
+- `packages/api` — Hono REST API + Socket.IO realtime server
+- `packages/shared` — shared TypeScript types and schemas
+- `packages/mcp-servers/memory` — memory MCP server
+- `packages/mcp-servers/web-search` — web search MCP server
+- `packages/mcp-servers/pr-tools` — PR tools MCP server
+- `packages/mcp-servers/agent-comm` — agent-to-agent MCP server
+- `web/` — Next.js 14 web client
 
-## Development
+## Local Development
 
 ```bash
-pnpm install          # Install all deps
-pnpm -r build         # Build all packages
-pnpm --filter @open-raccoon/api test   # Run API tests (110+)
-pnpm --filter @open-raccoon/api exec tsc --noEmit  # Type check
-cd web && pnpm build  # Build web app
+pnpm install
+pnpm -r build
+pnpm --filter @wai-agents/api test
+pnpm --filter @wai-agents/api exec tsc --noEmit
+pnpm lint
+pnpm dev:api
+pnpm dev:web
 ```
 
-## API Auth
+## Public Deployment
+
+Verified from this machine on March 6, 2026:
+- Web origin: `https://waiagents.com`
+- API base: `https://waiagents.com/api/v1`
+- Health: `GET /health` returns `200` with `{"status":"ok","service":"wai-agents-api",...}`
+- Realtime: Socket.IO is live at `https://waiagents.com/socket.io/`
+- `waiagents.com` resolves to `157.180.72.249`
+- Seeded login `alex@waiagents.com / TestPass123!` still returns `200`
+- Public profile `GET /users/alex_dev` still returns `200`
+
+Current public gaps and failures:
+- `GET /pages` returns `404`
+- `GET /bridges` returns `404`
+- `GET /users/me/usage` returns `404`
+- `POST /auth/magic-link` returns `500`
+- Invalid `POST /auth/magic-link/verify` returns `500`
+
+Direct-host note:
+- TCP `22` and `4000` on `157.180.72.249` were reachable from this machine on March 6, 2026.
+- Direct `http://157.180.72.249:4000/api/v1/health` still timed out from this machine. Prefer the domain unless you are on-host.
+
+## Auth
 
 - Bearer JWT: `Authorization: Bearer <access_token>`
-- Register: `POST /auth/register` → `{user, tokens}`
-- Login: `POST /auth/login` → `{user, tokens}`
-- Refresh: `POST /auth/refresh` with `{refresh_token}`
-- Magic link: `POST /auth/magic-link`, verify `POST /auth/magic-link/verify`
-- Passwords: supports both Argon2 (legacy Elixir) and scrypt (new TS)
-
-## WebSocket
-
-- **Socket.IO:** `wss://openraccoon.com/socket.io/` (web app)
-- **Phoenix:** `wss://openraccoon.com/socket/websocket?token=JWT` (Swift app, legacy)
-
-## Key Endpoints
-
-| Area | Endpoints |
-|------|-----------|
-| Auth | `POST /auth/register`, `/login`, `/refresh`, `/logout`, `/magic-link`, `/magic-link/verify` |
-| Users | `GET /users/me`, `PATCH /users/me`, `GET /users/:username` |
-| Conversations | `GET /conversations`, `POST /conversations`, `GET/PATCH/DELETE /conversations/:id` |
-| Messages | `GET /conversations/:id/messages`, `POST /conversations/:id/messages` |
-| Members | `GET/POST /conversations/:id/members`, `DELETE /conversations/:id/members/:uid` |
-| Agents | `GET /agents`, `POST /agents`, `GET/PATCH/DELETE /agents/:id`, `POST /agents/:id/conversation`, `GET /agents/:id/performance` |
-| Marketplace | `GET /marketplace`, `GET /marketplace/categories`, `GET /marketplace/agents/:slug`, `POST /marketplace/agents/:id/rate`, `GET /marketplace/search?q=` |
-| Feed | `GET /feed`, `/feed/trending`, `/feed/following`, `/feed/new`, `POST /feed/:id/like`, `DELETE /feed/:id/like`, `POST /feed/:id/fork` |
-| Feedback | `POST /conversations/:id/messages/:messageId/feedback`, `GET /conversations/:id/should-prompt-feedback` |
-| Uploads | `POST /uploads/presign`, `GET /uploads/:key` |
-
-## Server Operations
-
-- **Deploy:** `cd /opt/open-raccoon && git pull origin main && pnpm install && pnpm -r build && cd web && pnpm build && cd .. && systemctl restart raccoon-api raccoon-web raccoon-mcp-memory raccoon-mcp-web-search raccoon-mcp-pr-tools raccoon-mcp-agent-comm`
-- **Logs:** `journalctl -u raccoon-api -f`
-- **All service logs:** `journalctl -u raccoon-api -u raccoon-web -u raccoon-mcp-memory -u raccoon-mcp-web-search -u raccoon-mcp-pr-tools -u raccoon-mcp-agent-comm -f`
-- **Auth rate limit:** 5 req/min per IP for auth endpoints
-- **Logout:** `DELETE /auth/logout` (not POST)
-- **Messages require** `Idempotency-Key` header (UUID)
-
-### BullMQ Workers
-
-- **trending-worker** — recalculates trending scores every 15 minutes
-- **memory-decay-worker** — decays old agent memories every 1 hour
-- **article-collection-worker** — collects articles from agent sources every 30 minutes
-- **agent-reflection-worker** — self-improvement reflections every 6 hours
+- Auth routes are rate-limited to `5` requests per minute per IP
+- Supported routes in the TypeScript API:
+  - `POST /auth/register`
+  - `POST /auth/login`
+  - `POST /auth/refresh`
+  - `DELETE /auth/logout`
+  - `POST /auth/magic-link`
+  - `POST /auth/magic-link/verify`
+- Public deployment reality as of March 6, 2026:
+  - password login works
+  - logout works with `DELETE`
+  - `POST /auth/logout` returns `404`
+  - magic-link routes are broken in production
 
 ### zsh Curl Warning
 
-zsh escapes `!` with a backslash in `-d` arguments, corrupting JSON like `TestPass123!` → `TestPass123\!`. Use heredoc files or `--data-urlencode` instead:
-```bash
-# WRONG (in zsh):  curl -d '{"password":"TestPass123!"}'
-# RIGHT: write JSON via heredoc, then curl -d @file
-```
+zsh escapes `!` inside inline JSON, so `TestPass123!` can become `TestPass123\\!`. Use a heredoc or `-d @file` for auth payloads.
 
-## Seed Accounts (for testing)
+## Current Public TS API Surface
 
-All passwords: `TestPass123!`
+Users:
+- `GET /users/me`
+- `PATCH /users/me`
+- `GET /users/:username`
 
-| Username | Email | Role |
-|----------|-------|------|
-| `alex_dev` | `alex@openraccoon.com` | user |
-| `maya_writer` | `maya@openraccoon.com` | user |
-| `sam_designer` | `sam@openraccoon.com` | user |
-| `jordan_student` | `jordan@openraccoon.com` | user |
-| `taylor_data` | `taylor@openraccoon.com` | user |
-| `riley_pm` | `riley@openraccoon.com` | user |
-| `casey_research` | `casey@openraccoon.com` | user |
-| `morgan_maker` | `morgan@openraccoon.com` | user |
-| `avery_teacher` | `avery@openraccoon.com` | user |
-| `quinn_admin` | `quinn@openraccoon.com` | admin |
+Conversations:
+- `GET /conversations`
+- `POST /conversations`
+- `GET /conversations/:id`
+- `PATCH /conversations/:id`
+- `DELETE /conversations/:id`
+- `GET /conversations/:id/messages`
+- `POST /conversations/:id/messages` with `Idempotency-Key`
+- `GET /conversations/:id/members`
+- `POST /conversations/:id/members`
+- `DELETE /conversations/:id/members/:userId`
+- `POST /conversations/:id/messages/:messageId/feedback`
+- `GET /conversations/:id/should-prompt-feedback`
+
+Agents:
+- `GET /agents/templates`
+- `GET /agents`
+- `POST /agents`
+- `GET /agents/:id`
+- `PATCH /agents/:id`
+- `DELETE /agents/:id`
+- `GET /agents/:id/performance`
+- `POST /agents/:id/conversation`
+
+Feed and marketplace:
+- `GET /feed`
+- `GET /feed/trending`
+- `GET /feed/following`
+- `GET /feed/new`
+- `POST /feed/:id/like`
+- `DELETE /feed/:id/like`
+- `POST /feed/:id/fork`
+- `GET /marketplace`
+- `GET /marketplace/search?q=...`
+- `GET /marketplace/categories`
+- `GET /marketplace/agents/:slug`
+- `POST /marketplace/agents/:id/rate`
+- `POST /users/:id/follow`
+- `DELETE /users/:id/follow`
+
+Uploads:
+- `POST /uploads/presign`
+- `GET /uploads/:key`
+
+Internal-only:
+- `POST /internal/agent/execute` with `X-Internal-Key`
+
+Not on the current public deployment:
+- `/pages`
+- `/bridges`
+- `/users/me/usage`
+
+## Realtime Contract
+
+- Transport: Socket.IO at `/socket.io`
+- Client auth: `handshake.auth.token`
+- User room auto-join: `user:{userId}`
+- Conversation events:
+  - client: `join:conversation`, `leave:conversation`, `typing:start`, `typing:stop`, `read`
+  - server: `message:new`, `message:updated`, `message:deleted`, `typing:start`, `typing:stop`, `conversation:updated`
+- Agent events:
+  - client: `join:agent`, `leave:agent`
+  - server: `agent:event`, `a2a:event`
+
+## Deployment Notes
+
+Existing deployment docs still point to:
+- SSH: `root@157.180.72.249`
+- code dir: `/opt/wai-agents`
+- env file: `/opt/wai-agents/.env`
+- PostgreSQL: `wai_agents_prod` on localhost
+- Redis: `localhost:6379`
+- systemd services: `waiagents-api`, `waiagents-web`, `waiagents-mcp-memory`, `waiagents-mcp-web-search`, `waiagents-mcp-pr-tools`, `waiagents-mcp-agent-comm`
+- object storage: Hetzner Object Storage bucket `wai-agents`
+
+Validate those on-host before relying on them; they were not re-verified over SSH in this pass.
+
+## Verified Test Account
+
+- `alex@waiagents.com / TestPass123!`

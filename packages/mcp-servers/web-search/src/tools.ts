@@ -71,7 +71,7 @@ export async function handleFetchPage(
 ): Promise<{ content: string; title?: string; url: string }> {
   const response = await fetch(input.url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; RaccoonBot/1.0)',
+      'User-Agent': 'Mozilla/5.0 (compatible; WaiAgentsBot/1.0)',
     },
   });
 

@@ -1,6 +1,6 @@
 """Tests for the agent status message bank."""
 
-from raccoon_runtime.status_messages import StatusMessageBank
+from wai_agents_runtime.status_messages import StatusMessageBank
 
 
 class TestStatusMessageBank:
@@ -47,7 +47,7 @@ class TestStatusMessageBank:
         bank = StatusMessageBank()
         assert "contemplating the void..." in bank.THINKING
         assert "asking the rubber duck..." in bank.THINKING
-        assert "consulting the raccoon council..." in bank.THINKING
+        assert "consulting the waiagents council..." in bank.THINKING
         assert "buffering genius..." in bank.THINKING
 
     def test_thinking_messages_from_design_system(self):
@@ -81,7 +81,7 @@ class TestStatusMessageBank:
         """Verify error recovery messages from DESIGN_SYSTEM.md 6.2."""
         bank = StatusMessageBank()
         assert "hmm, that didn't work. plan B." in bank.ERROR_RECOVERY
-        assert "the raccoon tripped. getting back up." in bank.ERROR_RECOVERY
+        assert "the waiagents tripped. getting back up." in bank.ERROR_RECOVERY
 
     def test_reading_code_messages(self):
         """Verify reading code messages from SPECS.md Appendix A."""

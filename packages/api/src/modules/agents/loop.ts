@@ -3,11 +3,11 @@ import { db, sql } from '../../db/connection.js';
 import { agents } from '../../db/schema/agents.js';
 import { messages } from '../../db/schema/conversations.js';
 import { eq, desc } from 'drizzle-orm';
-import { emitAgentEvent } from '../../ws/emitter.js';
+import { emitAgentEvent, emitMessage } from '../../ws/emitter.js';
 import { callLLM } from './llm/index.js';
 import { assembleSoulPrompt } from './soul.js';
 import { McpManager } from './mcp-manager.js';
-import type { AgentEvent } from '@open-raccoon/shared';
+import type { AgentEvent } from '@wai-agents/shared';
 import type { CallerContext } from './soul.js';
 
 export interface AgentLoopConfig {
@@ -159,6 +159,19 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopRe
       UPDATE conversations SET last_message_at = ${now}, updated_at = NOW()
       WHERE id = ${conversationId}
     `;
+
+    emitMessage(conversationId, {
+      id: messageId,
+      conversation_id: conversationId,
+      sender_id: agentId,
+      sender_type: 'agent',
+      type: 'text',
+      content: [{ type: 'text', text: fullResponse }],
+      metadata: {},
+      edited_at: null,
+      deleted_at: null,
+      created_at: now,
+    });
 
     // 8. Track usage in agent_usage_logs
     const usageModel = agent.model ?? 'claude-sonnet-4-6';

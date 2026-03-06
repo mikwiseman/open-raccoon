@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { RaccoonApi } from "@/lib/api/services";
+import type { WaiAgentsApi } from "@/lib/api/services";
+import { asTextContent } from "@/lib/utils";
 
 type Props = {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
   agentId: string;
   accessToken: string;
 };
@@ -35,8 +36,38 @@ export function AgentTestSandbox({ api, agentId, accessToken }: Props) {
     return id;
   }, [api, agentId, conversationId]);
 
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault();
+  const waitForAgentReply = useCallback(
+    async (nextConversationId: string, sentMessageId: string): Promise<SandboxMessage | null> => {
+      const startedAt = Date.now();
+
+      while (Date.now() - startedAt < 30_000) {
+        const response = await api.listMessages(nextConversationId, { limit: 20 });
+        const reply = [...response.items]
+          .reverse()
+          .find(
+            (message) =>
+              message.id !== sentMessageId &&
+              !message.deleted_at &&
+              (message.sender_type === "agent" || message.sender_type === "system")
+          );
+
+        if (reply) {
+          return {
+            id: reply.id,
+            role: "agent",
+            text: asTextContent(reply.content) || "(no response)"
+          };
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1_500));
+      }
+
+      return null;
+    },
+    [api]
+  );
+
+  async function handleSend() {
     const text = input.trim();
     if (!text || sending) return;
 
@@ -54,13 +85,13 @@ export function AgentTestSandbox({ api, agentId, accessToken }: Props) {
     try {
       const convId = await ensureConversation();
       const res = await api.sendTextMessage(convId, text);
-      const content = res.message.content as { text?: string };
-      const agentMsg: SandboxMessage = {
-        id: res.message.id,
-        role: "agent",
-        text: content.text ?? "(no response)",
-      };
-      setMessages((prev) => [...prev, agentMsg]);
+      const agentMsg = await waitForAgentReply(convId, res.message.id);
+
+      if (agentMsg) {
+        setMessages((prev) => [...prev, agentMsg]);
+      } else {
+        setError("Timed out waiting for the agent reply.");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message");
     } finally {
@@ -93,18 +124,29 @@ export function AgentTestSandbox({ api, agentId, accessToken }: Props) {
 
       {error && <p className="error-text">{error}</p>}
 
-      <form className="ab-sandbox-input" onSubmit={(e) => void handleSend(e)}>
+      <div className="ab-sandbox-input">
         <input
           className="ab-input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void handleSend();
+            }
+          }}
           placeholder="Type a test message..."
           disabled={sending}
         />
-        <button type="submit" className="ab-btn ab-btn-primary" disabled={sending || !input.trim()}>
+        <button
+          type="button"
+          className="ab-btn ab-btn-primary"
+          disabled={sending || !input.trim()}
+          onClick={() => void handleSend()}
+        >
           Send
         </button>
-      </form>
+      </div>
     </fieldset>
   );
 }

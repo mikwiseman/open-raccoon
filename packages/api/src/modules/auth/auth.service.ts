@@ -13,7 +13,7 @@ const JWT_SECRET_VALUE =
     ? (() => {
         throw new Error('JWT_SECRET must be set in production');
       })()
-    : 'dev-secret-open-raccoon-change-in-production');
+    : 'dev-secret-wai-agents-change-in-production');
 
 const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_VALUE);
 
@@ -294,7 +294,8 @@ export async function updateProfile(
 ): Promise<ReturnType<typeof formatUser>> {
   const displayName = updates.display_name !== undefined ? updates.display_name : null;
   const bio = updates.bio !== undefined ? updates.bio : null;
-  const avatarUrl = updates.avatar_url !== undefined ? updates.avatar_url : null;
+  const avatarUrlProvided = updates.avatar_url !== undefined;
+  const avatarUrl = avatarUrlProvided ? updates.avatar_url || null : null;
   const settings = updates.settings !== undefined ? JSON.stringify(updates.settings) : null;
 
   // Build a partial update: only update fields that were explicitly provided
@@ -303,7 +304,7 @@ export async function updateProfile(
     UPDATE users SET
       display_name = CASE WHEN ${displayName !== null} THEN ${displayName} ELSE display_name END,
       bio          = CASE WHEN ${bio !== null} THEN ${bio} ELSE bio END,
-      avatar_url   = CASE WHEN ${avatarUrl !== null} THEN ${avatarUrl} ELSE avatar_url END,
+      avatar_url   = CASE WHEN ${avatarUrlProvided} THEN ${avatarUrl} ELSE avatar_url END,
       settings     = CASE WHEN ${settings !== null} THEN ${settings}::jsonb ELSE settings END,
       updated_at   = NOW()
     WHERE id = ${userId}

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { seededUser, uniqueLabel } from "./helpers/raccoon";
+import { seededUser, uniqueLabel } from "./helpers/waiagents";
 
 test("web app flow: auth, chat, feed, pages, marketplace, settings", async ({ page }) => {
   const alex = seededUser("alex");
@@ -13,7 +13,7 @@ test("web app flow: auth, chat, feed, pages, marketplace, settings", async ({ pa
   await page.goto("/");
   await loginThroughUi(page, alex.email, alex.password);
 
-  await expect(page.getByRole("heading", { name: "Open Raccoon Web" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "WaiAgents Web" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Chats" })).toBeVisible({ timeout: 15_000 });
 
   await page.getByLabel("New Group Title").fill(groupTitle);

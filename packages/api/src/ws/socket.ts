@@ -10,7 +10,7 @@ import { addToPresence, removeFromPresence } from './presence.js';
 export function createSocketServer(httpServer: HttpServer): SocketIOServer {
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: ['http://localhost:3000', 'https://openraccoon.com'],
+      origin: ['http://localhost:3000', 'https://waiagents.com'],
       credentials: true,
     },
     path: '/socket.io',

@@ -112,7 +112,7 @@ export default function HomePage() {
       <main className="app-shell auth-shell">
         <div className="auth-branding">
           <div className="auth-logo">🦝</div>
-          <h1 className="auth-title">Open Raccoon</h1>
+          <h1 className="auth-title">WaiAgents</h1>
           <p className="auth-subtitle">
             Messaging, AI agents, and pages — all in one place.
           </p>
@@ -142,7 +142,7 @@ export default function HomePage() {
       <nav className="app-sidebar" aria-label="primary-navigation">
         <div className="sidebar-brand">
           <span className="brand-icon">🦝</span>
-          <span className="brand-name">Raccoon</span>
+          <span className="brand-name">WaiAgents</span>
         </div>
 
         <div className="sidebar-nav">

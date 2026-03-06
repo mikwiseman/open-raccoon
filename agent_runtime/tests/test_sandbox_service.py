@@ -1,7 +1,7 @@
 """Tests for the SandboxService servicer."""
 
-from raccoon_runtime.config import Settings
-from raccoon_runtime.services.sandbox_service import SandboxServiceServicer
+from wai_agents_runtime.config import Settings
+from wai_agents_runtime.services.sandbox_service import SandboxServiceServicer
 
 
 class TestSandboxServiceServicer:

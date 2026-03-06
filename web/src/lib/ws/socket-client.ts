@@ -24,7 +24,8 @@ function resolveSocketUrl(): string {
 export class SocketClient {
   private socket: Socket | null = null;
   private listeners: ListenerEntry[] = [];
-  private joinedRooms = new Set<string>();
+  private joinedConversationRooms = new Set<string>();
+  private joinedAgentRooms = new Set<string>();
 
   connect(token: string): void {
     if (this.socket?.connected) {
@@ -65,7 +66,8 @@ export class SocketClient {
     }
     this.socket.disconnect();
     this.socket = null;
-    this.joinedRooms.clear();
+    this.joinedConversationRooms.clear();
+    this.joinedAgentRooms.clear();
   }
 
   isConnected(): boolean {
@@ -76,16 +78,32 @@ export class SocketClient {
     if (!this.socket) {
       return;
     }
-    this.joinedRooms.add(conversationId);
-    this.socket.emit("join:conversation", { conversationId });
+    this.joinedConversationRooms.add(conversationId);
+    this.socket.emit("join:conversation", conversationId);
   }
 
   leaveConversation(conversationId: string): void {
     if (!this.socket) {
       return;
     }
-    this.joinedRooms.delete(conversationId);
-    this.socket.emit("leave:conversation", { conversationId });
+    this.joinedConversationRooms.delete(conversationId);
+    this.socket.emit("leave:conversation", conversationId);
+  }
+
+  joinAgent(conversationId: string): void {
+    if (!this.socket) {
+      return;
+    }
+    this.joinedAgentRooms.add(conversationId);
+    this.socket.emit("join:agent", conversationId);
+  }
+
+  leaveAgent(conversationId: string): void {
+    if (!this.socket) {
+      return;
+    }
+    this.joinedAgentRooms.delete(conversationId);
+    this.socket.emit("leave:agent", conversationId);
   }
 
   onMessage(callback: (msg: Record<string, unknown>) => void): () => void {
@@ -105,19 +123,61 @@ export class SocketClient {
   }
 
   onTyping(callback: (data: { conversationId: string; userId: string; isTyping: boolean }) => void): () => void {
-    return this.addListener("typing", callback);
+    const listeners: Array<ListenerEntry> = [
+      {
+        event: "typing",
+        callback: (payload: { conversationId: string; userId: string; isTyping?: boolean }) => {
+          callback({
+            conversationId: payload.conversationId,
+            userId: payload.userId,
+            isTyping: payload.isTyping ?? true,
+          });
+        }
+      },
+      {
+        event: "typing:start",
+        callback: (payload: { conversationId: string; userId: string }) => {
+          callback({ ...payload, isTyping: true });
+        }
+      },
+      {
+        event: "typing:stop",
+        callback: (payload: { conversationId: string; userId: string }) => {
+          callback({ ...payload, isTyping: false });
+        }
+      }
+    ];
+
+    return this.addListeners(listeners);
   }
 
-  onPresence(callback: (data: { conversationId: string; userId: string; status: string }) => void): () => void {
-    return this.addListener("presence", callback);
+  onPresence(callback: (data: { userId: string; online: boolean }) => void): () => void {
+    const listeners: Array<ListenerEntry> = [
+      {
+        event: "presence:update",
+        callback: (payload: { userId: string; online: boolean }) => {
+          callback(payload);
+        }
+      },
+      {
+        event: "presence:snapshot",
+        callback: (payload: { onlineUsers?: string[] }) => {
+          for (const userId of payload.onlineUsers ?? []) {
+            callback({ userId, online: true });
+          }
+        }
+      }
+    ];
+
+    return this.addListeners(listeners);
   }
 
   emitTyping(conversationId: string): void {
-    this.socket?.emit("typing", { conversationId });
+    this.socket?.emit("typing:start", conversationId);
   }
 
   emitStopTyping(conversationId: string): void {
-    this.socket?.emit("stop_typing", { conversationId });
+    this.socket?.emit("typing:stop", conversationId);
   }
 
   emitRead(conversationId: string, messageId: string): void {
@@ -158,10 +218,32 @@ export class SocketClient {
     };
   }
 
+  private addListeners(entries: ListenerEntry[]): () => void {
+    for (const entry of entries) {
+      this.listeners.push(entry);
+      if (this.socket) {
+        this.socket.on(entry.event, entry.callback);
+      }
+    }
+
+    return () => {
+      this.listeners = this.listeners.filter((entry) => !entries.includes(entry));
+      if (this.socket) {
+        for (const entry of entries) {
+          this.socket.off(entry.event, entry.callback);
+        }
+      }
+    };
+  }
+
   private resubscribe(): void {
     // Re-join rooms after reconnection
-    for (const roomId of this.joinedRooms) {
-      this.socket?.emit("join:conversation", { conversationId: roomId });
+    for (const roomId of this.joinedConversationRooms) {
+      this.socket?.emit("join:conversation", roomId);
+    }
+
+    for (const roomId of this.joinedAgentRooms) {
+      this.socket?.emit("join:agent", roomId);
     }
   }
 }

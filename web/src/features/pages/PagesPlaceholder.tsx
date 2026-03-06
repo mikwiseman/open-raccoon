@@ -1,13 +1,13 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import type { RaccoonApi } from "@/lib/api";
+import { ApiError, type WaiAgentsApi } from "@/lib/api";
 import type { SessionUser } from "@/lib/state/session-store";
 import type { Page, PageVersion } from "@/lib/types";
 import { toIsoLocal } from "@/lib/utils";
 
 interface PagesViewProps {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
   currentUser: SessionUser;
 }
 
@@ -34,6 +34,7 @@ export function PagesView({ api, currentUser }: PagesViewProps) {
   const [forking, setForking] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [featureUnavailable, setFeatureUnavailable] = useState(false);
 
   const selected = useMemo(
     () => items.find((item) => item.id === selectedId) ?? null,
@@ -52,6 +53,7 @@ export function PagesView({ api, currentUser }: PagesViewProps) {
   const loadPages = async () => {
     setLoading(true);
     setError(null);
+    setFeatureUnavailable(false);
 
     try {
       const response = await api.listPages({ limit: 50 });
@@ -63,7 +65,13 @@ export function PagesView({ api, currentUser }: PagesViewProps) {
         setSelectedId(response.items[0].id);
       }
     } catch (err) {
-      setError(getErrorMessage(err));
+      if (isNotFoundError(err)) {
+        setFeatureUnavailable(true);
+        setItems([]);
+        setSelectedId(null);
+      } else {
+        setError(getErrorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -75,6 +83,10 @@ export function PagesView({ api, currentUser }: PagesViewProps) {
   }, []);
 
   useEffect(() => {
+    if (featureUnavailable) {
+      return;
+    }
+
     if (!selected) {
       setVersions([]);
       setTitle("");
@@ -91,7 +103,7 @@ export function PagesView({ api, currentUser }: PagesViewProps) {
       .listPageVersions(selected.id)
       .then((response) => setVersions(response.items))
       .catch(() => setVersions([]));
-  }, [api, selected]);
+  }, [api, featureUnavailable, selected]);
 
   const createPage = async (event: FormEvent) => {
     event.preventDefault();
@@ -215,7 +227,19 @@ export function PagesView({ api, currentUser }: PagesViewProps) {
         </div>
       )}
 
-      <div className="pages-columns">
+      {featureUnavailable && (
+        <div className="pages-empty-detail" style={{ minHeight: 220 }}>
+          <p style={{ color: "var(--color-text-primary)" }}>
+            Pages are not available on the active public API deployment.
+          </p>
+          <p style={{ color: "var(--color-text-tertiary)" }}>
+            The checked-in web client can still render this tab, but `GET /pages` and related routes are not exposed by the current TypeScript backend.
+          </p>
+        </div>
+      )}
+
+      {!featureUnavailable && (
+        <div className="pages-columns">
         {/* Left Column: Page List */}
         <div className="pages-sidebar">
           <button
@@ -462,6 +486,7 @@ export function PagesView({ api, currentUser }: PagesViewProps) {
           )}
         </aside>
       </div>
+      )}
     </section>
   );
 }
@@ -486,4 +511,8 @@ function getErrorMessage(error: unknown): string {
   }
 
   return "Request failed";
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
 }

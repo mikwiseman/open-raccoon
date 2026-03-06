@@ -1,9 +1,9 @@
 # Elixir
-open_raccoon/_build/
-open_raccoon/deps/
-open_raccoon/.fetch
-open_raccoon/erl_crash.dump
-open_raccoon/*.ez
+wai_agents/_build/
+wai_agents/deps/
+wai_agents/.fetch
+wai_agents/erl_crash.dump
+wai_agents/*.ez
 *.beam
 
 # Python
@@ -15,13 +15,14 @@ agent_runtime/*.egg-info/
 agent_runtime/.mypy_cache/
 agent_runtime/.ruff_cache/
 agent_runtime/.pytest_cache/
+agent_runtime/.coverage
 *.pyc
 *.pyo
 
 # Swift
-OpenRaccoon/.build/
-OpenRaccoon/.swiftpm/
-OpenRaccoon/build/
+WaiAgents/.build/
+WaiAgents/.swiftpm/
+WaiAgents/build/
 *.xcodeproj
 *.xcworkspace
 xcuserdata/

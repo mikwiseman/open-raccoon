@@ -1,5 +1,5 @@
 {
-  "name": "@open-raccoon/shared",
+  "name": "@wai-agents/shared",
   "version": "0.1.0",
   "private": true,
   "type": "module",

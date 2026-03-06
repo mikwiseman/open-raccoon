@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { RaccoonApi } from "@/lib/api/services";
+import type { WaiAgentsApi } from "@/lib/api/services";
 import type { IntegrationStatus } from "@/lib/types";
 import { IntegrationCard } from "./IntegrationCard";
 
 type Props = {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
 };
 
 export function IntegrationSettings({ api }: Props) {

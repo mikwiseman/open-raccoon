@@ -1,5 +1,5 @@
 {
-  "name": "open-raccoon-web",
+  "name": "wai-agents-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:e2e": "playwright test"
+    "test:e2e": "node ./node_modules/@playwright/test/cli.js test"
   },
   "dependencies": {
     "next": "14.2.5",
@@ -19,7 +19,7 @@
     "zustand": "^4.5.4"
   },
   "devDependencies": {
-    "@playwright/test": "^1.55.0",
+    "@playwright/test": "^1.58.2",
     "@types/node": "^20.14.11",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

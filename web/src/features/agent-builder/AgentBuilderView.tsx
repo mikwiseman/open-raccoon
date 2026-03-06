@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { RaccoonApi } from "@/lib/api/services";
+import type { WaiAgentsApi } from "@/lib/api/services";
 import type { SessionUser } from "@/lib/state/session-store";
 import type { Agent } from "@/lib/types";
 import { AgentCard } from "./AgentCard";
 import { AgentForm } from "./AgentForm";
 
 type Props = {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
   accessToken: string;
   currentUser: SessionUser;
 };

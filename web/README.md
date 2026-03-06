@@ -1,4 +1,4 @@
-# Open Raccoon Web
+# WaiAgents Web
 
 Minimal Next.js (App Router + TypeScript) scaffold for frontend parity work.
 

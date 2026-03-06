@@ -5,6 +5,6 @@ export default defineConfig({
   out: './src/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgres://raccoon:raccoon@localhost:5432/raccoon_prod',
+    url: process.env.DATABASE_URL || 'postgres://waiagents:waiagents@localhost:5432/wai_agents_prod',
   },
 });

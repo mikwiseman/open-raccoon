@@ -8,13 +8,38 @@ export function createIdempotencyKey(): string {
   return `${timestamp}-${random}`;
 }
 
-export function asTextContent(content: Record<string, unknown> | null | undefined): string {
+export function asTextContent(content: unknown): string {
   if (!content) {
     return "";
   }
 
-  const text = content.text;
-  return typeof text === "string" ? text : "";
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (Array.isArray(content)) {
+    return content
+      .map((block) => {
+        if (typeof block === "string") {
+          return block;
+        }
+
+        if (typeof block === "object" && block !== null && typeof (block as { text?: unknown }).text === "string") {
+          return (block as { text: string }).text;
+        }
+
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (typeof content === "object" && content !== null) {
+    const text = (content as { text?: unknown }).text;
+    return typeof text === "string" ? text : "";
+  }
+
+  return "";
 }
 
 export function toIsoLocal(dateIso?: string | null): string {

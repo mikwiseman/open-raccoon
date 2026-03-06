@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Open Raccoon",
+  title: "WaiAgents",
   description:
     "Messaging, AI agents, and pages — all in one place.",
   icons: {

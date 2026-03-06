@@ -30,7 +30,7 @@ export const MagicLinkVerifySchema = z.object({
 export const UpdateProfileSchema = z.object({
   display_name: z.string().max(128).optional(),
   bio: z.string().optional(),
-  avatar_url: z.string().url('Invalid URL').optional(),
+  avatar_url: z.union([z.string().url('Invalid URL'), z.literal('')]).optional(),
   settings: z.record(z.unknown()).optional(),
 });
 

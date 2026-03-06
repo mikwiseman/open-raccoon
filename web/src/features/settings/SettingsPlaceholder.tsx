@@ -1,13 +1,13 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import type { RaccoonApi } from "@/lib/api";
+import { ApiError, type WaiAgentsApi } from "@/lib/api";
 import type { BridgeConnection, User } from "@/lib/types";
 import { toIsoLocal } from "@/lib/utils";
 import type { SessionUser } from "@/lib/state/session-store";
 
 type SettingsViewProps = {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
   user: SessionUser;
   onUserUpdated: (user: SessionUser) => void;
   onLogout: () => void;
@@ -28,6 +28,8 @@ export function SettingsView({ api, user, onUserUpdated, onLogout }: SettingsVie
 
   const [telegramToken, setTelegramToken] = useState("");
   const [whatsappToken, setWhatsappToken] = useState("");
+  const [bridgesUnavailable, setBridgesUnavailable] = useState(false);
+  const [usageUnavailable, setUsageUnavailable] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -68,19 +70,33 @@ export function SettingsView({ api, user, onUserUpdated, onLogout }: SettingsVie
   const load = async () => {
     setLoading(true);
     setError(null);
+    setBridgesUnavailable(false);
+    setUsageUnavailable(false);
 
-    try {
-      const [bridgesResponse, usageResponse] = await Promise.all([
-        api.listBridges({ limit: 20 }),
-        api.usage(),
-      ]);
-      setBridges(bridgesResponse.items);
-      setUsage(usageResponse.usage);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
+    const [bridgesResult, usageResult] = await Promise.allSettled([
+      api.listBridges({ limit: 20 }),
+      api.usage(),
+    ]);
+
+    if (bridgesResult.status === "fulfilled") {
+      setBridges(bridgesResult.value.items);
+    } else if (isNotFoundError(bridgesResult.reason)) {
+      setBridges([]);
+      setBridgesUnavailable(true);
+    } else {
+      setError(getErrorMessage(bridgesResult.reason));
     }
+
+    if (usageResult.status === "fulfilled") {
+      setUsage(usageResult.value.usage);
+    } else if (isNotFoundError(usageResult.reason)) {
+      setUsage(null);
+      setUsageUnavailable(true);
+    } else {
+      setError((previous) => previous ?? getErrorMessage(usageResult.reason));
+    }
+
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -255,7 +271,9 @@ export function SettingsView({ api, user, onUserUpdated, onLogout }: SettingsVie
             </div>
           ) : (
             <p style={{ margin: 0, color: "var(--color-text-tertiary)", fontSize: "var(--text-sm)" }}>
-              No usage data available.
+              {usageUnavailable
+                ? "Usage reporting is not available on the active public API."
+                : "No usage data available."}
             </p>
           )}
         </section>
@@ -269,6 +287,10 @@ export function SettingsView({ api, user, onUserUpdated, onLogout }: SettingsVie
               <div className="skeleton" style={{ height: 48, width: "100%" }} />
               <div className="skeleton" style={{ height: 48, width: "100%", marginTop: 8 }} />
             </div>
+          ) : bridgesUnavailable ? (
+            <p style={{ margin: 0, color: "var(--color-text-tertiary)", fontSize: "var(--text-sm)" }}>
+              Bridge management is not available on the active public API.
+            </p>
           ) : (
             <>
               {bridges.length > 0 && (
@@ -318,7 +340,7 @@ export function SettingsView({ api, user, onUserUpdated, onLogout }: SettingsVie
                   </div>
                   <button
                     type="submit"
-                    disabled={!telegramToken.trim()}
+                    disabled={bridgesUnavailable || !telegramToken.trim()}
                     style={telegramButtonStyle}
                   >
                     {telegramIcon}
@@ -337,7 +359,7 @@ export function SettingsView({ api, user, onUserUpdated, onLogout }: SettingsVie
                   </div>
                   <button
                     type="submit"
-                    disabled={!whatsappToken.trim()}
+                    disabled={bridgesUnavailable || !whatsappToken.trim()}
                     style={whatsappButtonStyle}
                   >
                     {whatsappIcon}
@@ -400,6 +422,10 @@ function getErrorMessage(error: unknown): string {
     return error.message;
   }
   return "Request failed";
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
 }
 
 /* ── Inline Icons ── */

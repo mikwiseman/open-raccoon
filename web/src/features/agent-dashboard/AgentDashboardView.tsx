@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { RaccoonApi } from "@/lib/api/services";
+import type { WaiAgentsApi } from "@/lib/api/services";
 import type { Agent, AgentEvent } from "@/lib/types";
 import { AgentHealthIndicator } from "./AgentHealthIndicator";
 import { StatsCards } from "./StatsCards";
@@ -10,7 +10,7 @@ import { CostBreakdown } from "./CostBreakdown";
 import { MemoryViewer } from "./MemoryViewer";
 
 type Props = {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
   agent: Agent;
 };
 

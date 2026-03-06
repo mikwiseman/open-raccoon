@@ -1,5 +1,5 @@
 {
-  "name": "@open-raccoon/mcp-web-search",
+  "name": "@wai-agents/mcp-web-search",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@open-raccoon/shared": "workspace:*",
+    "@wai-agents/shared": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.13.0",
     "@anthropic-ai/sdk": "^0.52.0",
     "zod": "^3.24.4"

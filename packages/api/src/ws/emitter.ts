@@ -1,5 +1,5 @@
 import type { Server as SocketIOServer } from 'socket.io';
-import type { AgentEvent } from '@open-raccoon/shared';
+import type { AgentEvent } from '@wai-agents/shared';
 
 let io: SocketIOServer | null = null;
 

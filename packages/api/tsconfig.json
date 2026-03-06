@@ -13,8 +13,8 @@
     "declaration": true,
     "sourceMap": true,
     "paths": {
-      "@open-raccoon/shared": ["../shared/src"],
-      "@open-raccoon/shared/*": ["../shared/src/*"]
+      "@wai-agents/shared": ["../shared/src"],
+      "@wai-agents/shared/*": ["../shared/src/*"]
     }
   },
   "include": ["src/**/*"],

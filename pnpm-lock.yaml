@@ -26,7 +26,7 @@ importers:
       '@hono/node-server':
         specifier: ^1.14.3
         version: 1.19.10(hono@4.12.4)
-      '@open-raccoon/shared':
+      '@wai-agents/shared':
         specifier: workspace:*
         version: link:../shared
       argon2:
@@ -93,7 +93,7 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.13.0
         version: 1.27.1(zod@3.25.76)
-      '@open-raccoon/shared':
+      '@wai-agents/shared':
         specifier: workspace:*
         version: link:../../shared
       drizzle-orm:
@@ -124,7 +124,7 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.13.0
         version: 1.27.1(zod@3.25.76)
-      '@open-raccoon/shared':
+      '@wai-agents/shared':
         specifier: workspace:*
         version: link:../../shared
       drizzle-orm:
@@ -158,7 +158,7 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.13.0
         version: 1.27.1(zod@3.25.76)
-      '@open-raccoon/shared':
+      '@wai-agents/shared':
         specifier: workspace:*
         version: link:../../shared
       drizzle-orm:
@@ -192,7 +192,7 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.13.0
         version: 1.27.1(zod@3.25.76)
-      '@open-raccoon/shared':
+      '@wai-agents/shared':
         specifier: workspace:*
         version: link:../../shared
       zod:
@@ -250,7 +250,7 @@ importers:
         version: 4.5.7(@types/react@18.3.28)(react@18.2.0)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.55.0
+        specifier: ^1.58.2
         version: 1.58.2
       '@types/node':
         specifier: ^20.14.11

@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { RaccoonApi } from "@/lib/api/services";
+import { ApiError } from "@/lib/api";
+import type { WaiAgentsApi } from "@/lib/api/services";
 import type { AgentSchedule } from "@/lib/types";
 
 type Props = {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
   agentId: string;
 };
 
@@ -16,6 +17,7 @@ export function ScheduleManager({ api, agentId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [featureUnavailable, setFeatureUnavailable] = useState(false);
 
   // Form state
   const [scheduleType, setScheduleType] = useState<ScheduleType>("cron");
@@ -27,11 +29,17 @@ export function ScheduleManager({ api, agentId }: Props) {
   const loadSchedules = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setFeatureUnavailable(false);
     try {
       const res = await api.listSchedules(agentId);
       setSchedules(res.items);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load schedules");
+      if (isNotFoundError(err)) {
+        setSchedules([]);
+        setFeatureUnavailable(true);
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to load schedules");
+      }
     } finally {
       setLoading(false);
     }
@@ -87,13 +95,17 @@ export function ScheduleManager({ api, agentId }: Props) {
 
       {error && <p className="error-text">{error}</p>}
 
+      {featureUnavailable && (
+        <p className="ab-empty-hint">Schedules are not available on the active production API.</p>
+      )}
+
       {loading && (
         <div className="loading-spinner-container">
           <div className="loading-spinner" />
         </div>
       )}
 
-      {!loading && schedules.length === 0 && !showForm && (
+      {!loading && !featureUnavailable && schedules.length === 0 && !showForm && (
         <p className="ab-empty-hint">No schedules configured.</p>
       )}
 
@@ -127,7 +139,7 @@ export function ScheduleManager({ api, agentId }: Props) {
         </div>
       ))}
 
-      {showForm ? (
+      {!featureUnavailable && showForm ? (
         <form className="ab-schedule-form" onSubmit={(e) => void handleCreate(e)}>
           <div className="ab-field">
             <label className="ab-label" htmlFor="sched-type">Type</label>
@@ -205,7 +217,7 @@ export function ScheduleManager({ api, agentId }: Props) {
             </button>
           </div>
         </form>
-      ) : (
+      ) : !featureUnavailable ? (
         <button
           type="button"
           className="ab-btn ab-btn-small"
@@ -213,7 +225,11 @@ export function ScheduleManager({ api, agentId }: Props) {
         >
           + Add Schedule
         </button>
-      )}
+      ) : null}
     </fieldset>
   );
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
 }

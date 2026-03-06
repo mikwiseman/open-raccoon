@@ -53,7 +53,7 @@ export const useSessionStore = create<SessionState>()(
       }
     }),
     {
-      name: "open-raccoon-session",
+      name: "wai-agents-session",
       partialize: (state) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,

@@ -9,7 +9,7 @@ import {
   useRef,
   useState
 } from "react";
-import type { RaccoonApi } from "@/lib/api";
+import type { WaiAgentsApi } from "@/lib/api";
 import { SocketClient } from "@/lib/ws/socket-client";
 import type {
   AgentChannelStatus,
@@ -56,7 +56,7 @@ hljs.registerLanguage("elixir", elixir);
    ================================================================ */
 
 type ChatViewProps = {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
   accessToken: string;
   currentUser: SessionUser;
   focusConversationId?: string | null;
@@ -346,11 +346,17 @@ export function ChatView({
     if (!selectedConversationId) return;
 
     wsClient.joinConversation(selectedConversationId);
+    if (selectedConversation?.type === "agent") {
+      wsClient.joinAgent(selectedConversationId);
+    }
 
     return () => {
       wsClient.leaveConversation(selectedConversationId);
+      if (selectedConversation?.type === "agent") {
+        wsClient.leaveAgent(selectedConversationId);
+      }
     };
-  }, [selectedConversationId, wsClient]);
+  }, [selectedConversation?.type, selectedConversationId, wsClient]);
 
   /* -- Read receipts --------------------------------------------- */
   useEffect(() => {
@@ -699,12 +705,15 @@ export function ChatView({
                       </div>
                     )}
                     {group.messages.map((msg, idx) => {
-                      const isOwn = msg.sender_id === currentUser.id;
+                      const senderId = typeof msg.sender_id === "string" ? msg.sender_id : null;
+                      const isOwn = senderId === currentUser.id;
                       const isFirst = idx === 0;
-                      const displayName = memberNameById.get(msg.sender_id) || msg.sender_id.slice(0, 8);
                       const isEditing = editingMessageId === msg.id;
                       const isSystem = msg.sender_type === "system" || msg.type === "system";
                       const isTemp = msg.id.startsWith("temp-");
+                      const displayName = senderId
+                        ? memberNameById.get(senderId) || senderId.slice(0, 8)
+                        : "System";
 
                       // Parse content blocks
                       const contentBlocks = parseContentBlocks(msg.content);

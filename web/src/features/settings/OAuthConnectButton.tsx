@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { RaccoonApi } from "@/lib/api/services";
+import type { WaiAgentsApi } from "@/lib/api/services";
 
 type Props = {
-  api: RaccoonApi;
+  api: WaiAgentsApi;
   service: string;
   onConnected: () => void;
 };

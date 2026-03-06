@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ContentBlockSchema } from '@open-raccoon/shared';
+import { ContentBlockSchema } from '@wai-agents/shared';
 
 export const CreateConversationSchema = z.object({
   title: z.string().max(255).optional(),
