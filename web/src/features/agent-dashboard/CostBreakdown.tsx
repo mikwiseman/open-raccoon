@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import type { AgentEvent } from "@/lib/types";
+import type { AgentEvent } from '@/lib/types';
 
 type Props = {
   events: AgentEvent[];
@@ -18,7 +18,7 @@ export function CostBreakdown({ events }: Props) {
   const byModel = new Map<string, ModelUsage>();
 
   for (const event of events) {
-    const model = event.model ?? "unknown";
+    const model = event.model ?? 'unknown';
     const existing = byModel.get(model) ?? {
       model,
       inputTokens: 0,
@@ -37,23 +37,23 @@ export function CostBreakdown({ events }: Props) {
   const maxTokens = models.length > 0 ? models[0].totalTokens : 1;
 
   const COLORS = [
-    "var(--color-accent-primary)",
-    "var(--color-info)",
-    "var(--color-success)",
-    "var(--color-warning)",
-    "var(--color-error)",
+    'var(--color-accent-primary)',
+    'var(--color-info)',
+    'var(--color-success)',
+    'var(--color-warning)',
+    'var(--color-error)',
   ];
 
   if (models.length === 0) {
     return (
-      <div className="ad-cost-breakdown" aria-label="cost-breakdown">
+      <div className="ad-cost-breakdown">
         <p className="ab-empty-hint">No token usage data yet.</p>
       </div>
     );
   }
 
   return (
-    <div className="ad-cost-breakdown" aria-label="cost-breakdown">
+    <div className="ad-cost-breakdown">
       <div className="ad-cost-bars">
         {models.map((m, i) => (
           <div key={m.model} className="ad-cost-bar-row">

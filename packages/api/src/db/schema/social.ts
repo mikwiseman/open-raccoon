@@ -1,19 +1,18 @@
 import {
+  boolean,
+  doublePrecision,
+  integer,
   pgTable,
+  smallint,
+  text,
+  timestamp,
+  uniqueIndex,
   uuid,
   varchar,
-  text,
-  boolean,
-  integer,
-  doublePrecision,
-  jsonb,
-  timestamp,
-  smallint,
-  uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { users } from './users.js';
 import { agents } from './agents.js';
 import { conversations } from './conversations.js';
+import { users } from './users.js';
 
 export const feedItemReferences = pgTable(
   'feed_item_references',
@@ -28,9 +27,9 @@ export const feedItemReferences = pgTable(
   (table) => ({
     uniqReferenceIdType: uniqueIndex('feed_item_references_reference_idx').on(
       table.referenceId,
-      table.referenceType
+      table.referenceType,
     ),
-  })
+  }),
 );
 
 export type FeedItemReference = typeof feedItemReferences.$inferSelect;
@@ -72,9 +71,9 @@ export const feedLikes = pgTable(
   (table) => ({
     uniqFeedItemUser: uniqueIndex('feed_likes_feed_item_user_idx').on(
       table.feedItemId,
-      table.userId
+      table.userId,
     ),
-  })
+  }),
 );
 
 export type FeedLike = typeof feedLikes.$inferSelect;
@@ -95,9 +94,9 @@ export const userFollows = pgTable(
   (table) => ({
     uniqFollowerFollowing: uniqueIndex('user_follows_follower_following_idx').on(
       table.followerId,
-      table.followingId
+      table.followingId,
     ),
-  })
+  }),
 );
 
 export type UserFollow = typeof userFollows.$inferSelect;
@@ -124,7 +123,7 @@ export const agentRatings = pgTable(
   },
   (table) => ({
     uniqAgentUser: uniqueIndex('agent_ratings_agent_user_idx').on(table.agentId, table.userId),
-  })
+  }),
 );
 
 export type AgentRating = typeof agentRatings.$inferSelect;
@@ -147,16 +146,25 @@ export const messageFeedback = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     messageId: uuid('message_id').notNull(),
-    conversationId: uuid('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id').notNull().references(() => users.id),
-    agentId: uuid('agent_id').notNull().references(() => agents.id, { onDelete: 'cascade' }),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'cascade' }),
     feedback: varchar('feedback', { length: 10 }).notNull(), // 'positive' | 'negative'
     reason: varchar('reason', { length: 30 }),
     insertedAt: timestamp('inserted_at', { withTimezone: true }).defaultNow(),
   },
   (table) => ({
-    uniqMessageUser: uniqueIndex('message_feedback_message_user_idx').on(table.messageId, table.userId),
-  })
+    uniqMessageUser: uniqueIndex('message_feedback_message_user_idx').on(
+      table.messageId,
+      table.userId,
+    ),
+  }),
 );
 
 export type MessageFeedback = typeof messageFeedback.$inferSelect;

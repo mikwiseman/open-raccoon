@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { runAgentLoop } from '../loop.js';
 
 // Mock DB
@@ -27,7 +27,12 @@ vi.mock('../../../db/schema/agents.js', () => ({
 }));
 
 vi.mock('../../../db/schema/conversations.js', () => ({
-  messages: { conversationId: 'conversationId', senderType: 'senderType', content: 'content', createdAt: 'createdAt' },
+  messages: {
+    conversationId: 'conversationId',
+    senderType: 'senderType',
+    content: 'content',
+    createdAt: 'createdAt',
+  },
 }));
 
 // Mock emitter
@@ -125,7 +130,10 @@ describe('runAgentLoop', () => {
       message: 'Hello',
     });
 
-    expect(emitAgentEvent).toHaveBeenCalledWith('conv-1', expect.objectContaining({ type: 'run_started' }));
+    expect(emitAgentEvent).toHaveBeenCalledWith(
+      'conv-1',
+      expect.objectContaining({ type: 'run_started' }),
+    );
   });
 
   it('emits run_finished with token usage on success', async () => {
@@ -142,16 +150,22 @@ describe('runAgentLoop', () => {
       message: 'Hello',
     });
 
-    expect(emitAgentEvent).toHaveBeenCalledWith('conv-1', expect.objectContaining({
-      type: 'run_finished',
-      usage: { input_tokens: 10, output_tokens: 20 },
-    }));
-    expect(emitMessage).toHaveBeenCalledWith('conv-1', expect.objectContaining({
-      conversation_id: 'conv-1',
-      sender_id: 'agent-1',
-      sender_type: 'agent',
-      type: 'text',
-    }));
+    expect(emitAgentEvent).toHaveBeenCalledWith(
+      'conv-1',
+      expect.objectContaining({
+        type: 'run_finished',
+        usage: { input_tokens: 10, output_tokens: 20 },
+      }),
+    );
+    expect(emitMessage).toHaveBeenCalledWith(
+      'conv-1',
+      expect.objectContaining({
+        conversation_id: 'conv-1',
+        sender_id: 'agent-1',
+        sender_type: 'agent',
+        type: 'text',
+      }),
+    );
     expect(result.usage.input_tokens).toBe(10);
     expect(result.usage.output_tokens).toBe(20);
   });
@@ -193,21 +207,24 @@ describe('runAgentLoop', () => {
         conversationId: 'conv-1',
         userId: 'user-1',
         message: 'Hello',
-      })
+      }),
     ).rejects.toThrow('Agent nonexistent not found');
   });
 
   it('emits tool_call_start and tool_call_end when tool is used', async () => {
     const { McpManager } = await import('../mcp-manager.js');
     const mockExecuteTool = vi.fn().mockResolvedValue({ output: 'search result' });
-    vi.mocked(McpManager).mockImplementationOnce(() => ({
-      connect: vi.fn().mockResolvedValue(undefined),
-      getTools: vi.fn().mockReturnValue([
-        { name: 'web_search', description: 'Search', inputSchema: {} },
-      ]),
-      executeTool: mockExecuteTool,
-      disconnect: vi.fn().mockResolvedValue(undefined),
-    }) as any);
+    vi.mocked(McpManager).mockImplementationOnce(
+      () =>
+        ({
+          connect: vi.fn().mockResolvedValue(undefined),
+          getTools: vi
+            .fn()
+            .mockReturnValue([{ name: 'web_search', description: 'Search', inputSchema: {} }]),
+          executeTool: mockExecuteTool,
+          disconnect: vi.fn().mockResolvedValue(undefined),
+        }) as any,
+    );
 
     // First call: returns a tool_use; second call: finishes
     vi.mocked(callLLM)
@@ -229,8 +246,14 @@ describe('runAgentLoop', () => {
       message: 'Search for something',
     });
 
-    expect(emitAgentEvent).toHaveBeenCalledWith('conv-1', expect.objectContaining({ type: 'tool_call_start', name: 'web_search' }));
-    expect(emitAgentEvent).toHaveBeenCalledWith('conv-1', expect.objectContaining({ type: 'tool_call_end' }));
+    expect(emitAgentEvent).toHaveBeenCalledWith(
+      'conv-1',
+      expect.objectContaining({ type: 'tool_call_start', name: 'web_search' }),
+    );
+    expect(emitAgentEvent).toHaveBeenCalledWith(
+      'conv-1',
+      expect.objectContaining({ type: 'tool_call_end' }),
+    );
     expect(mockExecuteTool).toHaveBeenCalledWith('web_search', { query: 'test' });
   });
 

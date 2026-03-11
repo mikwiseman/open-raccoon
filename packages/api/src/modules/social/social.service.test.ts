@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock DB connection
 vi.mock('../../db/connection.js', () => {
@@ -118,7 +118,9 @@ describe('social.service — Feed', () => {
     vi.mocked(sql).mockResolvedValueOnce([] as any);
 
     const { listFeed } = await import('./social.service.js');
-    await expect(listFeed(USER_ID, 'invalid-cursor')).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await expect(listFeed(USER_ID, 'invalid-cursor')).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
   });
 
   it('listTrending returns items sorted by trending_score', async () => {
@@ -160,7 +162,7 @@ describe('social.service — Feed', () => {
 
     const { listFeed } = await import('./social.service.js');
     // Should not throw with extreme limits
-    await listFeed(USER_ID, undefined, 0);  // gets clamped to 1
+    await listFeed(USER_ID, undefined, 0); // gets clamped to 1
   });
 });
 
@@ -178,17 +180,33 @@ describe('social.service — Likes', () => {
     // 2. Insert like
     sqlMock.mockResolvedValueOnce([] as any);
     // 3. Update + RETURNING feed item
-    sqlMock.mockResolvedValueOnce([{
-      id: FEED_ITEM_ID, creator_id: OTHER_USER_ID, type: 'agent',
-      reference_id: AGENT_ID, reference_type: 'agent', title: 'Test Agent',
-      description: 'A test agent', thumbnail_url: null, quality_score: 0,
-      trending_score: 5.0, like_count: 4, fork_count: 1, view_count: 100,
-      inserted_at: new Date('2026-01-01'), updated_at: new Date('2026-01-01'),
-    }] as any);
+    sqlMock.mockResolvedValueOnce([
+      {
+        id: FEED_ITEM_ID,
+        creator_id: OTHER_USER_ID,
+        type: 'agent',
+        reference_id: AGENT_ID,
+        reference_type: 'agent',
+        title: 'Test Agent',
+        description: 'A test agent',
+        thumbnail_url: null,
+        quality_score: 0,
+        trending_score: 5.0,
+        like_count: 4,
+        fork_count: 1,
+        view_count: 100,
+        inserted_at: new Date('2026-01-01'),
+        updated_at: new Date('2026-01-01'),
+      },
+    ] as any);
     // 4. Creator lookup
-    sqlMock.mockResolvedValueOnce([{
-      username: 'testuser', display_name: 'Test User', avatar_url: null,
-    }] as any);
+    sqlMock.mockResolvedValueOnce([
+      {
+        username: 'testuser',
+        display_name: 'Test User',
+        avatar_url: null,
+      },
+    ] as any);
 
     const { likeFeedItem } = await import('./social.service.js');
     const result = await likeFeedItem(FEED_ITEM_ID, USER_ID);
@@ -228,7 +246,9 @@ describe('social.service — Likes', () => {
     vi.mocked(sql).mockResolvedValueOnce([] as any);
 
     const { unlikeFeedItem } = await import('./social.service.js');
-    await expect(unlikeFeedItem('nonexistent', USER_ID)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(unlikeFeedItem('nonexistent', USER_ID)).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
   });
 });
 
@@ -252,12 +272,14 @@ describe('social.service — Fork', () => {
     // 5. Insert feed item for fork
     sqlMock.mockResolvedValueOnce([] as any);
     // 6. Return new agent
-    sqlMock.mockResolvedValueOnce([makeAgentRow({
-      id: 'new-agent-id',
-      creator_id: USER_ID,
-      slug: 'test-agent-fork',
-      metadata: { forked_from: AGENT_ID },
-    })] as any);
+    sqlMock.mockResolvedValueOnce([
+      makeAgentRow({
+        id: 'new-agent-id',
+        creator_id: USER_ID,
+        slug: 'test-agent-fork',
+        metadata: { forked_from: AGENT_ID },
+      }),
+    ] as any);
 
     const { forkAgent } = await import('./social.service.js');
     const result = await forkAgent(AGENT_ID, USER_ID);

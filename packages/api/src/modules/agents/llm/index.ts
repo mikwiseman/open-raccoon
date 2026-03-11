@@ -1,7 +1,8 @@
-export type { McpTool, ToolCall, LLMResponse } from './anthropic.js';
+export type { LLMResponse, McpTool, ToolCall } from './anthropic.js';
+
+import type { LLMResponse, McpTool } from './anthropic.js';
 import { callAnthropic } from './anthropic.js';
 import { callOpenAI } from './openai.js';
-import type { McpTool, LLMResponse } from './anthropic.js';
 
 export interface CallLLMOptions {
   model: string;

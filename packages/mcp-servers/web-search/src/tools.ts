@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
-import { stripHtml, extractTitle } from './html-utils.js';
+import { extractTitle, stripHtml } from './html-utils.js';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -61,7 +61,9 @@ export async function handleWebSearch(
             let snippet = '';
             if (synthesizedText) {
               const titleEscaped = item.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              const match = synthesizedText.match(new RegExp(`[^.]*${titleEscaped.slice(0, 30)}[^.]*\\.`, 'i'));
+              const match = synthesizedText.match(
+                new RegExp(`[^.]*${titleEscaped.slice(0, 30)}[^.]*\\.`, 'i'),
+              );
               snippet = match ? match[0].trim() : '';
             }
             results.push({

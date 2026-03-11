@@ -1,16 +1,16 @@
 import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
   boolean,
+  integer,
   jsonb,
+  pgTable,
+  text,
   timestamp,
   uniqueIndex,
-  integer,
+  uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { users } from './users.js';
 import { agents } from './agents.js';
+import { users } from './users.js';
 
 export const conversations = pgTable('conversations', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -47,9 +47,9 @@ export const conversationMembers = pgTable(
   (table) => ({
     uniqConversationUser: uniqueIndex('conversation_members_conversation_user_idx').on(
       table.conversationId,
-      table.userId
+      table.userId,
     ),
-  })
+  }),
 );
 
 export type ConversationMember = typeof conversationMembers.$inferSelect;
@@ -93,9 +93,9 @@ export const messageReactions = pgTable(
     uniqMessageUserEmoji: uniqueIndex('message_reactions_message_user_emoji_idx').on(
       table.messageId,
       table.userId,
-      table.emoji
+      table.emoji,
     ),
-  })
+  }),
 );
 
 export type MessageReaction = typeof messageReactions.$inferSelect;
@@ -114,7 +114,7 @@ export const idempotencyKeys = pgTable(
   },
   (table) => ({
     uniqKeyUser: uniqueIndex('idempotency_keys_key_user_idx').on(table.key, table.userId),
-  })
+  }),
 );
 
 export type IdempotencyKey = typeof idempotencyKeys.$inferSelect;

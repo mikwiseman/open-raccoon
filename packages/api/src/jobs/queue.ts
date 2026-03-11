@@ -1,4 +1,10 @@
-import { Queue, Worker, type WorkerOptions, type QueueOptions, type ConnectionOptions } from 'bullmq';
+import {
+  type ConnectionOptions,
+  Queue,
+  type QueueOptions,
+  Worker,
+  type WorkerOptions,
+} from 'bullmq';
 import { Redis } from 'ioredis';
 
 const connection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {

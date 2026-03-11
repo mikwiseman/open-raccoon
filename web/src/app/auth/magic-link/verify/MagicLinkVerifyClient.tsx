@@ -1,32 +1,34 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { createWaiAgentsApi } from "@/lib/api";
-import { useSessionStore } from "@/lib/state";
-import type { SessionUser } from "@/lib/state/session-store";
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { createWaiAgentsApi } from '@/lib/api';
+import { useSessionStore } from '@/lib/state';
+import type { SessionUser } from '@/lib/state/session-store';
 
-type VerifyState = "verifying" | "success" | "error";
+type VerifyState = 'verifying' | 'success' | 'error';
 
 export function MagicLinkVerifyClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const tokenRaw = searchParams.get("token") ?? "";
+  const tokenRaw = searchParams.get('token') ?? '';
   const token = sanitizeToken(tokenRaw);
-  const appDeepLink = token ? `waiagents://auth/magic-link/verify?token=${encodeURIComponent(token)}` : "";
+  const appDeepLink = token
+    ? `waiagents://auth/magic-link/verify?token=${encodeURIComponent(token)}`
+    : '';
 
   const setSession = useSessionStore((state) => state.setSession);
   const api = useMemo(() => createWaiAgentsApi(), []);
 
-  const [state, setState] = useState<VerifyState>("verifying");
-  const [message, setMessage] = useState("Verifying your magic link...");
+  const [state, setState] = useState<VerifyState>('verifying');
+  const [message, setMessage] = useState('Verifying your magic link...');
 
   useEffect(() => {
     if (!token) {
-      setState("error");
-      setMessage("Missing token in magic link.");
+      setState('error');
+      setMessage('Missing token in magic link.');
       return;
     }
 
@@ -42,15 +44,15 @@ export function MagicLinkVerifyClient() {
         setSession({
           accessToken: response.tokens.access_token,
           refreshToken: response.tokens.refresh_token,
-          user: toSessionUser(response.user)
+          user: toSessionUser(response.user),
         });
 
-        setState("success");
+        setState('success');
         setMessage(`Signed in as @${response.user.username}. Redirecting...`);
 
         setTimeout(() => {
           if (!cancelled) {
-            router.replace("/");
+            router.replace('/');
           }
         }, 1200);
       })
@@ -59,7 +61,7 @@ export function MagicLinkVerifyClient() {
           return;
         }
 
-        setState("error");
+        setState('error');
         setMessage(getErrorMessage(error));
       });
 
@@ -76,9 +78,9 @@ export function MagicLinkVerifyClient() {
           <p>{message}</p>
         </header>
 
-        {state === "verifying" && <p className="info-banner">Please wait…</p>}
-        {state === "success" && <p className="info-banner">Success</p>}
-        {state === "error" && <p className="error-banner">{message}</p>}
+        {state === 'verifying' && <p className="info-banner">Please wait…</p>}
+        {state === 'success' && <p className="info-banner">Success</p>}
+        {state === 'error' && <p className="error-banner">{message}</p>}
 
         <div className="inline-buttons">
           <Link href="/" className="link-button">
@@ -96,7 +98,7 @@ export function MagicLinkVerifyClient() {
 }
 
 function sanitizeToken(value: string): string {
-  return value.trim().replace(/\s+/g, "");
+  return value.trim().replace(/\s+/g, '');
 }
 
 function toSessionUser(user: {
@@ -113,7 +115,7 @@ function toSessionUser(user: {
     display_name: user.display_name,
     email: user.email,
     avatar_url: user.avatar_url,
-    bio: user.bio
+    bio: user.bio,
   };
 }
 
@@ -122,5 +124,5 @@ function getErrorMessage(error: unknown): string {
     return error.message;
   }
 
-  return "Token is invalid or expired";
+  return 'Token is invalid or expired';
 }

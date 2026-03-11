@@ -11,8 +11,8 @@ interface McpToolWithServer extends McpTool {
 }
 
 export class McpManager {
-  private tools: McpToolWithServer[] = [];
   private servers: McpServerConfig[] = [];
+  private tools: McpToolWithServer[] = [];
   private apiKey: string | undefined = process.env.MCP_API_KEY;
 
   async connect(servers: McpServerConfig[]): Promise<void> {
@@ -23,14 +23,14 @@ export class McpManager {
       servers.map(async (server) => {
         const discovered = await this.discoverTools(server);
         this.tools.push(...discovered);
-      })
+      }),
     );
   }
 
   private async discoverTools(server: McpServerConfig): Promise<McpToolWithServer[]> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
+      headers.Authorization = `Bearer ${this.apiKey}`;
     }
     const response = await fetch(`${server.url}/mcp`, {
       method: 'POST',
@@ -45,7 +45,7 @@ export class McpManager {
 
     if (!response.ok) {
       throw new Error(
-        `MCP server ${server.name} (${server.url}) returned ${response.status}: ${response.statusText}`
+        `MCP server ${server.name} (${server.url}) returned ${response.status}: ${response.statusText}`,
       );
     }
 
@@ -82,10 +82,7 @@ export class McpManager {
     }));
   }
 
-  async executeTool(
-    name: string,
-    input: Record<string, unknown>
-  ): Promise<unknown> {
+  async executeTool(name: string, input: Record<string, unknown>): Promise<unknown> {
     const tool = this.tools.find((t) => t.name === name);
     if (!tool) {
       throw new Error(`Tool '${name}' not found in any connected MCP server`);
@@ -93,7 +90,7 @@ export class McpManager {
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
+      headers.Authorization = `Bearer ${this.apiKey}`;
     }
     const response = await fetch(`${tool.serverUrl}/mcp`, {
       method: 'POST',
@@ -108,7 +105,7 @@ export class McpManager {
 
     if (!response.ok) {
       throw new Error(
-        `MCP tool call to ${tool.serverUrl} failed: ${response.status} ${response.statusText}`
+        `MCP tool call to ${tool.serverUrl} failed: ${response.status} ${response.statusText}`,
       );
     }
 
@@ -118,7 +115,7 @@ export class McpManager {
     };
 
     if (data.error) {
-      throw new Error(`MCP tool '${name}' execution error: ${(data.error as any).message}`);
+      throw new Error(`MCP tool '${name}' execution error: ${data.error.message}`);
     }
 
     return data.result;

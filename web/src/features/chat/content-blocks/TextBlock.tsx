@@ -1,44 +1,41 @@
-"use client";
+'use client';
 
-import hljs from "highlight.js/lib/core";
+import hljs from 'highlight.js/lib/core';
 
 export type TextBlockData = {
-  type: "text";
+  type: 'text';
   text: string;
 };
 
 function escapeHtml(raw: string): string {
   return raw
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function renderInlineMarkdown(text: string): string {
   let result = escapeHtml(text);
   // Bold
-  result = result.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  result = result.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   // Italic
-  result = result.replace(/\*(.+?)\*/g, "<em>$1</em>");
+  result = result.replace(/\*(.+?)\*/g, '<em>$1</em>');
   // Inline code
   result = result.replace(/`([^`]+)`/g, '<code class="cb-inline-code">$1</code>');
   // Links
-  result = result.replace(
-    /\[([^\]]+)\]\(([^)]+)\)/g,
-    (_, text, url) => {
-      // Sanitize URL - only allow http, https, mailto
-      const sanitizedUrl = /^(https?:|mailto:)/i.test(url) ? url : '#';
-      return `<a href="${sanitizedUrl}" target="_blank" rel="noopener noreferrer" class="cb-link">${text}</a>`;
-    }
-  );
+  result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+    // Sanitize URL - only allow http, https, mailto
+    const sanitizedUrl = /^(https?:|mailto:)/i.test(url) ? url : '#';
+    return `<a href="${sanitizedUrl}" target="_blank" rel="noopener noreferrer" class="cb-link">${text}</a>`;
+  });
   // Line breaks
-  result = result.replace(/\n/g, "<br/>");
+  result = result.replace(/\n/g, '<br/>');
   return result;
 }
 
 export function TextBlock({ block }: { block: TextBlockData }) {
-  const text = block.text || "";
+  const text = block.text || '';
 
   // Split on fenced code blocks
   const parts = text.split(/(```[\s\S]*?```)/g);
@@ -46,10 +43,10 @@ export function TextBlock({ block }: { block: TextBlockData }) {
   return (
     <div className="cb-text-block">
       {parts.map((part, i) => {
-        if (part.startsWith("```") && part.endsWith("```")) {
+        if (part.startsWith('```') && part.endsWith('```')) {
           const inner = part.slice(3, -3);
-          const newlineIdx = inner.indexOf("\n");
-          const lang = newlineIdx > -1 ? inner.slice(0, newlineIdx).trim() : "";
+          const newlineIdx = inner.indexOf('\n');
+          const lang = newlineIdx > -1 ? inner.slice(0, newlineIdx).trim() : '';
           const code = newlineIdx > -1 ? inner.slice(newlineIdx + 1) : inner;
 
           let highlighted: string;
@@ -65,7 +62,7 @@ export function TextBlock({ block }: { block: TextBlockData }) {
           return (
             <div key={i} className="cb-code-fence">
               <div className="cb-code-fence-header">
-                <span className="cb-code-fence-lang">{lang || "code"}</span>
+                <span className="cb-code-fence-lang">{lang || 'code'}</span>
                 <button
                   type="button"
                   className="cb-code-copy-btn"

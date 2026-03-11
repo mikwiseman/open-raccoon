@@ -1,5 +1,5 @@
-import { createQueue, createWorker } from './queue.js';
 import { sql } from '../db/connection.js';
+import { createQueue, createWorker } from './queue.js';
 
 const QUEUE_NAME = 'memory-decay';
 
@@ -10,11 +10,9 @@ export const memoryDecayQueue = createQueue(QUEUE_NAME);
  * 1. Multiply decay_factor by 0.995 for memories older than 24 hours.
  * 2. Delete memories with decay_factor < 0.01.
  */
-export const memoryDecayWorker = createWorker(
-  QUEUE_NAME,
-  async () => {
-    // Step 1: Apply decay to memories older than 24 hours
-    await sql`
+export const memoryDecayWorker = createWorker(QUEUE_NAME, async () => {
+  // Step 1: Apply decay to memories older than 24 hours
+  await sql`
       UPDATE agent_memories
       SET decay_factor = decay_factor * 0.995,
           updated_at = NOW()
@@ -22,13 +20,12 @@ export const memoryDecayWorker = createWorker(
         AND decay_factor >= 0.01
     `;
 
-    // Step 2: Delete memories with decay_factor below threshold
-    await sql`
+  // Step 2: Delete memories with decay_factor below threshold
+  await sql`
       DELETE FROM agent_memories
       WHERE decay_factor < 0.01
     `;
-  },
-);
+});
 
 /**
  * Schedule memory decay to run every hour.

@@ -1,15 +1,15 @@
 import {
+  bigint,
+  boolean,
+  customType,
+  doublePrecision,
+  integer,
+  jsonb,
   pgTable,
+  text,
+  timestamp,
   uuid,
   varchar,
-  text,
-  boolean,
-  integer,
-  bigint,
-  doublePrecision,
-  jsonb,
-  timestamp,
-  customType,
 } from 'drizzle-orm/pg-core';
 import { users } from './users.js';
 
@@ -22,10 +22,7 @@ const vector = customType<{ data: number[]; driverData: string; config: { dimens
     return `[${value.join(',')}]`;
   },
   fromDriver(value: string): number[] {
-    return value
-      .slice(1, -1)
-      .split(',')
-      .map(Number);
+    return value.slice(1, -1).split(',').map(Number);
   },
 });
 
@@ -168,7 +165,9 @@ export type NewAgentCoreMemory = typeof agentCoreMemories.$inferInsert;
 export const agentTasks = pgTable('agent_tasks', {
   id: uuid('id').primaryKey().defaultRandom(),
   callerAgentId: uuid('caller_agent_id').references(() => agents.id, { onDelete: 'set null' }),
-  calleeAgentId: uuid('callee_agent_id').notNull().references(() => agents.id, { onDelete: 'set null' }),
+  calleeAgentId: uuid('callee_agent_id')
+    .notNull()
+    .references(() => agents.id, { onDelete: 'set null' }),
   conversationId: uuid('conversation_id'),
   status: varchar('status', { length: 20 }).default('submitted'),
   message: text('message'),

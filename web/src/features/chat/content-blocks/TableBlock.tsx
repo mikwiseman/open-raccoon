@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
 export type TableBlockData = {
-  type: "table";
+  type: 'table';
   headers: string[];
   rows: string[][];
   caption?: string;

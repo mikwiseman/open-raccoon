@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { WaiAgentsApi } from "@/lib/api";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { WaiAgentsApi } from '@/lib/api';
+import type { SessionUser } from '@/lib/state/session-store';
 import type {
   AgentRating,
   MarketplaceAgent,
   MarketplaceAgentProfileResponse,
-  MarketplaceCategory
-} from "@/lib/types";
-import type { SessionUser } from "@/lib/state/session-store";
-import { toIsoLocal } from "@/lib/utils";
+  MarketplaceCategory,
+} from '@/lib/types';
+import { toIsoLocal } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -28,13 +28,13 @@ type MarketplaceViewProps = {
 const DEBOUNCE_MS = 300;
 
 const FALLBACK_CATEGORIES = [
-  "Coding & Development",
-  "Writing & Content",
-  "Data & Analysis",
-  "Creative & Design",
-  "Productivity",
-  "Education",
-  "Other"
+  'Coding & Development',
+  'Writing & Content',
+  'Data & Analysis',
+  'Creative & Design',
+  'Productivity',
+  'Education',
+  'Other',
 ];
 
 /* ------------------------------------------------------------------ */
@@ -45,15 +45,15 @@ function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
-  return "Request failed";
+  return 'Request failed';
 }
 
 function getInitials(name: string): string {
   return name
     .split(/\s+/)
     .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
 }
 
 function agentAccentColor(name: string): string {
@@ -75,11 +75,12 @@ function StarDisplay({ rating, count }: { rating: number; count: number }) {
       {[1, 2, 3, 4, 5].map((star) => (
         <svg
           key={star}
-          className={star <= Math.round(rating) ? "mp-star filled" : "mp-star"}
+          className={star <= Math.round(rating) ? 'mp-star filled' : 'mp-star'}
           viewBox="0 0 20 20"
           width="14"
           height="14"
         >
+          <title>{`${star} star`}</title>
           <path d="M10 1.5l2.47 5.01 5.53.8-4 3.9.94 5.49L10 14.26 5.06 16.7 6 11.21l-4-3.9 5.53-.8z" />
         </svg>
       ))}
@@ -93,13 +94,7 @@ function StarDisplay({ rating, count }: { rating: number; count: number }) {
 /*  StarSelector (interactive)                                         */
 /* ------------------------------------------------------------------ */
 
-function StarSelector({
-  value,
-  onChange
-}: {
-  value: number;
-  onChange: (v: number) => void;
-}) {
+function StarSelector({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hovered, setHovered] = useState(0);
   const display = hovered || value;
 
@@ -117,14 +112,15 @@ function StarSelector({
           className="mp-star-btn"
           onMouseEnter={() => setHovered(star)}
           onClick={() => onChange(star)}
-          aria-label={`${star} star${star > 1 ? "s" : ""}`}
+          aria-label={`${star} star${star > 1 ? 's' : ''}`}
         >
           <svg
-            className={star <= display ? "mp-star filled" : "mp-star"}
+            className={star <= display ? 'mp-star filled' : 'mp-star'}
             viewBox="0 0 20 20"
             width="22"
             height="22"
           >
+            <title>{`${star} star`}</title>
             <path d="M10 1.5l2.47 5.01 5.53.8-4 3.9.94 5.49L10 14.26 5.06 16.7 6 11.21l-4-3.9 5.53-.8z" />
           </svg>
         </button>
@@ -139,7 +135,16 @@ function StarSelector({
 
 function SearchIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    >
+      <title>Search</title>
       <circle cx="7" cy="7" r="5" />
       <line x1="11" y1="11" x2="14" y2="14" />
     </svg>
@@ -149,6 +154,7 @@ function SearchIcon() {
 function ChatBubbleIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+      <title>Chat</title>
       <path d="M8 1C4.13 1 1 3.58 1 6.75c0 1.77 1.03 3.36 2.66 4.42L3 14l3.34-1.52c.54.1 1.1.15 1.66.15 3.87 0 7-2.58 7-5.75S11.87 1 8 1z" />
     </svg>
   );
@@ -156,7 +162,17 @@ function ChatBubbleIcon() {
 
 function ArrowLeftIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <title>Back</title>
       <line x1="13" y1="8" x2="3" y2="8" />
       <polyline points="7 4 3 8 7 12" />
     </svg>
@@ -165,7 +181,17 @@ function ArrowLeftIcon() {
 
 function ForkIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <title>Fork</title>
       <circle cx="5" cy="3" r="2" />
       <circle cx="11" cy="3" r="2" />
       <circle cx="8" cy="13" r="2" />
@@ -183,16 +209,16 @@ function ForkIcon() {
 
 export function MarketplaceView({ api, currentUser, onOpenConversation }: MarketplaceViewProps) {
   /* --- state --- */
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [agents, setAgents] = useState<MarketplaceAgent[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeCategory, setActiveCategory] = useState('All');
   const [selected, setSelected] = useState<MarketplaceAgent | null>(null);
   const [profile, setProfile] = useState<MarketplaceAgentProfileResponse | null>(null);
   const [ratings, setRatings] = useState<AgentRating[]>([]);
   const [ratingValue, setRatingValue] = useState(0);
-  const [ratingReview, setRatingReview] = useState("");
+  const [ratingReview, setRatingReview] = useState('');
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -227,7 +253,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
         const response = debouncedQuery.trim()
           ? await api.searchMarketplace(debouncedQuery.trim(), {
               limit: 20,
-              cursor: nextCursor ?? undefined
+              cursor: nextCursor ?? undefined,
             })
           : await api.listMarketplace({ limit: 20, cursor: nextCursor ?? undefined });
 
@@ -257,7 +283,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
         setLoading(false);
       }
     },
-    [api, debouncedQuery]
+    [api, debouncedQuery],
   );
 
   /* --- effects --- */
@@ -306,9 +332,9 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
 
   /* --- category filter --- */
   const filteredAgents = useMemo(() => {
-    if (activeCategory === "All") return agents;
+    if (activeCategory === 'All') return agents;
     return agents.filter(
-      (a) => (a.category ?? "Other").toLowerCase() === activeCategory.toLowerCase()
+      (a) => (a.category ?? 'Other').toLowerCase() === activeCategory.toLowerCase(),
     );
   }, [agents, activeCategory]);
 
@@ -321,7 +347,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
     try {
       const res = await api.rateAgent(detail.id, ratingValue, ratingReview.trim() || undefined);
       setInfo(`Saved rating ${res.rating.rating}/5`);
-      setRatingReview("");
+      setRatingReview('');
       setRatingValue(0);
       setRatings((prev) => [
         {
@@ -329,9 +355,9 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
           user_id: currentUser.id,
           rating: res.rating.rating,
           review: res.rating.review,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         },
-        ...prev
+        ...prev,
       ]);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -366,7 +392,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
     }
   };
 
-  const allCategories = ["All", ...categories];
+  const allCategories = ['All', ...categories];
 
   /* ---------------------------------------------------------------- */
   /*  Render                                                           */
@@ -377,7 +403,11 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
       {/* Header */}
       <header className="panel-header compact">
         <h2>Marketplace</h2>
-        <p>{loading ? "Loading agents..." : `${filteredAgents.length} agent${filteredAgents.length !== 1 ? "s" : ""}`}</p>
+        <p>
+          {loading
+            ? 'Loading agents...'
+            : `${filteredAgents.length} agent${filteredAgents.length !== 1 ? 's' : ''}`}
+        </p>
       </header>
 
       {/* Banners */}
@@ -389,7 +419,9 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
         <div className="mp-left-panel">
           {/* Search bar */}
           <div className="input-group">
-            <span className="input-icon"><SearchIcon /></span>
+            <span className="input-icon">
+              <SearchIcon />
+            </span>
             <input
               value={query}
               onChange={(e) => handleSearchInput(e.target.value)}
@@ -399,12 +431,12 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
           </div>
 
           {/* Category pills */}
-          <div className="mp-pill-row" aria-label="marketplace-categories">
+          <div className="mp-pill-row">
             {allCategories.map((cat) => (
               <button
                 key={cat}
                 type="button"
-                className={activeCategory === cat ? "mp-pill active" : "mp-pill"}
+                className={activeCategory === cat ? 'mp-pill active' : 'mp-pill'}
                 onClick={() => setActiveCategory(cat)}
               >
                 {cat}
@@ -413,19 +445,16 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
           </div>
 
           {/* Agent card grid */}
-          <div className="mp-card-grid" aria-label="marketplace-agent-list">
+          <div className="mp-card-grid">
             {filteredAgents.map((agent) => (
               <button
                 key={agent.id}
                 type="button"
-                className={detail?.id === agent.id ? "mp-agent-card selected" : "mp-agent-card"}
+                className={detail?.id === agent.id ? 'mp-agent-card selected' : 'mp-agent-card'}
                 onClick={() => setSelected(agent)}
               >
                 <div className="mp-agent-card-header">
-                  <span
-                    className="mp-avatar"
-                    style={{ borderColor: agentAccentColor(agent.name) }}
-                  >
+                  <span className="mp-avatar" style={{ borderColor: agentAccentColor(agent.name) }}>
                     {agent.avatar_url ? (
                       <img src={agent.avatar_url} alt={agent.name} />
                     ) : (
@@ -434,12 +463,10 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
                   </span>
                   <div className="mp-agent-card-meta">
                     <span className="mp-agent-name">{agent.name}</span>
-                    <span className="mp-category-badge">{agent.category || "Other"}</span>
+                    <span className="mp-category-badge">{agent.category || 'Other'}</span>
                   </div>
                 </div>
-                <p className="mp-agent-desc">
-                  {agent.description || "No description available."}
-                </p>
+                <p className="mp-agent-desc">{agent.description || 'No description available.'}</p>
                 <div className="mp-agent-card-footer">
                   <StarDisplay rating={agent.average_rating} count={agent.rating_count} />
                   <span className="mp-usage">
@@ -450,7 +477,9 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
             ))}
 
             {filteredAgents.length === 0 && !loading && (
-              <p className="mp-empty">No agents found{activeCategory !== "All" ? ` in "${activeCategory}"` : ""}.</p>
+              <p className="mp-empty">
+                No agents found{activeCategory !== 'All' ? ` in "${activeCategory}"` : ''}.
+              </p>
             )}
           </div>
 
@@ -462,7 +491,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
               onClick={() => void loadMarketplace(cursor)}
               disabled={loading}
             >
-              {loading ? "Loading..." : "Load more"}
+              {loading ? 'Loading...' : 'Load more'}
             </button>
           )}
         </div>
@@ -475,7 +504,10 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
               <button
                 type="button"
                 className="mp-back-btn"
-                onClick={() => { setSelected(null); setProfile(null); }}
+                onClick={() => {
+                  setSelected(null);
+                  setProfile(null);
+                }}
               >
                 <ArrowLeftIcon /> Back to list
               </button>
@@ -499,7 +531,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
               </div>
 
               <div className="mp-profile-meta-row">
-                <span className="mp-category-badge">{detail.category || "Other"}</span>
+                <span className="mp-category-badge">{detail.category || 'Other'}</span>
                 <StarDisplay rating={detail.average_rating} count={detail.rating_count} />
               </div>
 
@@ -511,7 +543,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
                   onClick={() => void startConversation()}
                   disabled={startingConversation}
                 >
-                  {startingConversation ? "Starting..." : "Try It"}
+                  {startingConversation ? 'Starting...' : 'Try It'}
                 </button>
                 <button
                   type="button"
@@ -521,22 +553,24 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
                   title="Fork this agent"
                 >
                   <ForkIcon />
-                  {forking ? "Forking..." : "Fork"}
+                  {forking ? 'Forking...' : 'Fork'}
                 </button>
               </div>
 
               {loadingProfile ? (
                 <div className="mp-profile-loading">
-                  <div className="skeleton" style={{ height: 16, width: "80%" }} />
-                  <div className="skeleton" style={{ height: 16, width: "60%" }} />
-                  <div className="skeleton" style={{ height: 16, width: "70%" }} />
+                  <div className="skeleton" style={{ height: 16, width: '80%' }} />
+                  <div className="skeleton" style={{ height: 16, width: '60%' }} />
+                  <div className="skeleton" style={{ height: 16, width: '70%' }} />
                 </div>
               ) : (
                 <>
                   {/* About */}
                   <section className="mp-section">
                     <h4>About</h4>
-                    <p className="mp-about-text">{detail.description || "No description provided."}</p>
+                    <p className="mp-about-text">
+                      {detail.description || 'No description provided.'}
+                    </p>
                   </section>
 
                   {/* Details */}
@@ -545,7 +579,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
                     <div className="mp-detail-rows">
                       <div className="mp-detail-row">
                         <span className="mp-detail-label">Model</span>
-                        <span className="mp-detail-value">{detail.model || "Default"}</span>
+                        <span className="mp-detail-value">{detail.model || 'Default'}</span>
                       </div>
                       <div className="mp-detail-row">
                         <span className="mp-detail-label">Usage Count</span>
@@ -575,7 +609,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
                         className="btn-primary"
                         disabled={ratingValue === 0 || submittingRating}
                       >
-                        {submittingRating ? "Submitting..." : "Submit Review"}
+                        {submittingRating ? 'Submitting...' : 'Submit Review'}
                       </button>
                     </form>
                   </section>

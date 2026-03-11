@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import type { Agent } from "@/lib/types";
+import type { Agent } from '@/lib/types';
 
-type Visibility = Agent["visibility"];
+type Visibility = Agent['visibility'];
 
 type Props = {
   value: Visibility;
@@ -10,9 +10,9 @@ type Props = {
 };
 
 const OPTIONS: Array<{ value: Visibility; label: string; description: string }> = [
-  { value: "public", label: "Public", description: "Visible on marketplace and searchable" },
-  { value: "unlisted", label: "Unlisted", description: "Accessible via link, not listed" },
-  { value: "private", label: "Private", description: "Only you can access" },
+  { value: 'public', label: 'Public', description: 'Visible on marketplace and searchable' },
+  { value: 'unlisted', label: 'Unlisted', description: 'Accessible via link, not listed' },
+  { value: 'private', label: 'Private', description: 'Only you can access' },
 ];
 
 export function VisibilitySelector({ value, onChange }: Props) {
@@ -23,7 +23,7 @@ export function VisibilitySelector({ value, onChange }: Props) {
         {OPTIONS.map((opt) => (
           <label
             key={opt.value}
-            className={`ab-radio-card ${value === opt.value ? "selected" : ""}`}
+            className={`ab-radio-card ${value === opt.value ? 'selected' : ''}`}
           >
             <input
               type="radio"

@@ -1,24 +1,21 @@
-"use client";
+'use client';
 
-import hljs from "highlight.js/lib/core";
+import hljs from 'highlight.js/lib/core';
 
 export type CodeBlockData = {
-  type: "code";
+  type: 'code';
   language?: string;
   code: string;
   output?: string;
 };
 
 function escapeHtml(raw: string): string {
-  return raw
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 export function CodeBlock({ block }: { block: CodeBlockData }) {
-  const lang = block.language || "";
-  const code = block.code || "";
+  const lang = block.language || '';
+  const code = block.code || '';
 
   let highlighted: string;
   try {
@@ -33,7 +30,7 @@ export function CodeBlock({ block }: { block: CodeBlockData }) {
   return (
     <div className="cb-code-block">
       <div className="cb-code-block-header">
-        <span className="cb-code-block-lang">{lang || "code"}</span>
+        <span className="cb-code-block-lang">{lang || 'code'}</span>
         <button
           type="button"
           className="cb-code-copy-btn"

@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { z } from 'zod';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -24,33 +23,28 @@ vi.mock('node:crypto', () => ({
 import { sql } from './db.js';
 import {
   AddSourceInput,
-  ListSourcesInput,
-  RemoveSourceInput,
-  UpdateSourceInput,
-  SearchArticlesInput,
-  GetArticleDetailsInput,
-  SummarizeArticleInput,
-  GetTodaySummaryInput,
-  CreateProposalInput,
-  ListProposalsInput,
-  UpdateProposalStatusInput,
-  GetProposalInput,
   AnalyzeTrendsInput,
+  CreateProposalInput,
   GenerateBriefingInput,
   handleAddSource,
+  handleAnalyzeTrends,
+  handleCreateProposal,
+  handleGenerateBriefing,
+  handleGetArticleDetails,
+  handleGetProposal,
+  handleGetTodaySummary,
+  handleListProposals,
   handleListSources,
   handleRemoveSource,
-  handleUpdateSource,
   handleSearchArticles,
-  handleGetArticleDetails,
   handleSummarizeArticle,
-  handleGetTodaySummary,
-  handleCreateProposal,
-  handleListProposals,
   handleUpdateProposalStatus,
-  handleGetProposal,
-  handleAnalyzeTrends,
-  handleGenerateBriefing,
+  handleUpdateSource,
+  ListSourcesInput,
+  RemoveSourceInput,
+  SearchArticlesInput,
+  UpdateProposalStatusInput,
+  UpdateSourceInput,
 } from './tools.js';
 
 const AGENT_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -244,8 +238,12 @@ describe('AnalyzeTrendsInput schema', () => {
   });
 
   it('accepts 24h and 30d', () => {
-    expect(AnalyzeTrendsInput.safeParse({ agent_id: AGENT_ID, timeframe: '24h' }).success).toBe(true);
-    expect(AnalyzeTrendsInput.safeParse({ agent_id: AGENT_ID, timeframe: '30d' }).success).toBe(true);
+    expect(AnalyzeTrendsInput.safeParse({ agent_id: AGENT_ID, timeframe: '24h' }).success).toBe(
+      true,
+    );
+    expect(AnalyzeTrendsInput.safeParse({ agent_id: AGENT_ID, timeframe: '30d' }).success).toBe(
+      true,
+    );
   });
 });
 
@@ -279,7 +277,15 @@ describe('handleAddSource', () => {
 describe('handleListSources', () => {
   it('returns sources array', async () => {
     const mockSources = [
-      { id: SOURCE_ID, name: 'Tech News', type: 'rss', url: 'https://example.com', config: {}, last_fetched_at: null, inserted_at: '2025-01-01' },
+      {
+        id: SOURCE_ID,
+        name: 'Tech News',
+        type: 'rss',
+        url: 'https://example.com',
+        config: {},
+        last_fetched_at: null,
+        inserted_at: '2025-01-01',
+      },
     ];
     vi.mocked(sql).mockReturnValue(mockSql(mockSources, 1));
 
@@ -320,7 +326,11 @@ describe('handleUpdateSource', () => {
 
   it('updates name only', async () => {
     vi.mocked(sql).mockReturnValue(mockSql([], 1));
-    const result = await handleUpdateSource({ source_id: SOURCE_ID, agent_id: AGENT_ID, name: 'New Name' });
+    const result = await handleUpdateSource({
+      source_id: SOURCE_ID,
+      agent_id: AGENT_ID,
+      name: 'New Name',
+    });
     expect(result.updated).toBe(true);
     expect(sql).toHaveBeenCalledTimes(1);
   });
@@ -341,7 +351,14 @@ describe('handleUpdateSource', () => {
 describe('handleSearchArticles', () => {
   it('returns matching articles', async () => {
     const mockArticles = [
-      { id: ARTICLE_ID, title: 'AI Revolution', url: 'https://example.com/1', content: 'Article about AI', published_at: '2025-01-01', collected_at: '2025-01-01' },
+      {
+        id: ARTICLE_ID,
+        title: 'AI Revolution',
+        url: 'https://example.com/1',
+        content: 'Article about AI',
+        published_at: '2025-01-01',
+        collected_at: '2025-01-01',
+      },
     ];
     vi.mocked(sql).mockReturnValue(mockSql(mockArticles, 1));
 
@@ -386,7 +403,9 @@ describe('handleGetArticleDetails', () => {
 
   it('throws when article not found', async () => {
     vi.mocked(sql).mockReturnValue(mockSql([], 0));
-    await expect(handleGetArticleDetails({ article_id: ARTICLE_ID, agent_id: AGENT_ID })).rejects.toThrow('Article not found');
+    await expect(
+      handleGetArticleDetails({ article_id: ARTICLE_ID, agent_id: AGENT_ID }),
+    ).rejects.toThrow('Article not found');
   });
 });
 
@@ -412,14 +431,22 @@ describe('handleSummarizeArticle', () => {
 
   it('throws when article not found', async () => {
     vi.mocked(sql).mockReturnValue(mockSql([], 0));
-    await expect(handleSummarizeArticle({ article_id: ARTICLE_ID, agent_id: AGENT_ID })).rejects.toThrow('Article not found');
+    await expect(
+      handleSummarizeArticle({ article_id: ARTICLE_ID, agent_id: AGENT_ID }),
+    ).rejects.toThrow('Article not found');
   });
 });
 
 describe('handleGetTodaySummary', () => {
   it('returns today articles', async () => {
     const mockArticles = [
-      { id: ARTICLE_ID, title: 'Today News', url: 'https://example.com', summary: 'Brief.', published_at: new Date().toISOString() },
+      {
+        id: ARTICLE_ID,
+        title: 'Today News',
+        url: 'https://example.com',
+        summary: 'Brief.',
+        published_at: new Date().toISOString(),
+      },
     ];
     vi.mocked(sql).mockReturnValue(mockSql(mockArticles, 1));
 
@@ -462,7 +489,13 @@ describe('handleCreateProposal', () => {
 describe('handleListProposals', () => {
   it('returns all proposals without status filter', async () => {
     const mockProposals = [
-      { id: PROPOSAL_ID, title: 'Draft Campaign', description: 'A campaign', status: 'draft', inserted_at: '2025-01-01' },
+      {
+        id: PROPOSAL_ID,
+        title: 'Draft Campaign',
+        description: 'A campaign',
+        status: 'draft',
+        inserted_at: '2025-01-01',
+      },
     ];
     vi.mocked(sql).mockReturnValue(mockSql(mockProposals, 1));
 
@@ -482,13 +515,19 @@ describe('handleListProposals', () => {
 describe('handleUpdateProposalStatus', () => {
   it('updates status and returns updated true', async () => {
     vi.mocked(sql).mockReturnValue(mockSql([], 1));
-    const result = await handleUpdateProposalStatus({ proposal_id: PROPOSAL_ID, status: 'approved' });
+    const result = await handleUpdateProposalStatus({
+      proposal_id: PROPOSAL_ID,
+      status: 'approved',
+    });
     expect(result.updated).toBe(true);
   });
 
   it('returns updated false when not found', async () => {
     vi.mocked(sql).mockReturnValue(mockSql([], 0));
-    const result = await handleUpdateProposalStatus({ proposal_id: PROPOSAL_ID, status: 'rejected' });
+    const result = await handleUpdateProposalStatus({
+      proposal_id: PROPOSAL_ID,
+      status: 'rejected',
+    });
     expect(result.updated).toBe(false);
   });
 });
@@ -517,7 +556,9 @@ describe('handleGetProposal', () => {
 
   it('throws when proposal not found', async () => {
     vi.mocked(sql).mockReturnValue(mockSql([], 0));
-    await expect(handleGetProposal({ proposal_id: PROPOSAL_ID })).rejects.toThrow('Proposal not found');
+    await expect(handleGetProposal({ proposal_id: PROPOSAL_ID })).rejects.toThrow(
+      'Proposal not found',
+    );
   });
 });
 
@@ -556,7 +597,13 @@ describe('handleAnalyzeTrends', () => {
 describe('handleGenerateBriefing', () => {
   it('returns briefing with articles and proposals', async () => {
     const mockArticles = [
-      { id: ARTICLE_ID, title: 'News', url: 'https://example.com', summary: 'Brief.', published_at: new Date().toISOString() },
+      {
+        id: ARTICLE_ID,
+        title: 'News',
+        url: 'https://example.com',
+        summary: 'Brief.',
+        published_at: new Date().toISOString(),
+      },
     ];
     const mockProposals = [
       { id: PROPOSAL_ID, title: 'Campaign', status: 'draft', description: 'Desc.' },

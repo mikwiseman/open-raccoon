@@ -18,7 +18,7 @@ export class ApiError extends Error {
 
   constructor(message: string, options: { status: number; code?: string; details?: unknown }) {
     super(message);
-    this.name = "ApiError";
+    this.name = 'ApiError';
     this.status = options.status;
     this.code = options.code;
     this.details = options.details;
@@ -41,22 +41,23 @@ export function parseApiError(status: number, payload: unknown): ApiError {
     toNonEmptyString(nestedError?.message) ??
     `Request failed with status ${status}`;
 
-  const code = toNonEmptyString(typedPayload.code) ?? toNonEmptyString(nestedError?.code) ?? undefined;
+  const code =
+    toNonEmptyString(typedPayload.code) ?? toNonEmptyString(nestedError?.code) ?? undefined;
   const details = typedPayload.details ?? nestedError?.details;
 
   return new ApiError(message, {
     status,
     code,
-    details
+    details,
   });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 function toNonEmptyString(value: unknown): string | null {
-  if (typeof value !== "string") {
+  if (typeof value !== 'string') {
     return null;
   }
 

@@ -1,4 +1,9 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const S3_ACCESS_KEY = process.env.S3_ACCESS_KEY;
@@ -21,7 +26,11 @@ const s3 = new S3Client({
 
 const BUCKET = process.env.S3_BUCKET || 'wai-agents';
 
-export async function getUploadUrl(key: string, contentType: string, expiresIn = 3600): Promise<string> {
+export async function getUploadUrl(
+  key: string,
+  contentType: string,
+  expiresIn = 3600,
+): Promise<string> {
   const command = new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,

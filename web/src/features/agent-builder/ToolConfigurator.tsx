@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import type { ToolConfig, McpServerConfig } from "@/lib/types";
-import { MCPServerForm } from "./MCPServerForm";
+import { useState } from 'react';
+import type { McpServerConfig, ToolConfig } from '@/lib/types';
+import { MCPServerForm } from './MCPServerForm';
 
 type Props = {
   tools: ToolConfig[];
@@ -12,10 +12,10 @@ type Props = {
 };
 
 const BUILT_IN_TOOLS: Array<{ name: string; description: string }> = [
-  { name: "memory", description: "Store and retrieve agent memories" },
-  { name: "web_search", description: "Search the web for information" },
-  { name: "code_execution", description: "Execute code in a sandboxed environment" },
-  { name: "filesystem", description: "Read and write files" },
+  { name: 'memory', description: 'Store and retrieve agent memories' },
+  { name: 'web_search', description: 'Search the web for information' },
+  { name: 'code_execution', description: 'Execute code in a sandboxed environment' },
+  { name: 'filesystem', description: 'Read and write files' },
 ];
 
 export function ToolConfigurator({ tools, mcpServers, onToolsChange, onMcpServersChange }: Props) {
@@ -30,10 +30,7 @@ export function ToolConfigurator({ tools, mcpServers, onToolsChange, onMcpServer
     if (isToolEnabled(name)) {
       onToolsChange(tools.filter((t) => t.name !== name));
     } else {
-      onToolsChange([
-        ...tools,
-        { name, description, input_schema: {}, requires_approval: false },
-      ]);
+      onToolsChange([...tools, { name, description, input_schema: {}, requires_approval: false }]);
     }
   }
 

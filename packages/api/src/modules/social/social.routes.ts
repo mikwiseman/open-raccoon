@@ -2,20 +2,20 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../auth/auth.middleware.js';
 import { RateAgentSchema } from './social.schema.js';
 import {
-  listFeed,
-  listTrending,
-  listFollowing,
-  listNew,
-  likeFeedItem,
-  unlikeFeedItem,
-  forkAgent,
-  listMarketplace,
-  searchMarketplace,
-  getMarketplaceAgent,
-  listCategories,
-  rateAgent,
   followUser,
+  forkAgent,
+  getMarketplaceAgent,
+  likeFeedItem,
+  listCategories,
+  listFeed,
+  listFollowing,
+  listMarketplace,
+  listNew,
+  listTrending,
+  rateAgent,
+  searchMarketplace,
   unfollowUser,
+  unlikeFeedItem,
 } from './social.service.js';
 
 export const socialRoutes = new Hono();

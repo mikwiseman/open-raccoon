@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { WaiAgentsApi } from "@/lib/api";
-import type { SessionUser } from "@/lib/state/session-store";
-import type { FeedItem } from "@/lib/types";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { WaiAgentsApi } from '@/lib/api';
+import type { SessionUser } from '@/lib/state/session-store';
+import type { FeedItem } from '@/lib/types';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type FeedKind = "for_you" | "trending" | "following" | "new";
+type FeedKind = 'for_you' | 'trending' | 'following' | 'new';
 
 interface FeedViewProps {
   api: WaiAgentsApi;
@@ -17,10 +17,10 @@ interface FeedViewProps {
 }
 
 const TABS: Array<{ key: FeedKind; label: string }> = [
-  { key: "for_you", label: "For You" },
-  { key: "trending", label: "Trending" },
-  { key: "following", label: "Following" },
-  { key: "new", label: "New" },
+  { key: 'for_you', label: 'For You' },
+  { key: 'trending', label: 'Trending' },
+  { key: 'following', label: 'Following' },
+  { key: 'new', label: 'New' },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -30,10 +30,21 @@ const TABS: Array<{ key: FeedKind; label: string }> = [
 function HeartIcon({ filled }: { filled: boolean }) {
   return filled ? (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--color-error)" stroke="none">
+      <title>Liked</title>
       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
     </svg>
   ) : (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <title>Like</title>
       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
     </svg>
   );
@@ -41,7 +52,17 @@ function HeartIcon({ filled }: { filled: boolean }) {
 
 function ForkIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <title>Fork</title>
       <line x1="6" y1="3" x2="6" y2="15" />
       <circle cx="18" cy="6" r="3" />
       <circle cx="6" cy="18" r="3" />
@@ -52,7 +73,17 @@ function ForkIcon() {
 
 function ShareIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <title>Share</title>
       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
       <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
     </svg>
@@ -63,8 +94,16 @@ function TypeIcon({ type }: { type: string }) {
   const label = type.charAt(0).toUpperCase();
   return (
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+      <title>Type icon</title>
       <rect width="32" height="32" rx="6" fill="var(--color-accent-subtle)" />
-      <text x="16" y="21" textAnchor="middle" fill="var(--color-accent-primary)" fontSize="14" fontWeight="600">
+      <text
+        x="16"
+        y="21"
+        textAnchor="middle"
+        fill="var(--color-accent-primary)"
+        fontSize="14"
+        fontWeight="600"
+      >
         {label}
       </text>
     </svg>
@@ -80,8 +119,11 @@ function SkeletonCard() {
     <div className="feed-card-polished feed-skeleton" aria-hidden="true">
       <div className="feed-card-thumb skeleton-shimmer" />
       <div className="feed-card-body">
-        <div className="skeleton-line skeleton-shimmer" style={{ width: "80%", height: 16 }} />
-        <div className="skeleton-line skeleton-shimmer" style={{ width: "60%", height: 12, marginTop: 8 }} />
+        <div className="skeleton-line skeleton-shimmer" style={{ width: '80%', height: 16 }} />
+        <div
+          className="skeleton-line skeleton-shimmer"
+          style={{ width: '60%', height: 12, marginTop: 8 }}
+        />
         <div className="feed-card-author" style={{ marginTop: 12 }}>
           <div className="avatar-circle skeleton-shimmer" style={{ width: 20, height: 20 }} />
           <div className="skeleton-line skeleton-shimmer" style={{ width: 80, height: 12 }} />
@@ -98,9 +140,9 @@ function SkeletonCard() {
 function getInitials(user: SessionUser): string {
   if (user.display_name) {
     return user.display_name
-      .split(" ")
+      .split(' ')
       .map((w) => w[0])
-      .join("")
+      .join('')
       .slice(0, 2)
       .toUpperCase();
   }
@@ -111,7 +153,7 @@ function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
-  return "Request failed";
+  return 'Request failed';
 }
 
 function timeAgo(dateIso: string): string {
@@ -119,7 +161,7 @@ function timeAgo(dateIso: string): string {
   const then = new Date(dateIso).getTime();
   const diff = now - then;
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
+  if (minutes < 1) return 'just now';
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
@@ -143,7 +185,7 @@ type TabCache = {
 /* ------------------------------------------------------------------ */
 
 export function FeedView({ api, currentUser }: FeedViewProps) {
-  const [kind, setKind] = useState<FeedKind>("for_you");
+  const [kind, setKind] = useState<FeedKind>('for_you');
   const [items, setItems] = useState<FeedItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -221,17 +263,11 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
 
   const onLikeToggle = async (item: FeedItem) => {
     const wasLiked = !!liked[item.id];
-    const newCount = wasLiked
-      ? Math.max(0, item.like_count - 1)
-      : item.like_count + 1;
+    const newCount = wasLiked ? Math.max(0, item.like_count - 1) : item.like_count + 1;
 
     /* optimistic */
     setLiked((prev) => ({ ...prev, [item.id]: !wasLiked }));
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === item.id ? { ...i, like_count: newCount } : i,
-      ),
-    );
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, like_count: newCount } : i)));
 
     /* animate */
     setLikeAnimating(item.id);
@@ -247,9 +283,7 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
       /* revert */
       setLiked((prev) => ({ ...prev, [item.id]: wasLiked }));
       setItems((prev) =>
-        prev.map((i) =>
-          i.id === item.id ? { ...i, like_count: item.like_count } : i,
-        ),
+        prev.map((i) => (i.id === item.id ? { ...i, like_count: item.like_count } : i)),
       );
       setError(getErrorMessage(err));
     }
@@ -262,9 +296,7 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
     try {
       await api.forkFeedItem(item.id);
       setItems((prev) =>
-        prev.map((i) =>
-          i.id === item.id ? { ...i, fork_count: i.fork_count + 1 } : i,
-        ),
+        prev.map((i) => (i.id === item.id ? { ...i, fork_count: i.fork_count + 1 } : i)),
       );
     } catch (err) {
       setError(getErrorMessage(err));
@@ -292,7 +324,7 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
             type="button"
             role="tab"
             aria-selected={tab.key === kind}
-            className={`feed-tab ${tab.key === kind ? "feed-tab-active" : ""}`}
+            className={`feed-tab ${tab.key === kind ? 'feed-tab-active' : ''}`}
             onClick={() => {
               setSelectedId(null);
               setKind(tab.key);
@@ -327,7 +359,7 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
                   <button
                     key={item.id}
                     type="button"
-                    className={`feed-card-polished ${selectedId === item.id ? "feed-card-selected" : ""}`}
+                    className={`feed-card-polished ${selectedId === item.id ? 'feed-card-selected' : ''}`}
                     onClick={() => setSelectedId(item.id)}
                   >
                     {/* Thumbnail */}
@@ -335,7 +367,7 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
                       {item.thumbnail_url ? (
                         <img
                           src={item.thumbnail_url}
-                          alt={item.title ?? "Feed item"}
+                          alt={item.title ?? 'Feed item'}
                           loading="lazy"
                         />
                       ) : (
@@ -350,15 +382,11 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
                       <h3 className="feed-card-title">
                         {item.title || `${item.type} · ${item.id.slice(0, 8)}`}
                       </h3>
-                      {item.description && (
-                        <p className="feed-card-desc">{item.description}</p>
-                      )}
+                      {item.description && <p className="feed-card-desc">{item.description}</p>}
 
                       {/* Author row */}
                       <div className="feed-card-author">
-                        <span className="avatar-circle avatar-sm">
-                          {getInitials(currentUser)}
-                        </span>
+                        <span className="avatar-circle avatar-sm">{getInitials(currentUser)}</span>
                         <span className="feed-card-author-name">
                           {currentUser.display_name || currentUser.username}
                         </span>
@@ -366,24 +394,17 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
 
                       {/* Stats row */}
                       <div className="feed-card-stats">
-                        <span
-                          className={`feed-stat-btn ${likeAnimating === item.id ? "like-pop" : ""}`}
-                          role="button"
-                          tabIndex={0}
+                        <button
+                          type="button"
+                          className={`feed-stat-btn ${likeAnimating === item.id ? 'like-pop' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             void onLikeToggle(item);
                           }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.stopPropagation();
-                              void onLikeToggle(item);
-                            }
-                          }}
                         >
                           <HeartIcon filled={!!liked[item.id]} />
                           <span>{item.like_count}</span>
-                        </span>
+                        </button>
                         <span className="feed-stat">
                           <ForkIcon />
                           <span>{item.fork_count}</span>
@@ -403,7 +424,7 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
                     onClick={() => void load(kind, cursor)}
                     disabled={loadingMore}
                   >
-                    {loadingMore ? "Loading..." : "Load more"}
+                    {loadingMore ? 'Loading...' : 'Load more'}
                   </button>
                 </div>
               )}
@@ -418,10 +439,7 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
               {/* Large thumbnail */}
               <div className="feed-detail-thumb">
                 {selected.thumbnail_url ? (
-                  <img
-                    src={selected.thumbnail_url}
-                    alt={selected.title ?? "Feed item"}
-                  />
+                  <img src={selected.thumbnail_url} alt={selected.title ?? 'Feed item'} />
                 ) : (
                   <div className="feed-card-thumb-placeholder">
                     <TypeIcon type={selected.type} />
@@ -431,22 +449,16 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
 
               {/* Title + type badge */}
               <div className="feed-detail-header">
-                <h2 className="feed-detail-title">
-                  {selected.title || selected.id.slice(0, 12)}
-                </h2>
+                <h2 className="feed-detail-title">{selected.title || selected.id.slice(0, 12)}</h2>
                 <span className="feed-type-badge">{selected.type}</span>
               </div>
 
               {/* Description */}
-              {selected.description && (
-                <p className="feed-detail-desc">{selected.description}</p>
-              )}
+              {selected.description && <p className="feed-detail-desc">{selected.description}</p>}
 
               {/* Author */}
               <div className="feed-detail-author">
-                <span className="avatar-circle avatar-md">
-                  {getInitials(currentUser)}
-                </span>
+                <span className="avatar-circle avatar-md">{getInitials(currentUser)}</span>
                 <div>
                   <div className="feed-detail-author-name">
                     {currentUser.display_name || currentUser.username}
@@ -459,11 +471,11 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
               <div className="feed-detail-actions">
                 <button
                   type="button"
-                  className={`feed-action-btn ${liked[selected.id] ? "feed-action-liked" : ""}`}
+                  className={`feed-action-btn ${liked[selected.id] ? 'feed-action-liked' : ''}`}
                   onClick={() => void onLikeToggle(selected)}
                 >
                   <HeartIcon filled={!!liked[selected.id]} />
-                  <span>{liked[selected.id] ? "Liked" : "Like"}</span>
+                  <span>{liked[selected.id] ? 'Liked' : 'Like'}</span>
                 </button>
                 <button
                   type="button"
@@ -473,11 +485,7 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
                   <ForkIcon />
                   <span>Fork</span>
                 </button>
-                <button
-                  type="button"
-                  className="feed-action-btn"
-                  onClick={() => onShare(selected)}
-                >
+                <button type="button" className="feed-action-btn" onClick={() => onShare(selected)}>
                   <ShareIcon />
                   <span>Share</span>
                 </button>
@@ -490,11 +498,15 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
                   <span className="feed-detail-stat-label">Views</span>
                 </div>
                 <div className="feed-detail-stat">
-                  <span className="feed-detail-stat-value">{selected.quality_score.toFixed(1)}</span>
+                  <span className="feed-detail-stat-value">
+                    {selected.quality_score.toFixed(1)}
+                  </span>
                   <span className="feed-detail-stat-label">Quality</span>
                 </div>
                 <div className="feed-detail-stat">
-                  <span className="feed-detail-stat-value">{selected.trending_score.toFixed(1)}</span>
+                  <span className="feed-detail-stat-value">
+                    {selected.trending_score.toFixed(1)}
+                  </span>
                   <span className="feed-detail-stat-label">Trending</span>
                 </div>
               </div>

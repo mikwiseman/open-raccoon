@@ -1,40 +1,45 @@
 import { randomUUID } from 'node:crypto';
 import { sql } from '../../db/connection.js';
-import { toISO, formatConversation } from '../../lib/utils.js';
+import { formatConversation, toISO } from '../../lib/utils.js';
 import { emitMessage } from '../../ws/emitter.js';
 import { runAgentLoop } from '../agents/loop.js';
-import type { CreateConversationInput, UpdateConversationInput, AddMemberInput, SendMessageInput } from './conversation.schema.js';
+import type {
+  AddMemberInput,
+  CreateConversationInput,
+  SendMessageInput,
+  UpdateConversationInput,
+} from './conversation.schema.js';
 
 function formatMessage(row: Record<string, unknown>) {
   return {
-    id: row['id'],
-    conversation_id: row['conversation_id'],
-    sender_id: row['sender_id'],
-    sender_type: row['sender_type'],
-    type: row['type'],
-    content: row['content'],
-    metadata: row['metadata'],
-    edited_at: toISO(row['edited_at']),
-    deleted_at: toISO(row['deleted_at']),
-    created_at: toISO(row['created_at']),
+    id: row.id,
+    conversation_id: row.conversation_id,
+    sender_id: row.sender_id,
+    sender_type: row.sender_type,
+    type: row.type,
+    content: row.content,
+    metadata: row.metadata,
+    edited_at: toISO(row.edited_at),
+    deleted_at: toISO(row.deleted_at),
+    created_at: toISO(row.created_at),
   };
 }
 
 function formatMember(row: Record<string, unknown>) {
   return {
-    id: row['id'],
-    conversation_id: row['conversation_id'],
-    user_id: row['user_id'],
-    role: row['role'],
-    muted: row['muted'],
-    last_read_at: toISO(row['last_read_at']),
-    joined_at: toISO(row['joined_at']),
-    user: row['username']
+    id: row.id,
+    conversation_id: row.conversation_id,
+    user_id: row.user_id,
+    role: row.role,
+    muted: row.muted,
+    last_read_at: toISO(row.last_read_at),
+    joined_at: toISO(row.joined_at),
+    user: row.username
       ? {
-          id: row['user_id'],
-          username: row['username'],
-          display_name: row['display_name'],
-          avatar_url: row['member_avatar_url'],
+          id: row.user_id,
+          username: row.username,
+          display_name: row.display_name,
+          avatar_url: row.member_avatar_url,
         }
       : undefined,
   };
@@ -47,7 +52,9 @@ async function assertMember(conversationId: string, userId: string): Promise<voi
     LIMIT 1
   `;
   if (rows.length === 0) {
-    throw Object.assign(new Error('Conversation not found or access denied'), { code: 'NOT_FOUND' });
+    throw Object.assign(new Error('Conversation not found or access denied'), {
+      code: 'NOT_FOUND',
+    });
   }
 }
 
@@ -58,9 +65,11 @@ async function assertAdminOrOwner(conversationId: string, userId: string): Promi
     LIMIT 1
   `;
   if (rows.length === 0) {
-    throw Object.assign(new Error('Conversation not found or access denied'), { code: 'NOT_FOUND' });
+    throw Object.assign(new Error('Conversation not found or access denied'), {
+      code: 'NOT_FOUND',
+    });
   }
-  const role = (rows[0] as Record<string, unknown>)['role'] as string;
+  const role = (rows[0] as Record<string, unknown>).role as string;
   if (role !== 'owner' && role !== 'admin') {
     throw Object.assign(new Error('Forbidden: must be owner or admin'), { code: 'FORBIDDEN' });
   }
@@ -73,9 +82,11 @@ async function assertOwner(conversationId: string, userId: string): Promise<void
     LIMIT 1
   `;
   if (rows.length === 0) {
-    throw Object.assign(new Error('Conversation not found or access denied'), { code: 'NOT_FOUND' });
+    throw Object.assign(new Error('Conversation not found or access denied'), {
+      code: 'NOT_FOUND',
+    });
   }
-  const role = (rows[0] as Record<string, unknown>)['role'] as string;
+  const role = (rows[0] as Record<string, unknown>).role as string;
   if (role !== 'owner') {
     throw Object.assign(new Error('Forbidden: must be owner'), { code: 'FORBIDDEN' });
   }
@@ -114,13 +125,13 @@ export async function listConversations(userId: string) {
     const conv = formatConversation(r);
     return {
       ...conv,
-      unread_count: r['unread_count'] ?? 0,
-      last_message: r['last_message_id']
+      unread_count: r.unread_count ?? 0,
+      last_message: r.last_message_id
         ? {
-            id: r['last_message_id'],
-            content: r['last_message_content'],
-            sender_id: r['last_message_sender_id'],
-            created_at: r['last_message_created_at'],
+            id: r.last_message_id,
+            content: r.last_message_content,
+            sender_id: r.last_message_sender_id,
+            created_at: r.last_message_created_at,
           }
         : null,
     };
@@ -178,7 +189,11 @@ export async function getConversation(conversationId: string, userId: string) {
   return formatConversation(rows[0] as Record<string, unknown>);
 }
 
-export async function updateConversation(conversationId: string, userId: string, updates: UpdateConversationInput) {
+export async function updateConversation(
+  conversationId: string,
+  userId: string,
+  updates: UpdateConversationInput,
+) {
   await assertAdminOrOwner(conversationId, userId);
 
   const title = updates.title !== undefined ? updates.title : null;
@@ -216,7 +231,7 @@ export async function listMessages(
 
   const clampedLimit = Math.min(Math.max(1, limit), 100);
 
-  let rows;
+  let rows: Record<string, unknown>[];
   if (cursor) {
     // Get created_at for cursor message to paginate
     const cursorRows = await sql`
@@ -225,7 +240,7 @@ export async function listMessages(
     if (cursorRows.length === 0) {
       throw Object.assign(new Error('Invalid cursor'), { code: 'BAD_REQUEST' });
     }
-    const cursorAt = (cursorRows[0] as Record<string, unknown>)['created_at'] as Date;
+    const cursorAt = (cursorRows[0] as Record<string, unknown>).created_at as Date;
 
     rows = await sql`
       SELECT id, conversation_id, sender_id, sender_type, type, content, metadata, edited_at, deleted_at, created_at
@@ -267,7 +282,7 @@ export async function sendMessage(
       LIMIT 1
     `;
     if (existing.length > 0) {
-      return (existing[0] as Record<string, unknown>)['response_body'];
+      return (existing[0] as Record<string, unknown>).response_body;
     }
 
     const messageId = randomUUID();
@@ -315,7 +330,7 @@ export async function sendMessage(
     SELECT agent_id FROM conversations WHERE id = ${conversationId} AND type = 'agent' AND agent_id IS NOT NULL LIMIT 1
   `;
   if (convRows.length > 0) {
-    const agentId = (convRows[0] as Record<string, unknown>)['agent_id'] as string;
+    const agentId = (convRows[0] as Record<string, unknown>).agent_id as string;
     const messageText = Array.isArray(input.content)
       ? (input.content as Array<{ type: string; text?: string }>).map((b) => b.text ?? '').join('')
       : String(input.content);
@@ -393,7 +408,7 @@ export async function removeMember(conversationId: string, userId: string, targe
     throw Object.assign(new Error('Member not found'), { code: 'NOT_FOUND' });
   }
 
-  const targetRole = (targetRows[0] as Record<string, unknown>)['role'] as string;
+  const targetRole = (targetRows[0] as Record<string, unknown>).role as string;
   if (targetRole === 'owner') {
     throw Object.assign(new Error('Cannot remove the owner'), { code: 'FORBIDDEN' });
   }

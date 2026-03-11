@@ -1,10 +1,10 @@
-import type { Server as SocketIOServer } from 'socket.io';
+import type { Socket, Server as SocketIOServer } from 'socket.io';
 import { sql } from '../db/connection.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const socketRateLimits = new WeakMap<any, { count: number; resetAt: number }>();
-function checkSocketRate(socket: any, limit = 30, windowMs = 10000): boolean {
+const socketRateLimits = new WeakMap<object, { count: number; resetAt: number }>();
+function checkSocketRate(socket: Socket, limit = 30, windowMs = 10000): boolean {
   const now = Date.now();
   let entry = socketRateLimits.get(socket);
   if (!entry || now > entry.resetAt) {
@@ -48,7 +48,8 @@ export function setupAgentHandlers(io: SocketIOServer): void {
 
     socket.on('leave:agent', (conversationId: string) => {
       if (!checkSocketRate(socket)) return;
-      if (!conversationId || typeof conversationId !== 'string' || !UUID_RE.test(conversationId)) return;
+      if (!conversationId || typeof conversationId !== 'string' || !UUID_RE.test(conversationId))
+        return;
       socket.leave(`agent:${conversationId}`);
     });
 

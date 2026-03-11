@@ -1,37 +1,37 @@
-"use client";
+'use client';
 
-import { useCallback, useState } from "react";
-import type { WaiAgentsApi } from "@/lib/api/services";
-import type { Agent, AgentEvent } from "@/lib/types";
-import { AgentHealthIndicator } from "./AgentHealthIndicator";
-import { StatsCards } from "./StatsCards";
-import { ExecutionHistory } from "./ExecutionHistory";
-import { CostBreakdown } from "./CostBreakdown";
-import { MemoryViewer } from "./MemoryViewer";
+import { useCallback, useState } from 'react';
+import type { WaiAgentsApi } from '@/lib/api/services';
+import type { Agent, AgentEvent } from '@/lib/types';
+import { AgentHealthIndicator } from './AgentHealthIndicator';
+import { CostBreakdown } from './CostBreakdown';
+import { ExecutionHistory } from './ExecutionHistory';
+import { MemoryViewer } from './MemoryViewer';
+import { StatsCards } from './StatsCards';
 
 type Props = {
   api: WaiAgentsApi;
   agent: Agent;
 };
 
-type DashTab = "overview" | "events" | "memories";
+type DashTab = 'overview' | 'events' | 'memories';
 
 const TABS: Array<{ key: DashTab; label: string }> = [
-  { key: "overview", label: "Overview" },
-  { key: "events", label: "Events" },
-  { key: "memories", label: "Memories" },
+  { key: 'overview', label: 'Overview' },
+  { key: 'events', label: 'Events' },
+  { key: 'memories', label: 'Memories' },
 ];
 
-function deriveHealth(events: AgentEvent[]): "idle" | "running" | "error" {
-  if (events.length === 0) return "idle";
+function deriveHealth(events: AgentEvent[]): 'idle' | 'running' | 'error' {
+  if (events.length === 0) return 'idle';
   const latest = events[0];
-  if (latest.status === "running") return "running";
-  if (latest.status === "failed" || latest.status === "timeout") return "error";
-  return "idle";
+  if (latest.status === 'running') return 'running';
+  if (latest.status === 'failed' || latest.status === 'timeout') return 'error';
+  return 'idle';
 }
 
 export function AgentDashboardView({ api, agent }: Props) {
-  const [activeTab, setActiveTab] = useState<DashTab>("overview");
+  const [activeTab, setActiveTab] = useState<DashTab>('overview');
   const [events, setEvents] = useState<AgentEvent[]>([]);
 
   const handleEventsLoaded = useCallback((loaded: AgentEvent[]) => {
@@ -39,7 +39,7 @@ export function AgentDashboardView({ api, agent }: Props) {
   }, []);
 
   return (
-    <div className="ad-dashboard" aria-label="agent-dashboard-view">
+    <div className="ad-dashboard">
       <div className="ad-header">
         <div className="ad-header-info">
           <h3 className="ad-agent-name">{agent.name}</h3>
@@ -50,7 +50,7 @@ export function AgentDashboardView({ api, agent }: Props) {
             <button
               key={tab.key}
               type="button"
-              className={`ad-tab ${activeTab === tab.key ? "active" : ""}`}
+              className={`ad-tab ${activeTab === tab.key ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.key)}
             >
               {tab.label}
@@ -60,24 +60,18 @@ export function AgentDashboardView({ api, agent }: Props) {
       </div>
 
       <div className="ad-content">
-        {activeTab === "overview" && (
+        {activeTab === 'overview' && (
           <div className="ad-overview">
             <StatsCards events={events} />
             <CostBreakdown events={events} />
           </div>
         )}
 
-        {activeTab === "events" && (
-          <ExecutionHistory
-            api={api}
-            agentId={agent.id}
-            onEventsLoaded={handleEventsLoaded}
-          />
+        {activeTab === 'events' && (
+          <ExecutionHistory api={api} agentId={agent.id} onEventsLoaded={handleEventsLoaded} />
         )}
 
-        {activeTab === "memories" && (
-          <MemoryViewer api={api} agentId={agent.id} />
-        )}
+        {activeTab === 'memories' && <MemoryViewer api={api} agentId={agent.id} />}
       </div>
     </div>
   );

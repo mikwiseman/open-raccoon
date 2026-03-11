@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { WaiAgentsApi } from "@/lib/api/services";
-import { asTextContent } from "@/lib/utils";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { WaiAgentsApi } from '@/lib/api/services';
+import { asTextContent } from '@/lib/utils';
 
 type Props = {
   api: WaiAgentsApi;
@@ -12,21 +12,21 @@ type Props = {
 
 type SandboxMessage = {
   id: string;
-  role: "user" | "agent";
+  role: 'user' | 'agent';
   text: string;
 };
 
-export function AgentTestSandbox({ api, agentId, accessToken }: Props) {
+export function AgentTestSandbox({ api, agentId }: Props) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<SandboxMessage[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
 
   const ensureConversation = useCallback(async (): Promise<string> => {
     if (conversationId) return conversationId;
@@ -48,14 +48,14 @@ export function AgentTestSandbox({ api, agentId, accessToken }: Props) {
             (message) =>
               message.id !== sentMessageId &&
               !message.deleted_at &&
-              (message.sender_type === "agent" || message.sender_type === "system")
+              (message.sender_type === 'agent' || message.sender_type === 'system'),
           );
 
         if (reply) {
           return {
             id: reply.id,
-            role: "agent",
-            text: asTextContent(reply.content) || "(no response)"
+            role: 'agent',
+            text: asTextContent(reply.content) || '(no response)',
           };
         }
 
@@ -64,7 +64,7 @@ export function AgentTestSandbox({ api, agentId, accessToken }: Props) {
 
       return null;
     },
-    [api]
+    [api],
   );
 
   async function handleSend() {
@@ -73,11 +73,11 @@ export function AgentTestSandbox({ api, agentId, accessToken }: Props) {
 
     setSending(true);
     setError(null);
-    setInput("");
+    setInput('');
 
     const userMsg: SandboxMessage = {
       id: `user-${Date.now()}`,
-      role: "user",
+      role: 'user',
       text,
     };
     setMessages((prev) => [...prev, userMsg]);
@@ -90,10 +90,10 @@ export function AgentTestSandbox({ api, agentId, accessToken }: Props) {
       if (agentMsg) {
         setMessages((prev) => [...prev, agentMsg]);
       } else {
-        setError("Timed out waiting for the agent reply.");
+        setError('Timed out waiting for the agent reply.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send message");
+      setError(err instanceof Error ? err.message : 'Failed to send message');
     } finally {
       setSending(false);
     }
@@ -109,7 +109,7 @@ export function AgentTestSandbox({ api, agentId, accessToken }: Props) {
         )}
         {messages.map((msg) => (
           <div key={msg.id} className={`ab-sandbox-msg ab-sandbox-msg-${msg.role}`}>
-            <span className="ab-sandbox-msg-role">{msg.role === "user" ? "You" : "Agent"}</span>
+            <span className="ab-sandbox-msg-role">{msg.role === 'user' ? 'You' : 'Agent'}</span>
             <p className="ab-sandbox-msg-text">{msg.text}</p>
           </div>
         ))}
@@ -130,7 +130,7 @@ export function AgentTestSandbox({ api, agentId, accessToken }: Props) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            if (e.key === 'Enter') {
               e.preventDefault();
               void handleSend();
             }

@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import { ApiError } from "@/lib/api";
-import type { WaiAgentsApi } from "@/lib/api/services";
-import type { AgentSchedule } from "@/lib/types";
+import { useCallback, useEffect, useState } from 'react';
+import { ApiError } from '@/lib/api';
+import type { WaiAgentsApi } from '@/lib/api/services';
+import type { AgentSchedule } from '@/lib/types';
 
 type Props = {
   api: WaiAgentsApi;
   agentId: string;
 };
 
-type ScheduleType = AgentSchedule["schedule_type"];
+type ScheduleType = AgentSchedule['schedule_type'];
 
 export function ScheduleManager({ api, agentId }: Props) {
   const [schedules, setSchedules] = useState<AgentSchedule[]>([]);
@@ -20,10 +20,10 @@ export function ScheduleManager({ api, agentId }: Props) {
   const [featureUnavailable, setFeatureUnavailable] = useState(false);
 
   // Form state
-  const [scheduleType, setScheduleType] = useState<ScheduleType>("cron");
-  const [cronExpression, setCronExpression] = useState("0 * * * *");
+  const [scheduleType, setScheduleType] = useState<ScheduleType>('cron');
+  const [cronExpression, setCronExpression] = useState('0 * * * *');
   const [intervalSeconds, setIntervalSeconds] = useState(3600);
-  const [runAt, setRunAt] = useState("");
+  const [runAt, setRunAt] = useState('');
   const [enabled, setEnabled] = useState(true);
 
   const loadSchedules = useCallback(async () => {
@@ -38,7 +38,7 @@ export function ScheduleManager({ api, agentId }: Props) {
         setSchedules([]);
         setFeatureUnavailable(true);
       } else {
-        setError(err instanceof Error ? err.message : "Failed to load schedules");
+        setError(err instanceof Error ? err.message : 'Failed to load schedules');
       }
     } finally {
       setLoading(false);
@@ -57,15 +57,15 @@ export function ScheduleManager({ api, agentId }: Props) {
         schedule_type: scheduleType,
         enabled,
       };
-      if (scheduleType === "cron") data.cron_expression = cronExpression;
-      if (scheduleType === "interval") data.interval_seconds = intervalSeconds;
-      if (scheduleType === "once") data.run_at = runAt;
+      if (scheduleType === 'cron') data.cron_expression = cronExpression;
+      if (scheduleType === 'interval') data.interval_seconds = intervalSeconds;
+      if (scheduleType === 'once') data.run_at = runAt;
 
       const res = await api.createSchedule(agentId, data);
       setSchedules((prev) => [...prev, res.schedule]);
       setShowForm(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create schedule");
+      setError(err instanceof Error ? err.message : 'Failed to create schedule');
     }
   }
 
@@ -76,7 +76,7 @@ export function ScheduleManager({ api, agentId }: Props) {
       });
       setSchedules((prev) => prev.map((s) => (s.id === schedule.id ? res.schedule : s)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update schedule");
+      setError(err instanceof Error ? err.message : 'Failed to update schedule');
     }
   }
 
@@ -85,7 +85,7 @@ export function ScheduleManager({ api, agentId }: Props) {
       await api.deleteSchedule(agentId, scheduleId);
       setSchedules((prev) => prev.filter((s) => s.id !== scheduleId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete schedule");
+      setError(err instanceof Error ? err.message : 'Failed to delete schedule');
     }
   }
 
@@ -114,18 +114,14 @@ export function ScheduleManager({ api, agentId }: Props) {
           <div className="ab-schedule-info">
             <span className="ab-schedule-type">{s.schedule_type}</span>
             <span className="ab-schedule-detail">
-              {s.schedule_type === "cron" && s.cron_expression}
-              {s.schedule_type === "interval" && `Every ${s.interval_seconds}s`}
-              {s.schedule_type === "once" && s.run_at}
+              {s.schedule_type === 'cron' && s.cron_expression}
+              {s.schedule_type === 'interval' && `Every ${s.interval_seconds}s`}
+              {s.schedule_type === 'once' && s.run_at}
             </span>
           </div>
           <div className="ab-schedule-actions">
             <label className="ab-toggle-switch">
-              <input
-                type="checkbox"
-                checked={s.enabled}
-                onChange={() => void handleToggle(s)}
-              />
+              <input type="checkbox" checked={s.enabled} onChange={() => void handleToggle(s)} />
               <span className="ab-toggle-track" />
             </label>
             <button
@@ -142,7 +138,9 @@ export function ScheduleManager({ api, agentId }: Props) {
       {!featureUnavailable && showForm ? (
         <form className="ab-schedule-form" onSubmit={(e) => void handleCreate(e)}>
           <div className="ab-field">
-            <label className="ab-label" htmlFor="sched-type">Type</label>
+            <label className="ab-label" htmlFor="sched-type">
+              Type
+            </label>
             <select
               id="sched-type"
               className="ab-select"
@@ -155,9 +153,11 @@ export function ScheduleManager({ api, agentId }: Props) {
             </select>
           </div>
 
-          {scheduleType === "cron" && (
+          {scheduleType === 'cron' && (
             <div className="ab-field">
-              <label className="ab-label" htmlFor="sched-cron">Cron Expression</label>
+              <label className="ab-label" htmlFor="sched-cron">
+                Cron Expression
+              </label>
               <input
                 id="sched-cron"
                 className="ab-input"
@@ -169,9 +169,11 @@ export function ScheduleManager({ api, agentId }: Props) {
             </div>
           )}
 
-          {scheduleType === "interval" && (
+          {scheduleType === 'interval' && (
             <div className="ab-field">
-              <label className="ab-label" htmlFor="sched-interval">Interval (seconds)</label>
+              <label className="ab-label" htmlFor="sched-interval">
+                Interval (seconds)
+              </label>
               <input
                 id="sched-interval"
                 className="ab-input"
@@ -184,9 +186,11 @@ export function ScheduleManager({ api, agentId }: Props) {
             </div>
           )}
 
-          {scheduleType === "once" && (
+          {scheduleType === 'once' && (
             <div className="ab-field">
-              <label className="ab-label" htmlFor="sched-runat">Run At</label>
+              <label className="ab-label" htmlFor="sched-runat">
+                Run At
+              </label>
               <input
                 id="sched-runat"
                 className="ab-input"
@@ -209,7 +213,11 @@ export function ScheduleManager({ api, agentId }: Props) {
           </label>
 
           <div className="ab-form-actions">
-            <button type="button" className="ab-btn ab-btn-secondary" onClick={() => setShowForm(false)}>
+            <button
+              type="button"
+              className="ab-btn ab-btn-secondary"
+              onClick={() => setShowForm(false)}
+            >
               Cancel
             </button>
             <button type="submit" className="ab-btn ab-btn-primary">
@@ -218,11 +226,7 @@ export function ScheduleManager({ api, agentId }: Props) {
           </div>
         </form>
       ) : !featureUnavailable ? (
-        <button
-          type="button"
-          className="ab-btn ab-btn-small"
-          onClick={() => setShowForm(true)}
-        >
+        <button type="button" className="ab-btn ab-btn-small" onClick={() => setShowForm(true)}>
           + Add Schedule
         </button>
       ) : null}

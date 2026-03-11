@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import type { IntegrationStatus } from "@/lib/types";
+import type { IntegrationStatus } from '@/lib/types';
 
 type Props = {
   integration: IntegrationStatus;
@@ -9,11 +9,11 @@ type Props = {
   connecting: boolean;
 };
 
-const STATUS_LABELS: Record<IntegrationStatus["status"], { label: string; className: string }> = {
-  active: { label: "Connected", className: "is-status-active" },
-  expired: { label: "Expired", className: "is-status-expired" },
-  revoked: { label: "Revoked", className: "is-status-revoked" },
-  not_connected: { label: "Not Connected", className: "is-status-disconnected" },
+const STATUS_LABELS: Record<IntegrationStatus['status'], { label: string; className: string }> = {
+  active: { label: 'Connected', className: 'is-status-active' },
+  expired: { label: 'Expired', className: 'is-status-expired' },
+  revoked: { label: 'Revoked', className: 'is-status-revoked' },
+  not_connected: { label: 'Not Connected', className: 'is-status-disconnected' },
 };
 
 export function IntegrationCard({ integration, onConnect, onDisconnect, connecting }: Props) {
@@ -21,7 +21,7 @@ export function IntegrationCard({ integration, onConnect, onDisconnect, connecti
   const isConnected = integration.connected;
 
   return (
-    <div className="is-card" aria-label={`integration-${integration.service}`}>
+    <div className="is-card">
       <div className="is-card-header">
         <span className="is-card-icon">{getServiceIcon(integration.service)}</span>
         <div className="is-card-info">
@@ -33,7 +33,9 @@ export function IntegrationCard({ integration, onConnect, onDisconnect, connecti
       {integration.scopes.length > 0 && (
         <div className="is-card-scopes">
           {integration.scopes.map((scope) => (
-            <span key={scope} className="is-scope-tag">{scope}</span>
+            <span key={scope} className="is-scope-tag">
+              {scope}
+            </span>
           ))}
         </div>
       )}
@@ -61,7 +63,7 @@ export function IntegrationCard({ integration, onConnect, onDisconnect, connecti
             onClick={onConnect}
             disabled={connecting}
           >
-            {connecting ? "Connecting..." : "Connect"}
+            {connecting ? 'Connecting...' : 'Connect'}
           </button>
         )}
       </div>
@@ -71,23 +73,23 @@ export function IntegrationCard({ integration, onConnect, onDisconnect, connecti
 
 function formatServiceName(service: string): string {
   return service
-    .split("_")
+    .split('_')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
+    .join(' ');
 }
 
 function getServiceIcon(service: string): string {
   const icons: Record<string, string> = {
-    github: "GH",
-    gmail: "GM",
-    google_calendar: "GC",
-    slack: "SL",
-    discord: "DC",
-    notion: "NO",
-    linear: "LN",
-    jira: "JR",
-    confluence: "CF",
-    dropbox: "DB",
+    github: 'GH',
+    gmail: 'GM',
+    google_calendar: 'GC',
+    slack: 'SL',
+    discord: 'DC',
+    notion: 'NO',
+    linear: 'LN',
+    jira: 'JR',
+    confluence: 'CF',
+    dropbox: 'DB',
   };
   return icons[service] ?? service.slice(0, 2).toUpperCase();
 }

@@ -1,20 +1,20 @@
-import { createServer, IncomingMessage, ServerResponse } from 'node:http';
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { z } from 'zod';
+import type { z } from 'zod';
 import {
-  SendToAgentInput,
   CreateAgentConversationInput,
-  ReadConversationInput,
-  ListAgentConversationsInput,
-  GetAgentInfoInput,
   DiscoverAgentsInput,
-  handleSendToAgent,
+  GetAgentInfoInput,
   handleCreateAgentConversation,
-  handleReadConversation,
-  handleListAgentConversations,
-  handleGetAgentInfo,
   handleDiscoverAgents,
+  handleGetAgentInfo,
+  handleListAgentConversations,
+  handleReadConversation,
+  handleSendToAgent,
+  ListAgentConversationsInput,
+  ReadConversationInput,
+  SendToAgentInput,
 } from './tools.js';
 
 const server = new McpServer({
@@ -118,7 +118,9 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
     (req.method === 'POST' || req.method === 'GET' || req.method === 'DELETE')
   ) {
     if (MCP_API_KEY) {
-      const authHeader = (req.headers['authorization'] || req.headers['x-api-key']) as string | undefined;
+      const authHeader = (req.headers.authorization || req.headers['x-api-key']) as
+        | string
+        | undefined;
       const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
       if (token !== MCP_API_KEY) {
         res.writeHead(401, { 'Content-Type': 'application/json' });

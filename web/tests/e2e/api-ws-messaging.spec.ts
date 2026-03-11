@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
-import type { Channel, Socket } from "phoenix";
+import { expect, test } from '@playwright/test';
+import type { Channel, Socket } from 'phoenix';
 import {
   apiCall,
   connectSocket,
@@ -9,25 +9,35 @@ import {
   seededUser,
   uniqueIdempotencyKey,
   uniqueLabel,
-  waitForChannelEvent
-} from "./helpers/waiagents";
+  waitForChannelEvent,
+} from './helpers/waiagents';
 
-test("api/ws messaging: DM create, send, react, edit, delete", async ({ request }) => {
-  const alex = await getSeedSession(request, "alex");
-  const maya = await getSeedSession(request, "maya");
+test('api/ws messaging: DM create, send, react, edit, delete', async ({ request }) => {
+  const alex = await getSeedSession(request, 'alex');
+  const maya = await getSeedSession(request, 'maya');
 
-  const mayaUser = await apiCall<{ user: { id: string } }>(request, "GET", `/users/${seededUser("maya").username}`, {
-    token: alex.accessToken,
-    expectedStatus: 200
-  });
+  const mayaUser = await apiCall<{ user: { id: string } }>(
+    request,
+    'GET',
+    `/users/${seededUser('maya').username}`,
+    {
+      token: alex.accessToken,
+      expectedStatus: 200,
+    },
+  );
 
-  const dmCreate = await apiCall<{ conversation: { id: string } }>(request, "POST", "/conversations", {
-    token: alex.accessToken,
-    data: {
-      type: "dm",
-      member_id: mayaUser.body.user.id
-    }
-  });
+  const dmCreate = await apiCall<{ conversation: { id: string } }>(
+    request,
+    'POST',
+    '/conversations',
+    {
+      token: alex.accessToken,
+      data: {
+        type: 'dm',
+        member_id: mayaUser.body.user.id,
+      },
+    },
+  );
   expect([200, 201]).toContain(dmCreate.status);
 
   const conversationId = dmCreate.body.conversation.id;
@@ -44,31 +54,29 @@ test("api/ws messaging: DM create, send, react, edit, delete", async ({ request 
     alexChannel = await joinTopic(alexSocket, `conversation:${conversationId}`);
     mayaChannel = await joinTopic(mayaSocket, `conversation:${conversationId}`);
 
-    const alexNewMessage = waitForChannelEvent<{ message: { id: string; content: { text: string } } }>(
-      alexChannel,
-      "new_message"
-    );
-    const mayaNewMessage = waitForChannelEvent<{ message: { id: string; content: { text: string } } }>(
-      mayaChannel,
-      "new_message"
-    );
+    const alexNewMessage = waitForChannelEvent<{
+      message: { id: string; content: { text: string } };
+    }>(alexChannel, 'new_message');
+    const mayaNewMessage = waitForChannelEvent<{
+      message: { id: string; content: { text: string } };
+    }>(mayaChannel, 'new_message');
 
-    const messageText = uniqueLabel("api-ws-message");
+    const messageText = uniqueLabel('api-ws-message');
 
     const sendMessageResponse = await apiCall<{ message: { id: string } }>(
       request,
-      "POST",
+      'POST',
       `/conversations/${conversationId}/messages`,
       {
         token: alex.accessToken,
         expectedStatus: 201,
         idempotencyKey: uniqueIdempotencyKey(),
         data: {
-          type: "text",
+          type: 'text',
           content: { text: messageText },
-          metadata: {}
-        }
-      }
+          metadata: {},
+        },
+      },
     );
 
     const sentMessageId = sendMessageResponse.body.message.id;
@@ -78,25 +86,25 @@ test("api/ws messaging: DM create, send, react, edit, delete", async ({ request 
     expect(mayaEvent.message.id).toBe(sentMessageId);
     expect(mayaEvent.message.content.text).toBe(messageText);
 
-    await pushChannelEvent(mayaChannel, "react", {
+    await pushChannelEvent(mayaChannel, 'react', {
       message_id: sentMessageId,
-      emoji: "👍"
+      emoji: '👍',
     });
 
     const updatedText = `${messageText}-edited`;
-    const editedEvent = waitForMessageEvent(mayaChannel, "message_updated", sentMessageId);
+    const editedEvent = waitForMessageEvent(mayaChannel, 'message_updated', sentMessageId);
 
     await apiCall<{ message: { id: string } }>(
       request,
-      "PATCH",
+      'PATCH',
       `/conversations/${conversationId}/messages/${sentMessageId}`,
       {
         token: alex.accessToken,
         expectedStatus: 200,
         data: {
-          content: { text: updatedText }
-        }
-      }
+          content: { text: updatedText },
+        },
+      },
     );
 
     const edited = await editedEvent;
@@ -105,24 +113,24 @@ test("api/ws messaging: DM create, send, react, edit, delete", async ({ request 
 
     const deleteResponse = await apiCall<{ message: { id: string; deleted_at: string } }>(
       request,
-      "DELETE",
+      'DELETE',
       `/conversations/${conversationId}/messages/${sentMessageId}`,
       {
         token: alex.accessToken,
-        expectedStatus: 200
-      }
+        expectedStatus: 200,
+      },
     );
     expect(deleteResponse.body.message.id).toBe(sentMessageId);
     expect(deleteResponse.body.message.deleted_at).toBeTruthy();
 
     const messageList = await apiCall<{ items: Array<{ id: string; deleted_at: string | null }> }>(
       request,
-      "GET",
+      'GET',
       `/conversations/${conversationId}/messages?limit=50`,
       {
         token: alex.accessToken,
-        expectedStatus: 200
-      }
+        expectedStatus: 200,
+      },
     );
 
     const deletedFromList = messageList.body.items.find((message) => message.id === sentMessageId);
@@ -136,14 +144,16 @@ test("api/ws messaging: DM create, send, react, edit, delete", async ({ request 
 async function pushChannelEvent(
   channel: Channel,
   event: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
 ): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     channel
       .push(event, payload, 10_000)
-      .receive("ok", () => resolve())
-      .receive("error", (error) => reject(new Error(`Push ${event} failed: ${JSON.stringify(error)}`)))
-      .receive("timeout", () => reject(new Error(`Push ${event} timed out`)));
+      .receive('ok', () => resolve())
+      .receive('error', (error) =>
+        reject(new Error(`Push ${event} failed: ${JSON.stringify(error)}`)),
+      )
+      .receive('timeout', () => reject(new Error(`Push ${event} timed out`)));
   });
 }
 
@@ -151,7 +161,7 @@ function waitForMessageEvent(
   channel: Channel,
   event: string,
   messageId: string,
-  timeoutMs = 20_000
+  timeoutMs = 20_000,
 ): Promise<{
   id: string;
   content?: Record<string, unknown>;
@@ -182,17 +192,17 @@ function waitForMessageEvent(
 }
 
 function normalizeMessagePayload(payload: unknown) {
-  if (!payload || typeof payload !== "object") {
+  if (!payload || typeof payload !== 'object') {
     return null;
   }
 
   const value = payload as Record<string, unknown>;
   const messageCandidate =
-    value.message && typeof value.message === "object"
+    value.message && typeof value.message === 'object'
       ? (value.message as Record<string, unknown>)
       : value;
 
-  if (typeof messageCandidate.id !== "string") {
+  if (typeof messageCandidate.id !== 'string') {
     return null;
   }
 

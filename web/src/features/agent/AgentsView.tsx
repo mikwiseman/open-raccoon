@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import type { WaiAgentsApi } from "@/lib/api/services";
-import type { Agent } from "@/lib/types";
-import type { SessionUser } from "@/lib/state/session-store";
+import { useCallback, useEffect, useState } from 'react';
+import type { WaiAgentsApi } from '@/lib/api/services';
+import type { SessionUser } from '@/lib/state/session-store';
+import type { Agent } from '@/lib/types';
 
 type Props = {
   api: WaiAgentsApi;
   currentUser: SessionUser;
 };
 
-export function AgentsView({ api, currentUser }: Props) {
+export function AgentsView({ api }: Props) {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export function AgentsView({ api, currentUser }: Props) {
       const res = await api.listMyAgents();
       setAgents(res.items);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load agents");
+      setError(err instanceof Error ? err.message : 'Failed to load agents');
     } finally {
       setLoading(false);
     }
@@ -72,18 +72,14 @@ export function AgentsView({ api, currentUser }: Props) {
                   {agent.visibility}
                 </span>
               </div>
-              {agent.description && (
-                <p className="agent-card-description">{agent.description}</p>
-              )}
+              {agent.description && <p className="agent-card-description">{agent.description}</p>}
               <div className="agent-card-footer">
+                <span className="agent-card-stat">{agent.execution_mode}</span>
                 <span className="agent-card-stat">
-                  {agent.execution_mode}
+                  {agent.tools.length} tool{agent.tools.length !== 1 ? 's' : ''}
                 </span>
                 <span className="agent-card-stat">
-                  {agent.tools.length} tool{agent.tools.length !== 1 ? "s" : ""}
-                </span>
-                <span className="agent-card-stat">
-                  {agent.mcp_servers.length} MCP server{agent.mcp_servers.length !== 1 ? "s" : ""}
+                  {agent.mcp_servers.length} MCP server{agent.mcp_servers.length !== 1 ? 's' : ''}
                 </span>
               </div>
             </div>

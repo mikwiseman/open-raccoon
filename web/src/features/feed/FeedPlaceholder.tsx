@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import type { WaiAgentsApi } from "@/lib/api";
-import type { FeedItem } from "@/lib/types";
-import { toIsoLocal } from "@/lib/utils";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { WaiAgentsApi } from '@/lib/api';
+import type { FeedItem } from '@/lib/types';
+import { toIsoLocal } from '@/lib/utils';
 
-type FeedKind = "for_you" | "trending" | "following" | "new";
+type FeedKind = 'for_you' | 'trending' | 'following' | 'new';
 
 type FeedViewProps = {
   api: WaiAgentsApi;
 };
 
 const TABS: Array<{ key: FeedKind; label: string }> = [
-  { key: "for_you", label: "For You" },
-  { key: "trending", label: "Trending" },
-  { key: "following", label: "Following" },
-  { key: "new", label: "New" }
+  { key: 'for_you', label: 'For You' },
+  { key: 'trending', label: 'Trending' },
+  { key: 'following', label: 'Following' },
+  { key: 'new', label: 'New' },
 ];
 
 export function FeedView({ api }: FeedViewProps) {
-  const [kind, setKind] = useState<FeedKind>("for_you");
+  const [kind, setKind] = useState<FeedKind>('for_you');
   const [items, setItems] = useState<FeedItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -30,43 +30,48 @@ export function FeedView({ api }: FeedViewProps) {
 
   const selected = useMemo(() => items[0] ?? null, [items]);
 
-  const load = async (nextKind: FeedKind, nextCursor?: string | null) => {
-    setLoading(true);
-    setError(null);
+  const load = useCallback(
+    async (nextKind: FeedKind, nextCursor?: string | null) => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const response = await api.listFeed(nextKind, { limit: 20, cursor: nextCursor ?? undefined });
-
-      setItems((previous) => {
-        if (!nextCursor) {
-          return response.items;
-        }
-
-        const ids = new Set(previous.map((item) => item.id));
-        const merged = [...previous];
-
-        response.items.forEach((item) => {
-          if (!ids.has(item.id)) {
-            merged.push(item);
-          }
+      try {
+        const response = await api.listFeed(nextKind, {
+          limit: 20,
+          cursor: nextCursor ?? undefined,
         });
 
-        return merged;
-      });
+        setItems((previous) => {
+          if (!nextCursor) {
+            return response.items;
+          }
 
-      setCursor(response.page_info.next_cursor);
-      setHasMore(response.page_info.has_more);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
+          const ids = new Set(previous.map((item) => item.id));
+          const merged = [...previous];
+
+          response.items.forEach((item) => {
+            if (!ids.has(item.id)) {
+              merged.push(item);
+            }
+          });
+
+          return merged;
+        });
+
+        setCursor(response.page_info.next_cursor);
+        setHasMore(response.page_info.has_more);
+      } catch (err) {
+        setError(getErrorMessage(err));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [api],
+  );
 
   useEffect(() => {
     void load(kind);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind]);
+  }, [kind, load]);
 
   const onLikeToggle = async (item: FeedItem) => {
     setError(null);
@@ -77,16 +82,18 @@ export function FeedView({ api }: FeedViewProps) {
         setLiked((previous) => ({ ...previous, [item.id]: false }));
         setItems((previous) =>
           previous.map((current) =>
-            current.id === item.id ? { ...current, like_count: Math.max(0, current.like_count - 1) } : current
-          )
+            current.id === item.id
+              ? { ...current, like_count: Math.max(0, current.like_count - 1) }
+              : current,
+          ),
         );
       } else {
         await api.likeFeedItem(item.id);
         setLiked((previous) => ({ ...previous, [item.id]: true }));
         setItems((previous) =>
           previous.map((current) =>
-            current.id === item.id ? { ...current, like_count: current.like_count + 1 } : current
-          )
+            current.id === item.id ? { ...current, like_count: current.like_count + 1 } : current,
+          ),
         );
       }
     } catch (err) {
@@ -101,8 +108,8 @@ export function FeedView({ api }: FeedViewProps) {
       await api.forkFeedItem(item.id);
       setItems((previous) =>
         previous.map((current) =>
-          current.id === item.id ? { ...current, fork_count: current.fork_count + 1 } : current
-        )
+          current.id === item.id ? { ...current, fork_count: current.fork_count + 1 } : current,
+        ),
       );
       setInfo(`Forked ${item.title ?? item.id.slice(0, 8)}`);
     } catch (err) {
@@ -114,7 +121,7 @@ export function FeedView({ api }: FeedViewProps) {
     <section className="feed-layout" aria-label="feed-module">
       <header className="panel-header compact">
         <h2>Feed</h2>
-        <p>{loading ? "Refreshing..." : `${items.length} items`}</p>
+        <p>{loading ? 'Refreshing...' : `${items.length} items`}</p>
       </header>
 
       <div className="tab-row" role="tablist" aria-label="feed-tabs">
@@ -122,7 +129,7 @@ export function FeedView({ api }: FeedViewProps) {
           <button
             key={tab.key}
             type="button"
-            className={tab.key === kind ? "active" : ""}
+            className={tab.key === kind ? 'active' : ''}
             onClick={() => setKind(tab.key)}
           >
             {tab.label}
@@ -139,10 +146,10 @@ export function FeedView({ api }: FeedViewProps) {
                   <h3>{item.title || `${item.type} · ${item.id.slice(0, 8)}`}</h3>
                   <small>{toIsoLocal(item.created_at)}</small>
                 </header>
-                <p>{item.description || "No description"}</p>
+                <p>{item.description || 'No description'}</p>
                 <footer className="inline-buttons">
                   <button type="button" onClick={() => void onLikeToggle(item)}>
-                    {liked[item.id] ? "Unlike" : "Like"} ({item.like_count})
+                    {liked[item.id] ? 'Unlike' : 'Like'} ({item.like_count})
                   </button>
                   <button type="button" onClick={() => void onFork(item)}>
                     Fork ({item.fork_count})
@@ -154,7 +161,7 @@ export function FeedView({ api }: FeedViewProps) {
 
           {hasMore && (
             <button type="button" onClick={() => void load(kind, cursor)} disabled={loading}>
-              {loading ? "Loading..." : "Load more"}
+              {loading ? 'Loading...' : 'Load more'}
             </button>
           )}
         </div>
@@ -166,12 +173,14 @@ export function FeedView({ api }: FeedViewProps) {
               <p>
                 <strong>{selected.title || selected.id}</strong>
               </p>
-              <p>{selected.description || "No description"}</p>
+              <p>{selected.description || 'No description'}</p>
               <p>
-                Score {selected.quality_score.toFixed(2)} · Trending {selected.trending_score.toFixed(2)}
+                Score {selected.quality_score.toFixed(2)} · Trending{' '}
+                {selected.trending_score.toFixed(2)}
               </p>
               <p>
-                Likes {selected.like_count} · Forks {selected.fork_count} · Views {selected.view_count}
+                Likes {selected.like_count} · Forks {selected.fork_count} · Views{' '}
+                {selected.view_count}
               </p>
             </>
           ) : (
@@ -195,5 +204,5 @@ function getErrorMessage(error: unknown): string {
     return error.message;
   }
 
-  return "Request failed";
+  return 'Request failed';
 }

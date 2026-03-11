@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { McpManager } from '../mcp-manager.js';
 
 const mockFetch = vi.fn();
@@ -33,7 +33,7 @@ describe('McpManager', () => {
             },
           ],
         },
-      })
+      }),
     );
 
     await manager.connect([{ url: 'http://mcp-server', name: 'web-search' }]);
@@ -47,19 +47,17 @@ describe('McpManager', () => {
   it('throws when server returns a non-2xx response', async () => {
     mockFetch.mockResolvedValueOnce(makeJsonResponse({}, 500));
 
-    await expect(
-      manager.connect([{ url: 'http://bad-server', name: 'bad' }])
-    ).rejects.toThrow('500');
+    await expect(manager.connect([{ url: 'http://bad-server', name: 'bad' }])).rejects.toThrow(
+      '500',
+    );
   });
 
   it('throws when server returns an MCP error', async () => {
-    mockFetch.mockResolvedValueOnce(
-      makeJsonResponse({ error: { message: 'Method not found' } })
-    );
+    mockFetch.mockResolvedValueOnce(makeJsonResponse({ error: { message: 'Method not found' } }));
 
-    await expect(
-      manager.connect([{ url: 'http://mcp-server', name: 'test' }])
-    ).rejects.toThrow('Method not found');
+    await expect(manager.connect([{ url: 'http://mcp-server', name: 'test' }])).rejects.toThrow(
+      'Method not found',
+    );
   });
 
   it('executes a tool by routing to the correct server', async () => {
@@ -69,11 +67,11 @@ describe('McpManager', () => {
         result: {
           tools: [{ name: 'web_search', description: 'Search', inputSchema: {} }],
         },
-      })
+      }),
     );
     // Tool call
     mockFetch.mockResolvedValueOnce(
-      makeJsonResponse({ result: { content: [{ type: 'text', text: 'results' }] } })
+      makeJsonResponse({ result: { content: [{ type: 'text', text: 'results' }] } }),
     );
 
     await manager.connect([{ url: 'http://mcp-server', name: 'web-search' }]);
@@ -91,13 +89,13 @@ describe('McpManager', () => {
   it('throws when executing an unknown tool', async () => {
     await manager.connect([]);
     await expect(manager.executeTool('nonexistent', {})).rejects.toThrow(
-      "Tool 'nonexistent' not found"
+      "Tool 'nonexistent' not found",
     );
   });
 
   it('returns empty tools after disconnect', async () => {
     mockFetch.mockResolvedValueOnce(
-      makeJsonResponse({ result: { tools: [{ name: 'test', description: '', inputSchema: {} }] } })
+      makeJsonResponse({ result: { tools: [{ name: 'test', description: '', inputSchema: {} }] } }),
     );
 
     await manager.connect([{ url: 'http://mcp-server', name: 'test' }]);
@@ -112,12 +110,12 @@ describe('McpManager', () => {
       .mockResolvedValueOnce(
         makeJsonResponse({
           result: { tools: [{ name: 'tool_a', description: 'A', inputSchema: {} }] },
-        })
+        }),
       )
       .mockResolvedValueOnce(
         makeJsonResponse({
           result: { tools: [{ name: 'tool_b', description: 'B', inputSchema: {} }] },
-        })
+        }),
       );
 
     await manager.connect([

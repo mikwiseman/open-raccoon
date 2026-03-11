@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import type { WaiAgentsApi } from "@/lib/api/services";
-import type { Agent, ToolConfig, McpServerConfig } from "@/lib/types";
-import { ModelSelector } from "./ModelSelector";
-import { SystemPromptEditor } from "./SystemPromptEditor";
-import { ToolConfigurator } from "./ToolConfigurator";
-import { VisibilitySelector } from "./VisibilitySelector";
-import { ScheduleManager } from "./ScheduleManager";
-import { AgentTestSandbox } from "./AgentTestSandbox";
+import { useState } from 'react';
+import type { WaiAgentsApi } from '@/lib/api/services';
+import type { Agent, McpServerConfig, ToolConfig } from '@/lib/types';
+import { AgentTestSandbox } from './AgentTestSandbox';
+import { ModelSelector } from './ModelSelector';
+import { ScheduleManager } from './ScheduleManager';
+import { SystemPromptEditor } from './SystemPromptEditor';
+import { ToolConfigurator } from './ToolConfigurator';
+import { VisibilitySelector } from './VisibilitySelector';
 
 type Props = {
   api: WaiAgentsApi;
@@ -19,40 +19,40 @@ type Props = {
 };
 
 const CATEGORIES = [
-  "general",
-  "coding",
-  "writing",
-  "research",
-  "data",
-  "creative",
-  "education",
-  "productivity",
+  'general',
+  'coding',
+  'writing',
+  'research',
+  'data',
+  'creative',
+  'education',
+  'productivity',
 ];
 
 function slugify(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props) {
   const isEditing = !!agent;
 
-  const [name, setName] = useState(agent?.name ?? "");
-  const [slug, setSlug] = useState(agent?.slug ?? "");
-  const [description, setDescription] = useState(agent?.description ?? "");
-  const [category, setCategory] = useState(agent?.category ?? "general");
-  const [model, setModel] = useState(agent?.model ?? "claude-sonnet-4-6");
-  const [executionMode, setExecutionMode] = useState<Agent["execution_mode"]>(
-    agent?.execution_mode ?? "raw"
+  const [name, setName] = useState(agent?.name ?? '');
+  const [slug, setSlug] = useState(agent?.slug ?? '');
+  const [description, setDescription] = useState(agent?.description ?? '');
+  const [category, setCategory] = useState(agent?.category ?? 'general');
+  const [model, setModel] = useState(agent?.model ?? 'claude-sonnet-4-6');
+  const [executionMode, setExecutionMode] = useState<Agent['execution_mode']>(
+    agent?.execution_mode ?? 'raw',
   );
   const [temperature, setTemperature] = useState(agent?.temperature ?? 0.7);
   const [maxTokens, setMaxTokens] = useState(agent?.max_tokens ?? 4096);
-  const [systemPrompt, setSystemPrompt] = useState(agent?.system_prompt ?? "");
+  const [systemPrompt, setSystemPrompt] = useState(agent?.system_prompt ?? '');
   const [tools, setTools] = useState<ToolConfig[]>(agent?.tools ?? []);
   const [mcpServers, setMcpServers] = useState<McpServerConfig[]>(agent?.mcp_servers ?? []);
-  const [visibility, setVisibility] = useState<Agent["visibility"]>(agent?.visibility ?? "private");
+  const [visibility, setVisibility] = useState<Agent['visibility']>(agent?.visibility ?? 'private');
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +105,7 @@ export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props)
         onSaved(res.agent);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save agent");
+      setError(err instanceof Error ? err.message : 'Failed to save agent');
     } finally {
       setSaving(false);
     }
@@ -114,7 +114,7 @@ export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props)
   return (
     <form className="ab-form" onSubmit={(e) => void handleSubmit(e)} aria-label="agent-form">
       <div className="ab-form-header">
-        <h3 className="ab-form-title">{isEditing ? "Edit Agent" : "Create Agent"}</h3>
+        <h3 className="ab-form-title">{isEditing ? 'Edit Agent' : 'Create Agent'}</h3>
         <div className="ab-form-header-actions">
           {isEditing && (
             <button
@@ -122,7 +122,7 @@ export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props)
               className="ab-btn ab-btn-secondary"
               onClick={() => setShowTestSandbox(!showTestSandbox)}
             >
-              {showTestSandbox ? "Hide Test" : "Test Agent"}
+              {showTestSandbox ? 'Hide Test' : 'Test Agent'}
             </button>
           )}
         </div>
@@ -135,7 +135,9 @@ export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props)
         <legend className="ab-legend">Basic Info</legend>
         <div className="ab-field-grid">
           <div className="ab-field">
-            <label className="ab-label" htmlFor="agent-name">Name</label>
+            <label className="ab-label" htmlFor="agent-name">
+              Name
+            </label>
             <input
               id="agent-name"
               className="ab-input"
@@ -147,7 +149,9 @@ export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props)
           </div>
 
           <div className="ab-field">
-            <label className="ab-label" htmlFor="agent-slug">Slug</label>
+            <label className="ab-label" htmlFor="agent-slug">
+              Slug
+            </label>
             <input
               id="agent-slug"
               className="ab-input"
@@ -159,7 +163,9 @@ export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props)
           </div>
 
           <div className="ab-field ab-field-full">
-            <label className="ab-label" htmlFor="agent-description">Description</label>
+            <label className="ab-label" htmlFor="agent-description">
+              Description
+            </label>
             <textarea
               id="agent-description"
               className="ab-textarea"
@@ -171,7 +177,9 @@ export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props)
           </div>
 
           <div className="ab-field">
-            <label className="ab-label" htmlFor="agent-category">Category</label>
+            <label className="ab-label" htmlFor="agent-category">
+              Category
+            </label>
             <select
               id="agent-category"
               className="ab-select"
@@ -179,7 +187,9 @@ export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props)
               onChange={(e) => setCategory(e.target.value)}
             >
               {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                <option key={c} value={c}>
+                  {c.charAt(0).toUpperCase() + c.slice(1)}
+                </option>
               ))}
             </select>
           </div>
@@ -208,9 +218,7 @@ export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props)
 
       <VisibilitySelector value={visibility} onChange={setVisibility} />
 
-      {isEditing && (
-        <ScheduleManager api={api} agentId={agent.id} />
-      )}
+      {isEditing && <ScheduleManager api={api} agentId={agent.id} />}
 
       {showTestSandbox && isEditing && (
         <AgentTestSandbox api={api} agentId={agent.id} accessToken={accessToken} />
@@ -220,8 +228,12 @@ export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props)
         <button type="button" className="ab-btn ab-btn-secondary" onClick={onCancel}>
           Cancel
         </button>
-        <button type="submit" className="ab-btn ab-btn-primary" disabled={saving || !name.trim() || !systemPrompt.trim()}>
-          {saving ? "Saving..." : isEditing ? "Update Agent" : "Create Agent"}
+        <button
+          type="submit"
+          className="ab-btn ab-btn-primary"
+          disabled={saving || !name.trim() || !systemPrompt.trim()}
+        >
+          {saving ? 'Saving...' : isEditing ? 'Update Agent' : 'Create Agent'}
         </button>
       </div>
     </form>

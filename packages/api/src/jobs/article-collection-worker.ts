@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { createQueue, createWorker } from './queue.js';
 import { sql } from '../db/connection.js';
+import { createQueue, createWorker } from './queue.js';
 
 const QUEUE_NAME = 'article-collection';
 
@@ -22,9 +22,9 @@ function parseRssItems(xmlText: string): RssItem[] {
 
   // Match all <item>...</item> blocks
   const itemRegex = /<item\b[^>]*>([\s\S]*?)<\/item>/gi;
-  let itemMatch: RegExpExecArray | null;
+  let itemMatch: RegExpExecArray | null = itemRegex.exec(xmlText);
 
-  while ((itemMatch = itemRegex.exec(xmlText)) !== null) {
+  while (itemMatch !== null) {
     const block = itemMatch[1];
 
     const titleMatch = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(block);
@@ -40,6 +40,7 @@ function parseRssItems(xmlText: string): RssItem[] {
     if (link) {
       items.push({ title, link, description, pubDate });
     }
+    itemMatch = itemRegex.exec(xmlText);
   }
 
   return items;
@@ -57,46 +58,44 @@ function stripCdata(text: string): string {
  *   - Insert new articles into agent_articles (skip duplicates by URL)
  *   - Update agent_sources.last_fetched_at
  */
-export const articleCollectionWorker = createWorker(
-  QUEUE_NAME,
-  async () => {
-    // Get all RSS sources
-    const sources = await sql`
+export const articleCollectionWorker = createWorker(QUEUE_NAME, async () => {
+  // Get all RSS sources
+  const sources = await sql`
       SELECT id, agent_id, url FROM agent_sources WHERE type = 'rss' AND url IS NOT NULL
     `;
 
-    for (const sourceRow of sources) {
-      const source = sourceRow as Record<string, unknown>;
-      const sourceId = source['id'] as string;
-      const agentId = source['agent_id'] as string;
-      const feedUrl = source['url'] as string;
+  for (const sourceRow of sources) {
+    const source = sourceRow as Record<string, unknown>;
+    const sourceId = source.id as string;
+    const agentId = source.agent_id as string;
+    const feedUrl = source.url as string;
 
-      // Fetch the RSS feed
-      const response = await fetch(feedUrl);
-      if (!response.ok) {
-        console.error(`Failed to fetch RSS feed ${feedUrl}: ${response.status}`);
-        continue;
-      }
+    // Fetch the RSS feed
+    const response = await fetch(feedUrl);
+    if (!response.ok) {
+      console.error(`Failed to fetch RSS feed ${feedUrl}: ${response.status}`);
+      continue;
+    }
 
-      const xmlText = await response.text();
-      const items = parseRssItems(xmlText);
+    const xmlText = await response.text();
+    const items = parseRssItems(xmlText);
 
-      // Get existing URLs for this source to skip duplicates
-      const existingRows = await sql`
+    // Get existing URLs for this source to skip duplicates
+    const existingRows = await sql`
         SELECT url FROM agent_articles WHERE source_id = ${sourceId}
       `;
-      const existingUrls = new Set(
-        (existingRows as Array<Record<string, unknown>>).map((r) => r['url'] as string),
-      );
+    const existingUrls = new Set(
+      (existingRows as Array<Record<string, unknown>>).map((r) => r.url as string),
+    );
 
-      const now = new Date().toISOString();
+    const now = new Date().toISOString();
 
-      for (const item of items) {
-        if (existingUrls.has(item.link)) continue;
+    for (const item of items) {
+      if (existingUrls.has(item.link)) continue;
 
-        const publishedAt = item.pubDate ? new Date(item.pubDate).toISOString() : null;
+      const publishedAt = item.pubDate ? new Date(item.pubDate).toISOString() : null;
 
-        await sql`
+      await sql`
           INSERT INTO agent_articles (
             id, agent_id, source_id, title, url, content, published_at, collected_at,
             metadata, inserted_at, updated_at
@@ -105,16 +104,15 @@ export const articleCollectionWorker = createWorker(
             ${item.description}, ${publishedAt}, ${now}, '{}', ${now}, ${now}
           )
         `;
-      }
+    }
 
-      // Update last_fetched_at
-      await sql`
+    // Update last_fetched_at
+    await sql`
         UPDATE agent_sources SET last_fetched_at = ${now}, updated_at = ${now}
         WHERE id = ${sourceId}
       `;
-    }
-  },
-);
+  }
+});
 
 /**
  * Schedule article collection to run every 30 minutes.

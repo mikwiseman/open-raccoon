@@ -1,7 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { sql } from './db.js';
-import { generateEmbedding, embeddingToString } from './embeddings.js';
-import { randomUUID } from 'node:crypto';
+import { embeddingToString, generateEmbedding } from './embeddings.js';
 
 // ─── Input Schemas ────────────────────────────────────────────────────────────
 
@@ -66,9 +66,7 @@ export async function handleSaveMemory(
   return { memory_id: id };
 }
 
-export async function handleSearchMemories(
-  input: z.infer<typeof SearchMemoriesInput>,
-): Promise<{
+export async function handleSearchMemories(input: z.infer<typeof SearchMemoriesInput>): Promise<{
   memories: Array<{
     id: string;
     content: string;
@@ -161,7 +159,7 @@ export async function handleUpdateMemory(
   // importance only
   const result = await sql`
     UPDATE agent_memories
-    SET importance = ${input.importance!},
+    SET importance = ${input.importance ?? 0},
         updated_at = ${now}
     WHERE id = ${input.memory_id}::uuid
       AND agent_id = ${input.agent_id}::uuid

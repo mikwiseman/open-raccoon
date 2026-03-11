@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import { sql } from './db.js';
 
 // ─── Circuit Breaker ──────────────────────────────────────────────────────────
@@ -9,7 +9,9 @@ const circuitBreaker = new Map<string, { failures: number; openUntil: number }>(
 function checkCircuitBreaker(agentId: string): void {
   const state = circuitBreaker.get(agentId);
   if (state && state.openUntil > Date.now()) {
-    throw new Error(`Circuit breaker open for agent ${agentId}: too many failures. Retry after ${new Date(state.openUntil).toISOString()}`);
+    throw new Error(
+      `Circuit breaker open for agent ${agentId}: too many failures. Retry after ${new Date(state.openUntil).toISOString()}`,
+    );
   }
 }
 
@@ -147,30 +149,27 @@ export async function handleSendToAgent(
     // Mark task as working
     await sql`UPDATE agent_tasks SET status = 'working', started_at = NOW() WHERE id = ${taskId}::uuid`;
 
-    const apiResponse = await fetch(
-      `http://localhost:${apiPort}/api/v1/internal/agent/execute`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Internal-Key': internalKey,
-        },
-        body: JSON.stringify({
-          agentId: input.to_agent_id,
-          conversationId,
-          message: input.message,
-          a2aDepth: input.a2a_depth + 1,
-          callerContext: {
-            caller_agent_id: input.from_agent_id,
-            caller_agent_name: callerName,
-            caller_conversation_id: conversationId,
-            task_summary: input.message,
-            expected_output: input.expected_output ?? 'analysis',
-          },
-        }),
-        signal: controller.signal,
+    const apiResponse = await fetch(`http://localhost:${apiPort}/api/v1/internal/agent/execute`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Key': internalKey,
       },
-    );
+      body: JSON.stringify({
+        agentId: input.to_agent_id,
+        conversationId,
+        message: input.message,
+        a2aDepth: input.a2a_depth + 1,
+        callerContext: {
+          caller_agent_id: input.from_agent_id,
+          caller_agent_name: callerName,
+          caller_conversation_id: conversationId,
+          task_summary: input.message,
+          expected_output: input.expected_output ?? 'analysis',
+        },
+      }),
+      signal: controller.signal,
+    });
 
     clearTimeout(timeout);
 
@@ -185,7 +184,10 @@ export async function handleSendToAgent(
       throw new Error(`Agent execution failed: ${apiResponse.status} ${apiResponse.statusText}`);
     }
 
-    const data = (await apiResponse.json()) as { response?: string; usage?: { input_tokens?: number; output_tokens?: number } };
+    const data = (await apiResponse.json()) as {
+      response?: string;
+      usage?: { input_tokens?: number; output_tokens?: number };
+    };
     const durationMs = Date.now() - startTime;
 
     recordSuccess(input.to_agent_id);
@@ -285,7 +287,9 @@ export async function handleReadConversation(
   `;
 
   if (membership.length === 0) {
-    throw new Error(`Agent ${input.agent_id} is not a member of conversation ${input.conversation_id}`);
+    throw new Error(
+      `Agent ${input.agent_id} is not a member of conversation ${input.conversation_id}`,
+    );
   }
 
   const rows = await sql<
@@ -334,9 +338,7 @@ export async function handleListAgentConversations(
   return { conversations: rows };
 }
 
-export async function handleGetAgentInfo(
-  input: z.infer<typeof GetAgentInfoInput>,
-): Promise<{
+export async function handleGetAgentInfo(input: z.infer<typeof GetAgentInfoInput>): Promise<{
   id: string;
   name: string;
   description: string | null;
@@ -394,9 +396,7 @@ export async function handleGetAgentInfo(
   };
 }
 
-export async function handleDiscoverAgents(
-  input: z.infer<typeof DiscoverAgentsInput>,
-): Promise<{
+export async function handleDiscoverAgents(input: z.infer<typeof DiscoverAgentsInput>): Promise<{
   agents: Array<{
     id: string;
     name: string;
@@ -443,8 +443,8 @@ export async function handleDiscoverAgents(
   }
 
   const agents = (rows as Array<Record<string, unknown>>).map((row) => {
-    const tools = (row['tools'] as unknown[]) ?? [];
-    const mcpServers = (row['mcp_servers'] as unknown[]) ?? [];
+    const tools = (row.tools as unknown[]) ?? [];
+    const mcpServers = (row.mcp_servers as unknown[]) ?? [];
     const capabilities: string[] = [];
     if (tools.length > 0) capabilities.push('custom_tools');
     if (mcpServers.length > 0) {
@@ -452,15 +452,15 @@ export async function handleDiscoverAgents(
         if (s.name) capabilities.push(s.name);
       }
     }
-    const ratingCount = row['rating_count'] as number;
-    const ratingSum = row['rating_sum'] as number;
+    const ratingCount = row.rating_count as number;
+    const ratingSum = row.rating_sum as number;
     return {
-      id: row['id'] as string,
-      name: row['name'] as string,
-      description: row['description'] as string | null,
+      id: row.id as string,
+      name: row.name as string,
+      description: row.description as string | null,
       capabilities,
-      model: row['model'] as string,
-      category: row['category'] as string | null,
+      model: row.model as string,
+      category: row.category as string | null,
       rating_avg: ratingCount > 0 ? ratingSum / ratingCount : 0,
     };
   });

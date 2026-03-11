@@ -1,1 +1,1 @@
-export * from "./BridgesPlaceholder";
+export * from './BridgesPlaceholder';

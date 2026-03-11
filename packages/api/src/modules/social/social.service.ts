@@ -8,28 +8,31 @@ import { toISO } from '../../lib/utils.js';
 
 function formatFeedItem(row: Record<string, unknown>) {
   return {
-    id: row['id'],
-    creator_id: row['creator_id'],
-    type: row['type'],
-    reference_id: row['reference_id'],
-    reference_type: row['reference_type'],
-    title: row['title'],
-    description: row['description'],
-    thumbnail_url: row['thumbnail_url'],
-    quality_score: row['quality_score'],
-    trending_score: row['trending_score'],
-    like_count: row['like_count'],
-    fork_count: row['fork_count'],
-    view_count: row['view_count'],
-    created_at: toISO(row['inserted_at']),
-    updated_at: toISO(row['updated_at']),
+    id: row.id,
+    creator_id: row.creator_id,
+    type: row.type,
+    reference_id: row.reference_id,
+    reference_type: row.reference_type,
+    title: row.title,
+    description: row.description,
+    thumbnail_url: row.thumbnail_url,
+    quality_score: row.quality_score,
+    trending_score: row.trending_score,
+    like_count: row.like_count,
+    fork_count: row.fork_count,
+    view_count: row.view_count,
+    created_at: toISO(row.inserted_at),
+    updated_at: toISO(row.updated_at),
     creator: {
-      id: row['creator_id'],
-      username: row['username'],
-      display_name: row['display_name'],
-      avatar_url: row['avatar_url'],
+      id: row.creator_id,
+      username: row.username,
+      display_name: row.display_name,
+      avatar_url: row.avatar_url,
     },
-    liked_by_me: row['liked_by_me'] === true || row['liked_by_me'] === 1 || (typeof row['liked_by_me'] === 'number' && row['liked_by_me'] > 0),
+    liked_by_me:
+      row.liked_by_me === true ||
+      row.liked_by_me === 1 ||
+      (typeof row.liked_by_me === 'number' && row.liked_by_me > 0),
   };
 }
 
@@ -44,7 +47,7 @@ async function getCursorInsertedAt(cursor: string): Promise<Date> {
   if (rows.length === 0) {
     throw Object.assign(new Error('Invalid cursor'), { code: 'BAD_REQUEST' });
   }
-  return (rows[0] as Record<string, unknown>)['inserted_at'] as Date;
+  return (rows[0] as Record<string, unknown>).inserted_at as Date;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -106,8 +109,8 @@ export async function listTrending(userId: string, cursor?: string, limit?: numb
       throw Object.assign(new Error('Invalid cursor'), { code: 'BAD_REQUEST' });
     }
     const cursorRow = cursorRows[0] as Record<string, unknown>;
-    const cursorScore = cursorRow['trending_score'] as number;
-    const cursorAt = cursorRow['inserted_at'] as Date;
+    const cursorScore = cursorRow.trending_score as number;
+    const cursorAt = cursorRow.inserted_at as Date;
 
     const rows = await sql`
       SELECT
@@ -249,7 +252,7 @@ export async function likeFeedItem(feedItemId: string, userId: string) {
     `;
 
     const fi = rows[0] as Record<string, unknown>;
-    const creatorId = fi['creator_id'] as string;
+    const creatorId = fi.creator_id as string;
     const creatorRows = await tx`
       SELECT username, display_name, avatar_url FROM users WHERE id = ${creatorId} LIMIT 1
     `;
@@ -257,9 +260,9 @@ export async function likeFeedItem(feedItemId: string, userId: string) {
 
     return formatFeedItem({
       ...fi,
-      username: creator?.['username'] ?? null,
-      display_name: creator?.['display_name'] ?? null,
-      avatar_url: creator?.['avatar_url'] ?? null,
+      username: creator?.username ?? null,
+      display_name: creator?.display_name ?? null,
+      avatar_url: creator?.avatar_url ?? null,
       liked_by_me: true,
     });
   });
@@ -313,11 +316,14 @@ export async function forkAgent(agentId: string, userId: string) {
   const now = new Date().toISOString();
 
   // Generate a unique slug for the fork
-  const baseSlug = `${source['slug']}-fork`;
+  const baseSlug = `${source.slug}-fork`;
   let slug = baseSlug;
-  const existingRows = await sql`SELECT slug FROM agents WHERE slug LIKE ${baseSlug + '%'} ORDER BY slug`;
+  const existingRows =
+    await sql`SELECT slug FROM agents WHERE slug LIKE ${`${baseSlug}%`} ORDER BY slug`;
   if (existingRows.length > 0) {
-    const existingSlugs = new Set((existingRows as Array<Record<string, unknown>>).map((r) => r['slug'] as string));
+    const existingSlugs = new Set(
+      (existingRows as Array<Record<string, unknown>>).map((r) => r.slug as string),
+    );
     if (existingSlugs.has(slug)) {
       let counter = 2;
       while (existingSlugs.has(`${baseSlug}-${counter}`)) {
@@ -328,10 +334,10 @@ export async function forkAgent(agentId: string, userId: string) {
   }
 
   // Store forked_from in metadata
-  const sourceMetadata = (source['metadata'] as Record<string, unknown>) ?? {};
+  const sourceMetadata = (source.metadata as Record<string, unknown>) ?? {};
   const newMetadata = JSON.stringify({ ...sourceMetadata, forked_from: agentId });
-  const toolsJson = JSON.stringify(source['tools'] ?? []);
-  const mcpServersJson = JSON.stringify(source['mcp_servers'] ?? []);
+  const toolsJson = JSON.stringify(source.tools ?? []);
+  const mcpServersJson = JSON.stringify(source.mcp_servers ?? []);
 
   // @ts-expect-error postgres.js TransactionSql type lacks call signatures but works at runtime
   return await sql.begin(async (tx: typeof sql) => {
@@ -341,12 +347,12 @@ export async function forkAgent(agentId: string, userId: string) {
         temperature, max_tokens, tools, mcp_servers, visibility, category, metadata,
         inserted_at, updated_at
       ) VALUES (
-        ${newAgentId}, ${userId}, ${source['name'] as string}, ${slug},
-        ${source['description'] as string | null}, ${source['avatar_url'] as string | null},
-        ${source['system_prompt'] as string}, ${source['model'] as string},
-        ${source['temperature'] as number}, ${source['max_tokens'] as number},
+        ${newAgentId}, ${userId}, ${source.name as string}, ${slug},
+        ${source.description as string | null}, ${source.avatar_url as string | null},
+        ${source.system_prompt as string}, ${source.model as string},
+        ${source.temperature as number}, ${source.max_tokens as number},
         ${toolsJson}::jsonb, ${mcpServersJson}::jsonb,
-        'private', ${source['category'] as string | null},
+        'private', ${source.category as string | null},
         ${newMetadata}::jsonb, ${now}, ${now}
       )
     `;
@@ -366,7 +372,7 @@ export async function forkAgent(agentId: string, userId: string) {
         inserted_at, updated_at
       ) VALUES (
         ${feedItemId}, ${userId}, 'fork', ${newAgentId}, 'agent',
-        ${source['name'] as string}, ${source['description'] as string | null},
+        ${source.name as string}, ${source.description as string | null},
         ${now}, ${now}
       )
     `;
@@ -382,19 +388,19 @@ export async function forkAgent(agentId: string, userId: string) {
 
     const row = rows[0] as Record<string, unknown>;
     return {
-      id: row['id'],
-      creator_id: row['creator_id'],
-      name: row['name'],
-      slug: row['slug'],
-      description: row['description'],
-      avatar_url: row['avatar_url'],
-      system_prompt: row['system_prompt'],
-      model: row['model'],
-      visibility: row['visibility'],
-      category: row['category'],
-      metadata: row['metadata'],
-      created_at: toISO(row['inserted_at']),
-      updated_at: toISO(row['updated_at']),
+      id: row.id,
+      creator_id: row.creator_id,
+      name: row.name,
+      slug: row.slug,
+      description: row.description,
+      avatar_url: row.avatar_url,
+      system_prompt: row.system_prompt,
+      model: row.model,
+      visibility: row.visibility,
+      category: row.category,
+      metadata: row.metadata,
+      created_at: toISO(row.inserted_at),
+      updated_at: toISO(row.updated_at),
     };
   });
 }
@@ -403,7 +409,12 @@ export async function forkAgent(agentId: string, userId: string) {
 /*  Marketplace                                                               */
 /* -------------------------------------------------------------------------- */
 
-export async function listMarketplace(userId: string, cursor?: string, limit?: number, category?: string) {
+export async function listMarketplace(
+  _userId: string,
+  cursor?: string,
+  limit?: number,
+  category?: string,
+) {
   const clampedLimit = clampLimit(limit);
 
   if (cursor) {
@@ -414,8 +425,8 @@ export async function listMarketplace(userId: string, cursor?: string, limit?: n
       throw Object.assign(new Error('Invalid cursor'), { code: 'BAD_REQUEST' });
     }
     const cursorRow = cursorRows[0] as Record<string, unknown>;
-    const cursorUsage = cursorRow['usage_count'] as number;
-    const cursorAt = cursorRow['inserted_at'] as Date;
+    const cursorUsage = cursorRow.usage_count as number;
+    const cursorAt = cursorRow.inserted_at as Date;
 
     if (category) {
       const rows = await sql`
@@ -492,7 +503,12 @@ export async function listMarketplace(userId: string, cursor?: string, limit?: n
   return rows.map((row) => formatMarketplaceAgent(row as Record<string, unknown>));
 }
 
-export async function searchMarketplace(query: string, userId: string, cursor?: string, limit?: number) {
+export async function searchMarketplace(
+  query: string,
+  _userId: string,
+  cursor?: string,
+  limit?: number,
+) {
   const clampedLimit = clampLimit(limit);
   const escapedQuery = query.replace(/[%_\\]/g, '\\$&');
   const searchPattern = `%${escapedQuery}%`;
@@ -505,7 +521,7 @@ export async function searchMarketplace(query: string, userId: string, cursor?: 
     if (cursorRows.length === 0) {
       throw Object.assign(new Error('Invalid cursor'), { code: 'BAD_REQUEST' });
     }
-    const agentCursorAt = (cursorRows[0] as Record<string, unknown>)['inserted_at'] as Date;
+    const agentCursorAt = (cursorRows[0] as Record<string, unknown>).inserted_at as Date;
 
     const rows = await sql`
       SELECT
@@ -582,28 +598,28 @@ export async function getMarketplaceAgent(slugOrId: string) {
 
   const row = rows[0] as Record<string, unknown>;
   return {
-    id: row['id'],
-    creator_id: row['creator_id'],
-    name: row['name'],
-    slug: row['slug'],
-    description: row['description'],
-    avatar_url: row['avatar_url'],
-    system_prompt: row['system_prompt'],
-    model: row['model'],
-    visibility: row['visibility'],
-    category: row['category'],
-    usage_count: Number(row['usage_count']),
-    rating_sum: row['rating_sum'],
-    rating_count: row['rating_count'],
-    rating_avg: row['rating_avg'],
-    metadata: row['metadata'],
-    created_at: toISO(row['inserted_at']),
-    updated_at: toISO(row['updated_at']),
+    id: row.id,
+    creator_id: row.creator_id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    avatar_url: row.avatar_url,
+    system_prompt: row.system_prompt,
+    model: row.model,
+    visibility: row.visibility,
+    category: row.category,
+    usage_count: Number(row.usage_count),
+    rating_sum: row.rating_sum,
+    rating_count: row.rating_count,
+    rating_avg: row.rating_avg,
+    metadata: row.metadata,
+    created_at: toISO(row.inserted_at),
+    updated_at: toISO(row.updated_at),
     creator: {
-      id: row['creator_id'],
-      username: row['username'],
-      display_name: row['display_name'],
-      avatar_url: row['creator_avatar_url'],
+      id: row.creator_id,
+      username: row.username,
+      display_name: row.display_name,
+      avatar_url: row.creator_avatar_url,
     },
   };
 }
@@ -618,7 +634,7 @@ export async function listCategories() {
   `;
   return rows.map((row) => {
     const r = row as Record<string, unknown>;
-    return { category: r['category'], count: r['count'] };
+    return { category: r.category, count: r.count };
   });
 }
 
@@ -654,7 +670,7 @@ export async function rateAgent(
 
     if (existingRows.length > 0) {
       const existing = existingRows[0] as Record<string, unknown>;
-      const oldRating = existing['old_rating'] as number;
+      const oldRating = existing.old_rating as number;
       const ratingDiff = rating - oldRating;
 
       await tx`
@@ -701,9 +717,9 @@ export async function rateAgent(
     const r = rows[0] as Record<string, unknown>;
     return {
       agent_id: agentId,
-      rating_sum: r['rating_sum'],
-      rating_count: r['rating_count'],
-      rating_avg: r['rating_avg'],
+      rating_sum: r.rating_sum,
+      rating_count: r.rating_count,
+      rating_avg: r.rating_avg,
       your_rating: rating,
     };
   });
@@ -745,26 +761,26 @@ export async function unfollowUser(followerId: string, followingId: string) {
 
 function formatMarketplaceAgent(row: Record<string, unknown>) {
   return {
-    id: row['id'],
-    creator_id: row['creator_id'],
-    name: row['name'],
-    slug: row['slug'],
-    description: row['description'],
-    avatar_url: row['avatar_url'],
-    model: row['model'],
-    visibility: row['visibility'],
-    category: row['category'],
-    usage_count: Number(row['usage_count']),
-    rating_sum: row['rating_sum'],
-    rating_count: row['rating_count'],
-    rating_avg: row['rating_avg'],
-    created_at: toISO(row['inserted_at']),
-    updated_at: toISO(row['updated_at']),
+    id: row.id,
+    creator_id: row.creator_id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    avatar_url: row.avatar_url,
+    model: row.model,
+    visibility: row.visibility,
+    category: row.category,
+    usage_count: Number(row.usage_count),
+    rating_sum: row.rating_sum,
+    rating_count: row.rating_count,
+    rating_avg: row.rating_avg,
+    created_at: toISO(row.inserted_at),
+    updated_at: toISO(row.updated_at),
     creator: {
-      id: row['creator_id'],
-      username: row['username'],
-      display_name: row['display_name'],
-      avatar_url: row['creator_avatar_url'],
+      id: row.creator_id,
+      username: row.username,
+      display_name: row.display_name,
+      avatar_url: row.creator_avatar_url,
     },
   };
 }
@@ -795,7 +811,7 @@ export async function shouldPromptFeedback(conversationId: string): Promise<bool
     SELECT COUNT(*)::int AS cnt FROM messages
     WHERE conversation_id = ${conversationId} AND deleted_at IS NULL
   `;
-  const count = (countRows[0] as Record<string, unknown>)['cnt'] as number;
+  const count = (countRows[0] as Record<string, unknown>).cnt as number;
   if (count >= 6) return true; // 3+ turns = 6+ messages (user + agent)
 
   // 20% random sampling for shorter conversations

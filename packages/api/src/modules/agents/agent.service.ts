@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { sql } from '../../db/connection.js';
-import { toISO, formatConversation } from '../../lib/utils.js';
-import { getTemplate } from './templates.js';
+import { formatConversation, toISO } from '../../lib/utils.js';
 import type { CreateAgentInput, UpdateAgentInput } from './agent.schema.js';
+import { getTemplate } from './templates.js';
 
 function slugify(name: string): string {
   return name
@@ -13,38 +13,38 @@ function slugify(name: string): string {
 
 function formatAgent(row: Record<string, unknown>) {
   return {
-    id: row['id'],
-    creator_id: row['creator_id'],
-    name: row['name'],
-    slug: row['slug'],
-    description: row['description'],
-    avatar_url: row['avatar_url'],
-    system_prompt: row['system_prompt'],
-    model: row['model'],
-    temperature: row['temperature'],
-    max_tokens: row['max_tokens'],
-    tools: row['tools'],
-    mcp_servers: row['mcp_servers'],
-    visibility: row['visibility'],
-    category: row['category'],
-    usage_count: row['usage_count'],
-    rating_sum: row['rating_sum'],
-    rating_count: row['rating_count'],
-    execution_mode: row['execution_mode'],
-    metadata: row['metadata'],
-    created_at: toISO(row['inserted_at']),
-    updated_at: toISO(row['updated_at']),
+    id: row.id,
+    creator_id: row.creator_id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    avatar_url: row.avatar_url,
+    system_prompt: row.system_prompt,
+    model: row.model,
+    temperature: row.temperature,
+    max_tokens: row.max_tokens,
+    tools: row.tools,
+    mcp_servers: row.mcp_servers,
+    visibility: row.visibility,
+    category: row.category,
+    usage_count: row.usage_count,
+    rating_sum: row.rating_sum,
+    rating_count: row.rating_count,
+    execution_mode: row.execution_mode,
+    metadata: row.metadata,
+    created_at: toISO(row.inserted_at),
+    updated_at: toISO(row.updated_at),
   };
 }
 
 function formatCoreMemory(row: Record<string, unknown>) {
   return {
-    id: row['id'],
-    agent_id: row['agent_id'],
-    block_label: row['block_label'],
-    content: row['content'],
-    created_at: toISO(row['inserted_at']),
-    updated_at: toISO(row['updated_at']),
+    id: row.id,
+    agent_id: row.agent_id,
+    block_label: row.block_label,
+    content: row.content,
+    created_at: toISO(row.inserted_at),
+    updated_at: toISO(row.updated_at),
   };
 }
 
@@ -90,7 +90,9 @@ export async function createAgent(userId: string, input: CreateAgentInput) {
       mcpServers = input.mcp_servers ?? (template.mcpServers as unknown as typeof mcpServers);
       coreMemories = template.coreMemories;
     } catch {
-      throw Object.assign(new Error(`Template '${input.template}' not found`), { code: 'BAD_REQUEST' });
+      throw Object.assign(new Error(`Template '${input.template}' not found`), {
+        code: 'BAD_REQUEST',
+      });
     }
   }
 
@@ -98,9 +100,12 @@ export async function createAgent(userId: string, input: CreateAgentInput) {
   let slug = baseSlug;
 
   // Ensure slug uniqueness
-  const existing = await sql`SELECT slug FROM agents WHERE slug LIKE ${baseSlug + '%'} ORDER BY slug`;
+  const existing =
+    await sql`SELECT slug FROM agents WHERE slug LIKE ${`${baseSlug}%`} ORDER BY slug`;
   if (existing.length > 0) {
-    const existingSlugs = new Set((existing as Array<Record<string, unknown>>).map((r) => r['slug'] as string));
+    const existingSlugs = new Set(
+      (existing as Array<Record<string, unknown>>).map((r) => r.slug as string),
+    );
     if (existingSlugs.has(slug)) {
       let counter = 2;
       while (existingSlugs.has(`${baseSlug}-${counter}`)) {
@@ -193,7 +198,8 @@ export async function updateAgent(agentId: string, userId: string, updates: Upda
   const systemPrompt = updates.system_prompt !== undefined ? updates.system_prompt : null;
   const model = updates.model !== undefined ? updates.model : null;
   const toolsJson = updates.tools !== undefined ? JSON.stringify(updates.tools) : null;
-  const mcpServersJson = updates.mcp_servers !== undefined ? JSON.stringify(updates.mcp_servers) : null;
+  const mcpServersJson =
+    updates.mcp_servers !== undefined ? JSON.stringify(updates.mcp_servers) : null;
   const visibility = updates.visibility !== undefined ? updates.visibility : null;
   const category = updates.category !== undefined ? updates.category : null;
   const avatarUrl = updates.avatar_url !== undefined ? updates.avatar_url : null;
@@ -240,7 +246,7 @@ export async function startConversation(agentId: string, userId: string) {
 
   // Block access to private agents the user doesn't own
   const agentRow = agentRows[0] as Record<string, unknown>;
-  if (agentRow['visibility'] === 'private' && agentRow['creator_id'] !== userId) {
+  if (agentRow.visibility === 'private' && agentRow.creator_id !== userId) {
     throw Object.assign(new Error('Agent not found'), { code: 'NOT_FOUND' });
   }
 
@@ -256,7 +262,10 @@ export async function startConversation(agentId: string, userId: string) {
   `;
 
   if (existing.length > 0) {
-    return { conversation: formatConversation(existing[0] as Record<string, unknown>), created: false };
+    return {
+      conversation: formatConversation(existing[0] as Record<string, unknown>),
+      created: false,
+    };
   }
 
   // Create new agent conversation
@@ -282,8 +291,8 @@ export async function startConversation(agentId: string, userId: string) {
 }
 
 function formatAgentCard(row: Record<string, unknown>) {
-  const tools = (row['tools'] as unknown[]) ?? [];
-  const mcpServers = (row['mcp_servers'] as unknown[]) ?? [];
+  const tools = (row.tools as unknown[]) ?? [];
+  const mcpServers = (row.mcp_servers as unknown[]) ?? [];
   const capabilities: string[] = [];
   if (tools.length > 0) capabilities.push('custom_tools');
   if (mcpServers.length > 0) {
@@ -292,13 +301,13 @@ function formatAgentCard(row: Record<string, unknown>) {
     }
   }
   return {
-    id: row['id'],
-    name: row['name'],
-    description: row['description'],
+    id: row.id,
+    name: row.name,
+    description: row.description,
     capabilities,
-    model: row['model'],
-    category: row['category'],
-    rating_avg: row['rating_avg'],
+    model: row.model,
+    category: row.category,
+    rating_avg: row.rating_avg,
     available: true,
     max_a2a_depth: 3,
   };
@@ -389,8 +398,8 @@ export async function getAgentPerformance(agentId: string, userId: string) {
       AND inserted_at > NOW() - INTERVAL '60 days'
       AND inserted_at <= NOW() - INTERVAL '30 days'
   `;
-  const recentAvg = (recentRatings[0] as Record<string, unknown>)['avg_rating'] as number | null;
-  const priorAvg = (priorRatings[0] as Record<string, unknown>)['avg_rating'] as number | null;
+  const recentAvg = (recentRatings[0] as Record<string, unknown>).avg_rating as number | null;
+  const priorAvg = (priorRatings[0] as Record<string, unknown>).avg_rating as number | null;
   let ratingTrend: 'improving' | 'declining' | 'stable' = 'stable';
   if (recentAvg != null && priorAvg != null) {
     if (recentAvg - priorAvg > 0.3) ratingTrend = 'improving';
@@ -422,13 +431,13 @@ export async function getAgentPerformance(agentId: string, userId: string) {
   const positiveReasons: string[] = [];
   const negativeReasons: string[] = [];
   for (const row of feedbackRows as Array<Record<string, unknown>>) {
-    const cnt = row['cnt'] as number;
-    if (row['feedback'] === 'positive') {
+    const cnt = row.cnt as number;
+    if (row.feedback === 'positive') {
       positiveCount += cnt;
-      if (row['reason']) positiveReasons.push(row['reason'] as string);
+      if (row.reason) positiveReasons.push(row.reason as string);
     } else {
       negativeCount += cnt;
-      if (row['reason']) negativeReasons.push(row['reason'] as string);
+      if (row.reason) negativeReasons.push(row.reason as string);
     }
   }
 
@@ -451,17 +460,17 @@ export async function getAgentPerformance(agentId: string, userId: string) {
     WHERE agent_id = ${agentId} AND event_type = 'run'
   `;
   const sr = successRows[0] as Record<string, unknown>;
-  const total = (sr['total'] as number) || 1;
-  const successRate = ((sr['successes'] as number) || 0) / total;
+  const total = (sr.total as number) || 1;
+  const successRate = ((sr.successes as number) || 0) / total;
 
   return {
-    overall_rating: rRow['rating_avg'],
-    rating_count: rRow['rating_count'],
+    overall_rating: rRow.rating_avg,
+    rating_count: rRow.rating_count,
     rating_trend: ratingTrend,
     dimensional_scores: {
-      accuracy: dim['accuracy'] ?? null,
-      helpfulness: dim['helpfulness'] ?? null,
-      speed: dim['speed'] ?? null,
+      accuracy: dim.accuracy ?? null,
+      helpfulness: dim.helpfulness ?? null,
+      speed: dim.speed ?? null,
     },
     feedback_summary: {
       positive_count: positiveCount,
@@ -470,9 +479,9 @@ export async function getAgentPerformance(agentId: string, userId: string) {
       top_negative_reasons: negativeReasons.slice(0, 3),
     },
     usage_stats: {
-      total_conversations: usage['total_conversations'] ?? 0,
-      avg_tokens_per_run: usage['avg_tokens_per_run'] ?? 0,
-      avg_duration_ms: usage['avg_duration_ms'] ?? 0,
+      total_conversations: usage.total_conversations ?? 0,
+      avg_tokens_per_run: usage.avg_tokens_per_run ?? 0,
+      avg_duration_ms: usage.avg_duration_ms ?? 0,
       success_rate: successRate,
     },
   };
@@ -484,10 +493,10 @@ export async function getCompactPerformanceInsight(agentId: string): Promise<str
   `;
   if (rows.length === 0) return null;
   const row = rows[0] as Record<string, unknown>;
-  const ratingCount = row['rating_count'] as number;
+  const ratingCount = row.rating_count as number;
   if (ratingCount === 0) return null;
 
-  const ratingAvg = (row['rating_sum'] as number) / ratingCount;
+  const ratingAvg = (row.rating_sum as number) / ratingCount;
 
   // Get top positive and negative feedback reasons
   const feedbackRows = await sql`
@@ -502,11 +511,11 @@ export async function getCompactPerformanceInsight(agentId: string): Promise<str
   let topStrength = '';
   let topWeakness = '';
   for (const r of feedbackRows as Array<Record<string, unknown>>) {
-    if (r['feedback'] === 'positive' && !topStrength && r['reason']) {
-      topStrength = r['reason'] as string;
+    if (r.feedback === 'positive' && !topStrength && r.reason) {
+      topStrength = r.reason as string;
     }
-    if (r['feedback'] === 'negative' && !topWeakness && r['reason']) {
-      topWeakness = r['reason'] as string;
+    if (r.feedback === 'negative' && !topWeakness && r.reason) {
+      topWeakness = r.reason as string;
     }
   }
 
@@ -525,8 +534,8 @@ export async function getCompactPerformanceInsight(agentId: string): Promise<str
       AND inserted_at > NOW() - INTERVAL '14 days'
       AND inserted_at <= NOW() - INTERVAL '7 days'
   `;
-  const recentAvg = (recentRows[0] as Record<string, unknown>)['recent_avg'] as number | null;
-  const priorAvg = (priorRows[0] as Record<string, unknown>)['prior_avg'] as number | null;
+  const recentAvg = (recentRows[0] as Record<string, unknown>).recent_avg as number | null;
+  const priorAvg = (priorRows[0] as Record<string, unknown>).prior_avg as number | null;
 
   if (recentAvg != null && priorAvg != null && priorAvg - recentAvg > 0.3) {
     // Find most common negative reason in last 7 days
@@ -536,7 +545,10 @@ export async function getCompactPerformanceInsight(agentId: string): Promise<str
       GROUP BY reason ORDER BY cnt DESC LIMIT 1
     `;
     if (recentNeg.length > 0) {
-      const reason = ((recentNeg[0] as Record<string, unknown>)['reason'] as string ?? '').replace(/_/g, ' ');
+      const reason = (((recentNeg[0] as Record<string, unknown>).reason as string) ?? '').replace(
+        /_/g,
+        ' ',
+      );
       insight += `\nRecent feedback trend: users report ${reason}. Address this.`;
     }
   }

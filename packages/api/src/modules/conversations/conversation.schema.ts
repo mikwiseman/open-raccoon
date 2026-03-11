@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { ContentBlockSchema } from '@wai-agents/shared';
+import { z } from 'zod';
 
 export const CreateConversationSchema = z.object({
   title: z.string().max(255).optional(),
@@ -13,10 +13,12 @@ export const UpdateConversationSchema = z.object({
 });
 
 export const SendMessageSchema = z.object({
-  content: z.array(ContentBlockSchema).min(1).refine(
-    (blocks) => JSON.stringify(blocks).length <= 100000,
-    { message: 'Message content too large (max 100KB)' }
-  ),
+  content: z
+    .array(ContentBlockSchema)
+    .min(1)
+    .refine((blocks) => JSON.stringify(blocks).length <= 100000, {
+      message: 'Message content too large (max 100KB)',
+    }),
 });
 
 export const AddMemberSchema = z.object({

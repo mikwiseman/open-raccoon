@@ -1,5 +1,5 @@
-import { createQueue, createWorker } from './queue.js';
 import { sql } from '../db/connection.js';
+import { createQueue, createWorker } from './queue.js';
 
 const QUEUE_NAME = 'idempotency-cleanup';
 
@@ -8,12 +8,9 @@ export const idempotencyCleanupQueue = createQueue(QUEUE_NAME);
 /**
  * Delete expired idempotency keys to prevent unbounded table growth.
  */
-export const idempotencyCleanupWorker = createWorker(
-  QUEUE_NAME,
-  async () => {
-    await sql`DELETE FROM idempotency_keys WHERE expires_at < NOW()`;
-  },
-);
+export const idempotencyCleanupWorker = createWorker(QUEUE_NAME, async () => {
+  await sql`DELETE FROM idempotency_keys WHERE expires_at < NOW()`;
+});
 
 /**
  * Schedule idempotency key cleanup to run every hour.

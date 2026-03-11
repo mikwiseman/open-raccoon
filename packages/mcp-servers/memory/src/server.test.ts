@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { z } from 'zod';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -19,16 +18,16 @@ vi.mock('node:crypto', () => ({
 import { sql } from './db.js';
 import { generateEmbedding } from './embeddings.js';
 import {
-  SaveMemoryInput,
-  SearchMemoriesInput,
   ForgetMemoryInput,
-  UpdateMemoryInput,
   GetMemoriesInput,
+  handleForgetMemory,
+  handleGetMemories,
   handleSaveMemory,
   handleSearchMemories,
-  handleForgetMemory,
   handleUpdateMemory,
-  handleGetMemories,
+  SaveMemoryInput,
+  SearchMemoriesInput,
+  UpdateMemoryInput,
 } from './tools.js';
 
 const AGENT_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -134,12 +133,20 @@ describe('SearchMemoriesInput schema', () => {
 
 describe('ForgetMemoryInput schema', () => {
   it('accepts valid UUIDs', () => {
-    const result = ForgetMemoryInput.safeParse({ memory_id: MEMORY_ID, agent_id: AGENT_ID, user_id: USER_ID });
+    const result = ForgetMemoryInput.safeParse({
+      memory_id: MEMORY_ID,
+      agent_id: AGENT_ID,
+      user_id: USER_ID,
+    });
     expect(result.success).toBe(true);
   });
 
   it('rejects invalid UUID', () => {
-    const result = ForgetMemoryInput.safeParse({ memory_id: 'bad-id', agent_id: AGENT_ID, user_id: USER_ID });
+    const result = ForgetMemoryInput.safeParse({
+      memory_id: 'bad-id',
+      agent_id: AGENT_ID,
+      user_id: USER_ID,
+    });
     expect(result.success).toBe(false);
   });
 });
@@ -235,9 +242,7 @@ describe('handleSearchMemories', () => {
         similarity: 0.95,
       },
     ];
-    vi.mocked(sql).mockReturnValue(
-      mockSql(mockMemories, 1),
-    );
+    vi.mocked(sql).mockReturnValue(mockSql(mockMemories, 1));
 
     const result = await handleSearchMemories({
       agent_id: AGENT_ID,
@@ -254,9 +259,7 @@ describe('handleSearchMemories', () => {
   });
 
   it('returns empty array when no memories match', async () => {
-    vi.mocked(sql).mockReturnValue(
-      mockSql([], 0),
-    );
+    vi.mocked(sql).mockReturnValue(mockSql([], 0));
 
     const result = await handleSearchMemories({
       agent_id: AGENT_ID,
@@ -271,37 +274,43 @@ describe('handleSearchMemories', () => {
 
 describe('handleForgetMemory', () => {
   it('deletes memory and returns deleted true when found', async () => {
-    vi.mocked(sql).mockReturnValue(
-      mockSql([], 1),
-    );
+    vi.mocked(sql).mockReturnValue(mockSql([], 1));
 
-    const result = await handleForgetMemory({ memory_id: MEMORY_ID, agent_id: AGENT_ID, user_id: USER_ID });
+    const result = await handleForgetMemory({
+      memory_id: MEMORY_ID,
+      agent_id: AGENT_ID,
+      user_id: USER_ID,
+    });
 
     expect(sql).toHaveBeenCalledTimes(1);
     expect(result.deleted).toBe(true);
   });
 
   it('returns deleted false when memory not found', async () => {
-    vi.mocked(sql).mockReturnValue(
-      mockSql([], 0),
-    );
+    vi.mocked(sql).mockReturnValue(mockSql([], 0));
 
-    const result = await handleForgetMemory({ memory_id: MEMORY_ID, agent_id: AGENT_ID, user_id: USER_ID });
+    const result = await handleForgetMemory({
+      memory_id: MEMORY_ID,
+      agent_id: AGENT_ID,
+      user_id: USER_ID,
+    });
     expect(result.deleted).toBe(false);
   });
 });
 
 describe('handleUpdateMemory', () => {
   it('returns updated false when no fields provided', async () => {
-    const result = await handleUpdateMemory({ memory_id: MEMORY_ID, agent_id: AGENT_ID, user_id: USER_ID });
+    const result = await handleUpdateMemory({
+      memory_id: MEMORY_ID,
+      agent_id: AGENT_ID,
+      user_id: USER_ID,
+    });
     expect(result.updated).toBe(false);
     expect(sql).not.toHaveBeenCalled();
   });
 
   it('regenerates embedding when content changes', async () => {
-    vi.mocked(sql).mockReturnValue(
-      mockSql([], 1),
-    );
+    vi.mocked(sql).mockReturnValue(mockSql([], 1));
 
     const result = await handleUpdateMemory({
       memory_id: MEMORY_ID,
@@ -315,9 +324,7 @@ describe('handleUpdateMemory', () => {
   });
 
   it('does not regenerate embedding when only importance changes', async () => {
-    vi.mocked(sql).mockReturnValue(
-      mockSql([], 1),
-    );
+    vi.mocked(sql).mockReturnValue(mockSql([], 1));
 
     const result = await handleUpdateMemory({
       memory_id: MEMORY_ID,
@@ -331,9 +338,7 @@ describe('handleUpdateMemory', () => {
   });
 
   it('returns updated false when memory not found', async () => {
-    vi.mocked(sql).mockReturnValue(
-      mockSql([], 0),
-    );
+    vi.mocked(sql).mockReturnValue(mockSql([], 0));
 
     const result = await handleUpdateMemory({
       memory_id: MEMORY_ID,
@@ -363,9 +368,7 @@ describe('handleGetMemories', () => {
   ];
 
   it('returns memories ordered by inserted_at desc', async () => {
-    vi.mocked(sql).mockReturnValue(
-      mockSql(mockMemories, 1),
-    );
+    vi.mocked(sql).mockReturnValue(mockSql(mockMemories, 1));
 
     const result = await handleGetMemories({
       agent_id: AGENT_ID,
@@ -380,9 +383,7 @@ describe('handleGetMemories', () => {
   });
 
   it('filters by memory_type when provided', async () => {
-    vi.mocked(sql).mockReturnValue(
-      mockSql(mockMemories, 1),
-    );
+    vi.mocked(sql).mockReturnValue(mockSql(mockMemories, 1));
 
     const result = await handleGetMemories({
       agent_id: AGENT_ID,

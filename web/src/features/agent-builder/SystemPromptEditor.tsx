@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef } from 'react';
 
 type Props = {
   value: string;
@@ -8,10 +8,10 @@ type Props = {
 };
 
 const VARIABLES = [
-  { label: "User Name", token: "{{user.name}}" },
-  { label: "Date", token: "{{date}}" },
-  { label: "Time", token: "{{time}}" },
-  { label: "Agent Name", token: "{{agent.name}}" },
+  { label: 'User Name', token: '{{user.name}}' },
+  { label: 'Date', token: '{{date}}' },
+  { label: 'Time', token: '{{time}}' },
+  { label: 'Agent Name', token: '{{agent.name}}' },
 ];
 
 export function SystemPromptEditor({ value, onChange }: Props) {
@@ -35,7 +35,7 @@ export function SystemPromptEditor({ value, onChange }: Props) {
         textarea.focus();
       });
     },
-    [value, onChange]
+    [value, onChange],
   );
 
   return (
@@ -66,9 +66,7 @@ export function SystemPromptEditor({ value, onChange }: Props) {
         rows={10}
       />
 
-      <div className="ab-char-count">
-        {value.length.toLocaleString()} characters
-      </div>
+      <div className="ab-char-count">{value.length.toLocaleString()} characters</div>
     </fieldset>
   );
 }

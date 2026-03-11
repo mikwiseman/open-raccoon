@@ -10,7 +10,15 @@
         "noUnusedImports": "warn"
       },
       "suspicious": {
-        "noExplicitAny": "warn"
+        "noExplicitAny": "warn",
+        "noArrayIndexKey": "off",
+        "useIterableCallbackReturn": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "warn"
+      },
+      "performance": {
+        "noImgElement": "off"
       }
     }
   },
@@ -27,17 +35,30 @@
       "trailingCommas": "all"
     }
   },
+  "overrides": [
+    {
+      "includes": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
+          }
+        }
+      }
+    }
+  ],
   "files": {
     "includes": [
       "**",
-      "!node_modules",
-      "!dist",
-      "!.next",
-      "!build",
-      "!*.min.js",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/.next",
+      "!**/build",
+      "!**/*.min.js",
       "!wai_agents",
       "!agent_runtime",
-      "!WaiAgents"
+      "!WaiAgents",
+      "!pnpm-lock.yaml"
     ]
   }
 }

@@ -1,20 +1,20 @@
 import { Hono } from 'hono';
+import { authMiddleware } from './auth.middleware.js';
 import {
-  RegisterSchema,
   LoginSchema,
-  RefreshSchema,
   MagicLinkSchema,
   MagicLinkVerifySchema,
+  RefreshSchema,
+  RegisterSchema,
 } from './auth.schema.js';
 import {
-  register,
-  login,
-  refreshTokens,
-  logout,
   createMagicLink,
+  login,
+  logout,
+  refreshTokens,
+  register,
   verifyMagicLink,
 } from './auth.service.js';
-import { authMiddleware } from './auth.middleware.js';
 import { createRateLimiter } from './rate-limiter.js';
 
 export const authRoutes = new Hono();
@@ -88,7 +88,10 @@ authRoutes.post('/magic-link', async (c) => {
   }
   await createMagicLink(parsed.data.email);
   // Always return success to avoid email enumeration
-  return c.json({ message: 'If an account exists for that email, a magic link has been sent.' }, 200);
+  return c.json(
+    { message: 'If an account exists for that email, a magic link has been sent.' },
+    200,
+  );
 });
 
 authRoutes.post('/magic-link/verify', async (c) => {

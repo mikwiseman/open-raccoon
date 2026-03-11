@@ -1,2 +1,2 @@
-export * from "./AgentPlaceholder";
-export * from "./AgentsView";
+export * from './AgentPlaceholder';
+export * from './AgentsView';

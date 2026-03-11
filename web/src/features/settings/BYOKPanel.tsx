@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 
 type Props = {
   service: string;
@@ -9,7 +9,7 @@ type Props = {
 };
 
 export function BYOKPanel({ service, onSave, saved }: Props) {
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
@@ -17,11 +17,11 @@ export function BYOKPanel({ service, onSave, saved }: Props) {
     setSaving(true);
     onSave(apiKey.trim());
     setSaving(false);
-    setApiKey("");
+    setApiKey('');
   }
 
   return (
-    <div className="is-byok-panel" aria-label={`byok-${service}`}>
+    <div className="is-byok-panel">
       <h4 className="is-byok-title">Bring Your Own Key</h4>
       <p className="is-byok-desc">
         Use your own API key for {service}. Keys are encrypted at rest.
@@ -40,7 +40,7 @@ export function BYOKPanel({ service, onSave, saved }: Props) {
           onClick={() => void handleSave()}
           disabled={saving || !apiKey.trim()}
         >
-          {saving ? "Saving..." : "Save Key"}
+          {saving ? 'Saving...' : 'Save Key'}
         </button>
       </div>
       {saved && <span className="is-byok-saved">Key saved</span>}

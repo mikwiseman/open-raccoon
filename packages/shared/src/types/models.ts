@@ -18,7 +18,12 @@ export type ToolApprovalDecision = 'approved' | 'denied' | 'revoked' | 'pending'
 export type BridgePlatform = 'telegram' | 'whatsapp' | 'signal' | 'discord';
 export type BridgeMethod = 'user_level' | 'bot' | 'cloud_api';
 export type BridgeStatus = 'connected' | 'reconnecting' | 'disconnected' | 'error';
-export type FeedItemType = 'agent_showcase' | 'page_showcase' | 'tool_showcase' | 'remix' | 'creation';
+export type FeedItemType =
+  | 'agent_showcase'
+  | 'page_showcase'
+  | 'tool_showcase'
+  | 'remix'
+  | 'creation';
 export type FeedReferenceType = 'agent' | 'page' | 'tool';
 export type IntegrationAuthMethod = 'oauth2' | 'oauth2_pkce' | 'bot_token' | 'api_key';
 export type IntegrationStatus = 'active' | 'expired' | 'revoked';

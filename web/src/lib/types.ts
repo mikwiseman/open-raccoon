@@ -32,7 +32,7 @@ export type User = {
 
 export type Conversation = {
   id: string;
-  type: "dm" | "group" | "agent" | "bridge";
+  type: 'dm' | 'group' | 'agent' | 'bridge';
   title: string | null;
   avatar_url: string | null;
   creator_id: string;
@@ -55,7 +55,7 @@ export type ConversationMember = {
   id: string;
   conversation_id: string;
   user_id: string;
-  role: "owner" | "admin" | "member";
+  role: 'owner' | 'admin' | 'member';
   muted: boolean;
   last_read_at: string | null;
   joined_at: string;
@@ -73,8 +73,8 @@ export type Message = {
   id: string;
   conversation_id: string;
   sender_id: string;
-  sender_type: "human" | "agent" | "bridge" | "system";
-  type: "text" | "media" | "code" | "embed" | "system" | "agent_status";
+  sender_type: 'human' | 'agent' | 'bridge' | 'system';
+  type: 'text' | 'media' | 'code' | 'embed' | 'system' | 'agent_status';
   content: Record<string, unknown>;
   metadata: Record<string, unknown>;
   edited_at: string | null;
@@ -113,7 +113,7 @@ export type Page = {
   deploy_url: string | null;
   custom_domain: string | null;
   version: number;
-  visibility: "public" | "unlisted" | "private";
+  visibility: 'public' | 'unlisted' | 'private';
   view_count: number;
   forked_from: string | null;
   created_at: string;
@@ -138,7 +138,7 @@ export type MarketplaceAgent = {
   avatar_url: string | null;
   model: string | null;
   category: string | null;
-  visibility: "public" | "unlisted" | "private";
+  visibility: 'public' | 'unlisted' | 'private';
   usage_count: number;
   rating_count: number;
   average_rating: number;
@@ -168,7 +168,7 @@ export type MarketplaceAgentProfileResponse = {
 export type BridgeConnection = {
   id: string;
   user_id: string;
-  platform: "telegram" | "whatsapp";
+  platform: 'telegram' | 'whatsapp';
   method: string;
   status: string;
   metadata: Record<string, unknown>;
@@ -198,7 +198,7 @@ export type ToolConfig = {
 
 export type McpServerConfig = {
   name: string;
-  transport: "stdio" | "sse" | "streamable_http";
+  transport: 'stdio' | 'sse' | 'streamable_http';
   command?: string;
   args?: string[];
   url?: string;
@@ -215,12 +215,12 @@ export type Agent = {
   avatar_url: string | null;
   system_prompt: string;
   model: string;
-  execution_mode: "raw" | "claude_sdk" | "openai_sdk";
+  execution_mode: 'raw' | 'claude_sdk' | 'openai_sdk';
   temperature: number;
   max_tokens: number;
   tools: ToolConfig[];
   mcp_servers: McpServerConfig[];
-  visibility: "public" | "unlisted" | "private";
+  visibility: 'public' | 'unlisted' | 'private';
   category: string | null;
   usage_count: number;
   rating_sum: number;
@@ -233,7 +233,7 @@ export type Agent = {
 export type AgentSchedule = {
   id: string;
   agent_id: string;
-  schedule_type: "cron" | "interval" | "once";
+  schedule_type: 'cron' | 'interval' | 'once';
   cron_expression: string | null;
   interval_seconds: number | null;
   run_at: string | null;
@@ -250,7 +250,7 @@ export type AgentMemory = {
   agent_id: string;
   content: string;
   importance: number;
-  memory_type: "observation" | "reflection" | "fact" | "preference";
+  memory_type: 'observation' | 'reflection' | 'fact' | 'preference';
   tags: string[];
   access_count: number;
   last_accessed_at: string | null;
@@ -266,7 +266,7 @@ export type AgentEvent = {
   input_tokens: number | null;
   output_tokens: number | null;
   model: string | null;
-  status: "running" | "completed" | "failed" | "timeout";
+  status: 'running' | 'completed' | 'failed' | 'timeout';
   error_code: string | null;
   error_message: string | null;
   inserted_at: string;
@@ -275,7 +275,7 @@ export type AgentEvent = {
 export type IntegrationStatus = {
   service: string;
   connected: boolean;
-  status: "active" | "expired" | "revoked" | "not_connected";
+  status: 'active' | 'expired' | 'revoked' | 'not_connected';
   scopes: string[];
   expires_at: string | null;
   last_used_at: string | null;
@@ -286,7 +286,7 @@ export type ChannelRoute = {
   agent_id: string;
   service: string;
   external_chat_id: string;
-  direction: "inbound" | "outbound" | "both";
+  direction: 'inbound' | 'outbound' | 'both';
   enabled: boolean;
   metadata: Record<string, unknown>;
 };

@@ -33,7 +33,13 @@ select {
   color: inherit;
 }
 
-h1, h2, h3, h4, p, ul, pre {
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+pre {
   margin: 0;
 }
 
@@ -62,7 +68,7 @@ pre {
 
 ::selection {
   background: var(--color-accent-primary);
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 /* ============================================================
@@ -103,7 +109,7 @@ button:disabled {
 
 button.btn-primary {
   background: var(--color-accent-primary);
-  color: #FFFFFF;
+  color: #ffffff;
   border-color: var(--color-accent-primary);
 }
 
@@ -128,7 +134,7 @@ button.btn-danger {
 
 button.btn-danger:hover {
   background: var(--color-error);
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 a.link-button {
@@ -168,8 +174,9 @@ select {
   background: var(--color-bg-input);
   color: var(--color-text-primary);
   font-size: var(--text-base);
-  transition: border-color var(--duration-normal) var(--ease-default),
-              box-shadow var(--duration-normal) var(--ease-default);
+  transition:
+    border-color var(--duration-normal) var(--ease-default),
+    box-shadow var(--duration-normal) var(--ease-default);
 }
 
 textarea {
@@ -282,7 +289,9 @@ label {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
@@ -297,14 +306,12 @@ label {
 .app-layout {
   display: grid;
   grid-template-columns: 220px 1fr;
-  min-height: 100vh;
   min-height: 100dvh;
 }
 
 .app-sidebar {
   position: sticky;
   top: 0;
-  height: 100vh;
   height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -401,7 +408,6 @@ label {
 }
 
 .app-main {
-  min-height: 100vh;
   min-height: 100dvh;
   overflow: hidden;
 }
@@ -716,7 +722,9 @@ label {
 }
 
 @keyframes typing-pulse {
-  0%, 60%, 100% {
+  0%,
+  60%,
+  100% {
     opacity: 0.3;
     transform: scale(0.8);
   }
@@ -1174,7 +1182,8 @@ label {
 }
 
 @keyframes status-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -1197,7 +1206,8 @@ label {
 }
 
 @keyframes cursor-blink {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -1423,7 +1433,9 @@ label {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .agent-card:hover {
@@ -1575,7 +1587,9 @@ label {
   cursor: pointer;
   text-align: left;
   width: 100%;
-  transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease;
+  transition:
+    background var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .ab-agent-card:hover {
@@ -1802,7 +1816,9 @@ label {
   border: 1px solid var(--color-border-primary);
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: border-color var(--duration-fast) ease, background var(--duration-fast) ease;
+  transition:
+    border-color var(--duration-fast) ease,
+    background var(--duration-fast) ease;
 }
 
 .ab-radio-card:hover {
@@ -2039,7 +2055,9 @@ label {
   font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;
-  transition: background var(--duration-fast) ease, opacity var(--duration-fast) ease;
+  transition:
+    background var(--duration-fast) ease,
+    opacity var(--duration-fast) ease;
 }
 
 .ab-btn:disabled {
@@ -2246,7 +2264,9 @@ label {
   color: var(--color-text-secondary);
   cursor: pointer;
   border-bottom: 2px solid transparent;
-  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+  transition:
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .ad-tab:hover {
@@ -2316,8 +2336,13 @@ label {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 /* Stats cards */

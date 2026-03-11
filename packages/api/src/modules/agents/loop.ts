@@ -1,14 +1,13 @@
 import { randomUUID } from 'node:crypto';
+import { desc, eq } from 'drizzle-orm';
 import { db, sql } from '../../db/connection.js';
 import { agents } from '../../db/schema/agents.js';
 import { messages } from '../../db/schema/conversations.js';
-import { eq, desc } from 'drizzle-orm';
 import { emitAgentEvent, emitMessage } from '../../ws/emitter.js';
 import { callLLM } from './llm/index.js';
-import { assembleSoulPrompt } from './soul.js';
 import { McpManager } from './mcp-manager.js';
-import type { AgentEvent } from '@wai-agents/shared';
 import type { CallerContext } from './soul.js';
+import { assembleSoulPrompt } from './soul.js';
 
 export interface AgentLoopConfig {
   agentId: string;
@@ -28,7 +27,7 @@ export interface AgentLoopResult {
 const MAX_TURNS = 25;
 
 export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopResult> {
-  const { agentId, conversationId, userId, message, abortSignal, a2aDepth = 0, callerContext } = config;
+  const { agentId, conversationId, userId, message, abortSignal, callerContext } = config;
   const runId = randomUUID();
 
   // 1. Load agent config from DB
@@ -68,9 +67,7 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopRe
     if (typeof raw === 'string') {
       text = raw;
     } else if (Array.isArray(raw)) {
-      text = (raw as Array<{ type: string; text?: string }>)
-        .map((b) => b.text ?? '')
-        .join('');
+      text = (raw as Array<{ type: string; text?: string }>).map((b) => b.text ?? '').join('');
     } else {
       text = JSON.stringify(raw);
     }

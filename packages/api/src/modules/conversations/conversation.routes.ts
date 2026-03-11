@@ -1,26 +1,26 @@
 import { Hono } from 'hono';
+import { sql } from '../../db/connection.js';
 import { authMiddleware } from '../auth/auth.middleware.js';
+import { MessageFeedbackSchema } from '../social/social.schema.js';
+import { shouldPromptFeedback, submitMessageFeedback } from '../social/social.service.js';
 import {
-  CreateConversationSchema,
-  UpdateConversationSchema,
-  SendMessageSchema,
   AddMemberSchema,
+  CreateConversationSchema,
+  SendMessageSchema,
+  UpdateConversationSchema,
 } from './conversation.schema.js';
 import {
-  listConversations,
-  createConversation,
-  getConversation,
-  updateConversation,
-  deleteConversation,
-  listMessages,
-  sendMessage,
-  listMembers,
   addMember,
+  createConversation,
+  deleteConversation,
+  getConversation,
+  listConversations,
+  listMembers,
+  listMessages,
   removeMember,
+  sendMessage,
+  updateConversation,
 } from './conversation.service.js';
-import { sql } from '../../db/connection.js';
-import { MessageFeedbackSchema } from '../social/social.schema.js';
-import { submitMessageFeedback, shouldPromptFeedback } from '../social/social.service.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -113,7 +113,7 @@ conversationRoutes.get('/:id/messages', authMiddleware, async (c) => {
   const cursor = c.req.query('cursor');
   const limitParam = c.req.query('limit');
   const parsedLimit = limitParam ? parseInt(limitParam, 10) : 50;
-  const limit = isNaN(parsedLimit) ? 50 : parsedLimit;
+  const limit = Number.isNaN(parsedLimit) ? 50 : parsedLimit;
   try {
     const messages = await listMessages(conversationId, userId, cursor, limit);
     return c.json({ messages }, 200);
@@ -250,14 +250,21 @@ conversationRoutes.post('/:id/messages/:messageId/feedback', authMiddleware, asy
     LIMIT 1
   `;
   if (msgRows.length === 0) {
-    return c.json({ error: 'Not found', message: 'Agent message not found in this conversation' }, 404);
+    return c.json(
+      { error: 'Not found', message: 'Agent message not found in this conversation' },
+      404,
+    );
   }
 
-  const agentId = (convRows[0] as Record<string, unknown>)['agent_id'] as string;
+  const agentId = (convRows[0] as Record<string, unknown>).agent_id as string;
 
   const result = await submitMessageFeedback(
-    conversationId, messageId, userId, agentId,
-    parsed.data.feedback, parsed.data.reason,
+    conversationId,
+    messageId,
+    userId,
+    agentId,
+    parsed.data.feedback,
+    parsed.data.reason,
   );
   return c.json({ feedback: result }, 201);
 });

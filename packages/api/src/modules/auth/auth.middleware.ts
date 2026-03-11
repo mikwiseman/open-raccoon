@@ -10,7 +10,10 @@ export const authMiddleware = createMiddleware<{
   const authHeader = c.req.header('Authorization');
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ error: 'Unauthorized', message: 'Missing or invalid Authorization header' }, 401);
+    return c.json(
+      { error: 'Unauthorized', message: 'Missing or invalid Authorization header' },
+      401,
+    );
   }
 
   const token = authHeader.slice(7);

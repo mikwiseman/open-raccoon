@@ -1,1 +1,1 @@
-export { MarketplaceView, MarketplacePlaceholder } from "./MarketplaceView";
+export { MarketplacePlaceholder, MarketplaceView } from './MarketplaceView';

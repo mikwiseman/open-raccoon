@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
 export type FileBlockData = {
-  type: "file";
+  type: 'file';
   url: string;
   name: string;
   size?: number;
@@ -16,17 +16,17 @@ function formatFileSize(bytes: number): string {
 }
 
 function getFileIcon(name: string, mimeType?: string): string {
-  const ext = name.split(".").pop()?.toLowerCase() || "";
-  if (mimeType?.startsWith("image/")) return "\uD83D\uDDBC"; // framed picture
-  if (mimeType?.startsWith("video/")) return "\uD83C\uDFA5"; // movie camera
-  if (mimeType?.startsWith("audio/")) return "\uD83C\uDFB5"; // musical note
-  if (["pdf"].includes(ext)) return "\uD83D\uDCC4"; // page
-  if (["zip", "gz", "tar", "rar", "7z"].includes(ext)) return "\uD83D\uDCE6"; // package
-  if (["doc", "docx", "txt", "rtf", "odt"].includes(ext)) return "\uD83D\uDCC3"; // page with curl
-  if (["xls", "xlsx", "csv"].includes(ext)) return "\uD83D\uDCCA"; // bar chart
-  if (["js", "ts", "py", "rb", "go", "rs", "java", "c", "cpp", "h"].includes(ext))
-    return "\uD83D\uDCBB"; // laptop
-  return "\uD83D\uDCC1"; // file folder
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  if (mimeType?.startsWith('image/')) return '\uD83D\uDDBC'; // framed picture
+  if (mimeType?.startsWith('video/')) return '\uD83C\uDFA5'; // movie camera
+  if (mimeType?.startsWith('audio/')) return '\uD83C\uDFB5'; // musical note
+  if (['pdf'].includes(ext)) return '\uD83D\uDCC4'; // page
+  if (['zip', 'gz', 'tar', 'rar', '7z'].includes(ext)) return '\uD83D\uDCE6'; // package
+  if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(ext)) return '\uD83D\uDCC3'; // page with curl
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return '\uD83D\uDCCA'; // bar chart
+  if (['js', 'ts', 'py', 'rb', 'go', 'rs', 'java', 'c', 'cpp', 'h'].includes(ext))
+    return '\uD83D\uDCBB'; // laptop
+  return '\uD83D\uDCC1'; // file folder
 }
 
 export function FileBlock({ block }: { block: FileBlockData }) {

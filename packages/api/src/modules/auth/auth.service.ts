@@ -1,10 +1,10 @@
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import * as argon2 from 'argon2';
-import { SignJWT, jwtVerify } from 'jose';
+import { jwtVerify, SignJWT } from 'jose';
 import { sql } from '../../db/connection.js';
 import { toISO } from '../../lib/utils.js';
-import type { RegisterInput, LoginInput } from './auth.schema.js';
+import type { LoginInput, RegisterInput } from './auth.schema.js';
 
 const scryptAsync = promisify(scrypt);
 
@@ -74,7 +74,7 @@ export async function verifyAccessToken(token: string): Promise<{ sub: string; r
 
 export async function verifyRefreshToken(token: string): Promise<{ sub: string }> {
   const { payload } = await jwtVerify(token, JWT_SECRET);
-  if (!payload.sub || payload['type'] !== 'refresh') {
+  if (!payload.sub || payload.type !== 'refresh') {
     throw new Error('Invalid refresh token');
   }
   return { sub: payload.sub };
@@ -82,24 +82,25 @@ export async function verifyRefreshToken(token: string): Promise<{ sub: string }
 
 function formatUser(row: Record<string, unknown>) {
   return {
-    id: row['id'],
-    username: row['username'],
-    display_name: row['display_name'],
-    email: row['email'],
-    avatar_url: row['avatar_url'],
-    bio: row['bio'],
-    status: row['status'],
-    role: row['role'],
-    settings: row['settings'],
-    plan: row['plan'],
-    created_at: toISO(row['inserted_at']),
-    updated_at: toISO(row['updated_at']),
+    id: row.id,
+    username: row.username,
+    display_name: row.display_name,
+    email: row.email,
+    avatar_url: row.avatar_url,
+    bio: row.bio,
+    status: row.status,
+    role: row.role,
+    settings: row.settings,
+    plan: row.plan,
+    created_at: toISO(row.inserted_at),
+    updated_at: toISO(row.updated_at),
   };
 }
 
-export async function register(
-  input: RegisterInput,
-): Promise<{ user: ReturnType<typeof formatUser>; tokens: { access_token: string; refresh_token: string; expires_in: number } }> {
+export async function register(input: RegisterInput): Promise<{
+  user: ReturnType<typeof formatUser>;
+  tokens: { access_token: string; refresh_token: string; expires_in: number };
+}> {
   const { username, email, password } = input;
 
   // Check for existing user
@@ -134,9 +135,10 @@ export async function register(
   return { user, tokens };
 }
 
-export async function login(
-  input: LoginInput,
-): Promise<{ user: ReturnType<typeof formatUser>; tokens: { access_token: string; refresh_token: string; expires_in: number } }> {
+export async function login(input: LoginInput): Promise<{
+  user: ReturnType<typeof formatUser>;
+  tokens: { access_token: string; refresh_token: string; expires_in: number };
+}> {
   const { email, password } = input;
 
   const rows = await sql`
@@ -151,7 +153,7 @@ export async function login(
   }
 
   const row = rows[0] as Record<string, unknown>;
-  const storedHash = row['password_hash'] as string;
+  const storedHash = row.password_hash as string;
 
   if (!storedHash || !(await verifyPassword(password, storedHash))) {
     throw Object.assign(new Error('Invalid email or password'), { code: 'UNAUTHORIZED' });
@@ -177,7 +179,7 @@ export async function refreshTokens(
   }
 
   const row = rows[0] as Record<string, unknown>;
-  return generateTokens(row['id'] as string, row['role'] as string);
+  return generateTokens(row.id as string, row.role as string);
 }
 
 export async function logout(_userId: string): Promise<void> {
@@ -197,9 +199,10 @@ export async function createMagicLink(email: string): Promise<{ token: string }>
   return { token };
 }
 
-export async function verifyMagicLink(
-  token: string,
-): Promise<{ user: ReturnType<typeof formatUser>; tokens: { access_token: string; refresh_token: string; expires_in: number } }> {
+export async function verifyMagicLink(token: string): Promise<{
+  user: ReturnType<typeof formatUser>;
+  tokens: { access_token: string; refresh_token: string; expires_in: number };
+}> {
   const rows = await sql`
     SELECT mlt.id AS token_id, mlt.expires_at, mlt.used,
            u.id, u.username, u.display_name, u.email, u.avatar_url, u.bio, u.status, u.role, u.settings, u.plan, u.inserted_at, u.updated_at
@@ -215,16 +218,16 @@ export async function verifyMagicLink(
 
   const row = rows[0] as Record<string, unknown>;
 
-  if (row['used']) {
+  if (row.used) {
     throw Object.assign(new Error('Magic link already used'), { code: 'UNAUTHORIZED' });
   }
 
-  if (new Date(row['expires_at'] as string) < new Date()) {
+  if (new Date(row.expires_at as string) < new Date()) {
     throw Object.assign(new Error('Magic link expired'), { code: 'UNAUTHORIZED' });
   }
 
   // Mark token as used
-  const tokenId = row['token_id'] as string;
+  const tokenId = row.token_id as string;
   await sql`UPDATE magic_link_tokens SET used = true WHERE id = ${tokenId}`;
 
   const user = formatUser(row);
@@ -233,9 +236,7 @@ export async function verifyMagicLink(
   return { user, tokens };
 }
 
-export async function getUserById(
-  userId: string,
-): Promise<ReturnType<typeof formatUser>> {
+export async function getUserById(userId: string): Promise<ReturnType<typeof formatUser>> {
   const rows = await sql`
     SELECT id, username, display_name, email, avatar_url, bio, status, role, settings, plan, inserted_at, updated_at
     FROM users
@@ -250,9 +251,7 @@ export async function getUserById(
   return formatUser(rows[0] as Record<string, unknown>);
 }
 
-export async function getUserByUsername(
-  username: string,
-): Promise<ReturnType<typeof formatUser>> {
+export async function getUserByUsername(username: string): Promise<ReturnType<typeof formatUser>> {
   const rows = await sql`
     SELECT id, username, display_name, email, avatar_url, bio, status, role, settings, plan, inserted_at, updated_at
     FROM users

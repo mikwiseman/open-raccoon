@@ -1,12 +1,12 @@
-import { Server as SocketIOServer } from 'socket.io';
+import type { Server as HttpServer } from 'node:http';
 import { jwtVerify } from 'jose';
-import type { IncomingMessage, Server as HttpServer } from 'http';
-import { setupConversationHandlers } from './conversation-channel.js';
+import { Server as SocketIOServer } from 'socket.io';
+import { JWT_SECRET_STRING } from '../modules/auth/auth.service.js';
 import { setupAgentHandlers } from './agent-channel.js';
-import { setupUserHandlers } from './user-channel.js';
+import { setupConversationHandlers } from './conversation-channel.js';
 import { setIO } from './emitter.js';
 import { addToPresence, removeFromPresence } from './presence.js';
-import { JWT_SECRET_STRING } from '../modules/auth/auth.service.js';
+import { setupUserHandlers } from './user-channel.js';
 
 export function createSocketServer(httpServer: HttpServer): SocketIOServer {
   const io = new SocketIOServer(httpServer, {

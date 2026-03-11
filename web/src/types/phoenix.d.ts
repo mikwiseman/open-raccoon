@@ -1,6 +1,6 @@
-declare module "phoenix" {
+declare module 'phoenix' {
   export interface Push {
-    receive(status: "ok" | "error" | "timeout", callback: (response: unknown) => void): Push;
+    receive(status: 'ok' | 'error' | 'timeout', callback: (response: unknown) => void): Push;
   }
 
   export class Channel {
@@ -18,7 +18,7 @@ declare module "phoenix" {
       endPoint: string,
       opts?: {
         params?: Record<string, unknown> | (() => Record<string, unknown>);
-      }
+      },
     );
     onOpen(callback: () => void): void;
     onError(callback: (error: unknown) => void): void;

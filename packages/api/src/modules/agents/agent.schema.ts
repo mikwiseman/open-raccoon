@@ -28,7 +28,10 @@ const mcpServerSchema = z.object({
 export const CreateAgentSchema = z.object({
   name: z.string().min(1).max(64).transform(stripHtml),
   template: z.string().optional(),
-  description: z.string().optional().transform((v) => (v !== undefined ? stripHtml(v) : v)),
+  description: z
+    .string()
+    .optional()
+    .transform((v) => (v !== undefined ? stripHtml(v) : v)),
   system_prompt: z.string().max(50000).optional(),
   model: z.enum(supportedModels).optional(),
   tools: z.array(toolSchema).optional(),
@@ -41,7 +44,10 @@ export const CreateAgentSchema = z.object({
 
 export const UpdateAgentSchema = z.object({
   name: z.string().min(1).max(64).transform(stripHtml).optional(),
-  description: z.string().optional().transform((v) => (v !== undefined ? stripHtml(v) : v)),
+  description: z
+    .string()
+    .optional()
+    .transform((v) => (v !== undefined ? stripHtml(v) : v)),
   system_prompt: z.string().max(50000).optional(),
   model: z.enum(supportedModels).optional(),
   tools: z.array(toolSchema).optional(),

@@ -1,5 +1,15 @@
-"use client";
+'use client';
 
+import hljs from 'highlight.js/lib/core';
+import bash from 'highlight.js/lib/languages/bash';
+import css from 'highlight.js/lib/languages/css';
+import elixir from 'highlight.js/lib/languages/elixir';
+import javascript from 'highlight.js/lib/languages/javascript';
+import json from 'highlight.js/lib/languages/json';
+import python from 'highlight.js/lib/languages/python';
+import sql from 'highlight.js/lib/languages/sql';
+import typescript from 'highlight.js/lib/languages/typescript';
+import xml from 'highlight.js/lib/languages/xml';
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -7,49 +17,39 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState
-} from "react";
-import type { WaiAgentsApi } from "@/lib/api";
-import { SocketClient } from "@/lib/ws/socket-client";
+  useState,
+} from 'react';
+import type { WaiAgentsApi } from '@/lib/api';
+import type { SessionUser } from '@/lib/state/session-store';
 import type {
   AgentChannelStatus,
   Conversation,
   ConversationMember,
   Message,
-  ToolApprovalRequest
-} from "@/lib/types";
-import { asTextContent } from "@/lib/utils";
-import type { SessionUser } from "@/lib/state/session-store";
-import { ContentBlockRenderer, parseContentBlocks } from "./content-blocks";
-import { useAgentStream } from "./useAgentStream";
-import type { AgentStreamEvent } from "@/lib/ws/socket-client";
-import hljs from "highlight.js/lib/core";
-import javascript from "highlight.js/lib/languages/javascript";
-import typescript from "highlight.js/lib/languages/typescript";
-import python from "highlight.js/lib/languages/python";
-import json from "highlight.js/lib/languages/json";
-import bash from "highlight.js/lib/languages/bash";
-import css from "highlight.js/lib/languages/css";
-import xml from "highlight.js/lib/languages/xml";
-import sql from "highlight.js/lib/languages/sql";
-import elixir from "highlight.js/lib/languages/elixir";
-import "highlight.js/styles/github-dark.min.css";
-import "./chat-blocks.css";
+  ToolApprovalRequest,
+} from '@/lib/types';
+import { asTextContent } from '@/lib/utils';
+import type { AgentStreamEvent } from '@/lib/ws/socket-client';
+import { SocketClient } from '@/lib/ws/socket-client';
+import { ContentBlockRenderer, parseContentBlocks } from './content-blocks';
+import { useAgentStream } from './useAgentStream';
+import 'highlight.js/styles/github-dark.min.css';
+import './chat-blocks.css';
 
-hljs.registerLanguage("javascript", javascript);
-hljs.registerLanguage("js", javascript);
-hljs.registerLanguage("typescript", typescript);
-hljs.registerLanguage("ts", typescript);
-hljs.registerLanguage("python", python);
-hljs.registerLanguage("py", python);
-hljs.registerLanguage("json", json);
-hljs.registerLanguage("bash", bash);
-hljs.registerLanguage("sh", bash);
-hljs.registerLanguage("css", css);
-hljs.registerLanguage("html", xml);
-hljs.registerLanguage("xml", xml);
-hljs.registerLanguage("sql", sql);
-hljs.registerLanguage("elixir", elixir);
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('js', javascript);
+hljs.registerLanguage('typescript', typescript);
+hljs.registerLanguage('ts', typescript);
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('py', python);
+hljs.registerLanguage('json', json);
+hljs.registerLanguage('bash', bash);
+hljs.registerLanguage('sh', bash);
+hljs.registerLanguage('css', css);
+hljs.registerLanguage('html', xml);
+hljs.registerLanguage('xml', xml);
+hljs.registerLanguage('sql', sql);
+hljs.registerLanguage('elixir', elixir);
 
 /* ================================================================
    Types
@@ -71,9 +71,9 @@ type LocalAgentEvent = {
 
 type TypingState = Record<string, boolean>;
 
-type NewConvoTab = "dm" | "group";
+type NewConvoTab = 'dm' | 'group';
 
-type ApprovalScope = "allow_once" | "allow_session" | "allow_always";
+type ApprovalScope = 'allow_once' | 'allow_session' | 'allow_always';
 
 /* ================================================================
    Constants
@@ -90,12 +90,9 @@ export function ChatView({
   accessToken,
   currentUser,
   focusConversationId,
-  onConversationFocused
+  onConversationFocused,
 }: ChatViewProps) {
-  const wsClient = useMemo(
-    () => new SocketClient(),
-    []
-  );
+  const wsClient = useMemo(() => new SocketClient(), []);
 
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messageEndRef = useRef<HTMLDivElement>(null);
@@ -106,7 +103,7 @@ export function ChatView({
   const [conversationCursor, setConversationCursor] = useState<string | null>(null);
   const [conversationHasMore, setConversationHasMore] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  const [searchFilter, setSearchFilter] = useState("");
+  const [searchFilter, setSearchFilter] = useState('');
 
   /* -- Message state --------------------------------------------- */
   const [messages, setMessages] = useState<Message[]>([]);
@@ -116,12 +113,12 @@ export function ChatView({
   const [typingUsers, setTypingUsers] = useState<TypingState>({});
 
   /* -- Composer state -------------------------------------------- */
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [editingDraft, setEditingDraft] = useState("");
+  const [editingDraft, setEditingDraft] = useState('');
 
   /* -- Agent state ------------------------------------------------ */
-  const [agentEvents, setAgentEvents] = useState<LocalAgentEvent[]>([]);
+  const [_agentEvents, setAgentEvents] = useState<LocalAgentEvent[]>([]);
   const [approvalRequests, setApprovalRequests] = useState<ToolApprovalRequest[]>([]);
   const [agentStatus, setAgentStatus] = useState<AgentChannelStatus | null>(null);
   const [toolLog, setToolLog] = useState<LocalAgentEvent[]>([]);
@@ -129,9 +126,9 @@ export function ChatView({
 
   /* -- New conversation state ------------------------------------ */
   const [showNewConvoModal, setShowNewConvoModal] = useState(false);
-  const [newConvoTab, setNewConvoTab] = useState<NewConvoTab>("dm");
-  const [newDmUsername, setNewDmUsername] = useState("");
-  const [newGroupTitle, setNewGroupTitle] = useState("");
+  const [newConvoTab, setNewConvoTab] = useState<NewConvoTab>('dm');
+  const [newDmUsername, setNewDmUsername] = useState('');
+  const [newGroupTitle, setNewGroupTitle] = useState('');
 
   /* -- UI state -------------------------------------------------- */
   const [loadingConversations, setLoadingConversations] = useState(false);
@@ -153,7 +150,7 @@ export function ChatView({
   /* -- Derived --------------------------------------------------- */
   const selectedConversation = useMemo(
     () => conversations.find((c) => c.id === selectedConversationId) ?? null,
-    [conversations, selectedConversationId]
+    [conversations, selectedConversationId],
   );
 
   const memberNameById = useMemo(() => {
@@ -170,7 +167,7 @@ export function ChatView({
     if (!searchFilter.trim()) return conversations;
     const q = searchFilter.toLowerCase();
     return conversations.filter((c) => {
-      const title = c.title || "";
+      const title = c.title || '';
       return title.toLowerCase().includes(q);
     });
   }, [conversations, searchFilter]);
@@ -194,7 +191,7 @@ export function ChatView({
         setLoadingConversations(false);
       }
     },
-    [api]
+    [api],
   );
 
   const fetchMessages = useCallback(
@@ -202,7 +199,10 @@ export function ChatView({
       setLoadingMessages(true);
       setError(null);
       try {
-        const res = await api.listMessages(conversationId, { limit: 30, cursor: cursor ?? undefined });
+        const res = await api.listMessages(conversationId, {
+          limit: 30,
+          cursor: cursor ?? undefined,
+        });
         const ascending = [...res.items].reverse();
         ascending.forEach((m) => seenMessageIds.current.add(m.id));
         setMessages((prev) => {
@@ -217,7 +217,7 @@ export function ChatView({
         setLoadingMessages(false);
       }
     },
-    [api]
+    [api],
   );
 
   const fetchMembers = useCallback(
@@ -229,7 +229,7 @@ export function ChatView({
         setError(getErrorMessage(err));
       }
     },
-    [api]
+    [api],
   );
 
   /* ================================================================
@@ -279,15 +279,15 @@ export function ChatView({
       };
       setAgentEvents((prev) => [localEvent, ...prev].slice(0, 80));
 
-      if (event.type === "status" && event.message) {
+      if (event.type === 'status' && event.message) {
         setAgentStatus({ message: event.message });
       }
 
-      if (event.type === "tool_call_start" || event.type === "tool_call_end") {
+      if (event.type === 'tool_call_start' || event.type === 'tool_call_end') {
         setToolLog((prev) => [localEvent, ...prev].slice(0, 40));
       }
 
-      if (event.type === "run_finished" || event.type === "run_error") {
+      if (event.type === 'run_finished' || event.type === 'run_error') {
         setAgentStatus(null);
       }
     });
@@ -346,13 +346,13 @@ export function ChatView({
     if (!selectedConversationId) return;
 
     wsClient.joinConversation(selectedConversationId);
-    if (selectedConversation?.type === "agent") {
+    if (selectedConversation?.type === 'agent') {
       wsClient.joinAgent(selectedConversationId);
     }
 
     return () => {
       wsClient.leaveConversation(selectedConversationId);
-      if (selectedConversation?.type === "agent") {
+      if (selectedConversation?.type === 'agent') {
         wsClient.leaveAgent(selectedConversationId);
       }
     };
@@ -371,9 +371,9 @@ export function ChatView({
     if (!el) return;
     const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
     if (isNearBottom) {
-      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, streamingMessage]);
+  }, []);
 
   /* -- Scroll detection ------------------------------------------ */
   useEffect(() => {
@@ -383,9 +383,9 @@ export function ChatView({
       const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
       setShowScrollButton(gap > 200);
     };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [selectedConversationId]);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
 
   /* ================================================================
      Actions
@@ -400,7 +400,7 @@ export function ChatView({
         wsClient.emitStopTyping(selectedConversationId);
       }
     },
-    [selectedConversationId, wsClient]
+    [selectedConversationId, wsClient],
   );
 
   const onDraftChange = (value: string) => {
@@ -422,18 +422,18 @@ export function ChatView({
       id: tempId,
       conversation_id: selectedConversationId,
       sender_id: currentUser.id,
-      sender_type: "human",
-      type: "text",
+      sender_type: 'human',
+      type: 'text',
       content: { text },
       metadata: {},
       edited_at: null,
       deleted_at: null,
       created_at: new Date().toISOString(),
-      reactions: []
+      reactions: [],
     };
 
     setMessages((prev) => [...prev, optimistic]);
-    setDraft("");
+    setDraft('');
     sendTyping(false);
     setPendingSend(true);
     setError(null);
@@ -455,7 +455,7 @@ export function ChatView({
   };
 
   const onComposerKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       void sendMessage(e as unknown as FormEvent);
     }
@@ -469,7 +469,7 @@ export function ChatView({
       const res = await api.editTextMessage(selectedConversationId, message.id, nextText);
       setMessages((prev) => replaceMessage(prev, res.message));
       setEditingMessageId(null);
-      setEditingDraft("");
+      setEditingDraft('');
     } catch (err) {
       setError(getErrorMessage(err));
     }
@@ -480,7 +480,7 @@ export function ChatView({
     try {
       const res = await api.deleteMessage(selectedConversationId, message.id);
       const deleted =
-        res && typeof res === "object" && "message" in res
+        res && typeof res === 'object' && 'message' in res
           ? (res as { message?: Message }).message
           : undefined;
       if (deleted) {
@@ -488,8 +488,8 @@ export function ChatView({
       } else {
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === message.id ? { ...m, deleted_at: new Date().toISOString() } : m
-          )
+            m.id === message.id ? { ...m, deleted_at: new Date().toISOString() } : m,
+          ),
         );
       }
     } catch (err) {
@@ -509,10 +509,10 @@ export function ChatView({
     if (!username) return;
     try {
       const userRes = await api.userByUsername(username);
-      const convoRes = await api.createConversation({ type: "dm", member_id: userRes.user.id });
+      const convoRes = await api.createConversation({ type: 'dm', member_id: userRes.user.id });
       setConversations((prev) => mergeConversations(prev, [convoRes.conversation], false));
       setSelectedConversationId(convoRes.conversation.id);
-      setNewDmUsername("");
+      setNewDmUsername('');
       setShowNewConvoModal(false);
       setMobileShowThread(true);
       setInfo(`Opened DM with @${username}`);
@@ -527,10 +527,10 @@ export function ChatView({
     const title = newGroupTitle.trim();
     if (!title) return;
     try {
-      const res = await api.createConversation({ type: "group", title });
+      const res = await api.createConversation({ type: 'group', title });
       setConversations((prev) => mergeConversations(prev, [res.conversation], false));
       setSelectedConversationId(res.conversation.id);
-      setNewGroupTitle("");
+      setNewGroupTitle('');
       setShowNewConvoModal(false);
       setMobileShowThread(true);
       setInfo(`Created group "${title}"`);
@@ -539,14 +539,18 @@ export function ChatView({
     }
   };
 
-  const sendApprovalDecision = async (requestId: string, decision: "approve" | "deny", scope: ApprovalScope = "allow_once") => {
-    if (!selectedConversation || selectedConversation.type !== "agent") return;
+  const sendApprovalDecision = async (
+    requestId: string,
+    decision: 'approve' | 'deny',
+    scope: ApprovalScope = 'allow_once',
+  ) => {
+    if (!selectedConversation || selectedConversation.type !== 'agent') return;
     wsClient.emitApprovalDecision(selectedConversation.id, requestId, decision, scope);
     setApprovalRequests((prev) => prev.filter((r) => r.request_id !== requestId));
   };
 
   const scrollToBottom = () => {
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const selectConversation = (id: string) => {
@@ -578,7 +582,7 @@ export function ChatView({
 
       <section className="cv-layout" aria-label="chat-module">
         {/* -- Sidebar -------------------------------------------- */}
-        <aside className={`cv-sidebar ${mobileShowThread ? "cv-hide-mobile" : ""}`}>
+        <aside className={`cv-sidebar ${mobileShowThread ? 'cv-hide-mobile' : ''}`}>
           <div className="cv-sidebar-header">
             <h2 className="cv-sidebar-title">Chats</h2>
             <button
@@ -610,22 +614,20 @@ export function ChatView({
               <li key={c.id}>
                 <button
                   type="button"
-                  className={`cv-convo-item ${c.id === selectedConversationId ? "cv-convo-active" : ""}`}
+                  className={`cv-convo-item ${c.id === selectedConversationId ? 'cv-convo-active' : ''}`}
                   onClick={() => selectConversation(c.id)}
                 >
-                  <div className="cv-avatar-circle">
-                    {getInitials(c.title || c.type)}
-                  </div>
+                  <div className="cv-avatar-circle">{getInitials(c.title || c.type)}</div>
                   <div className="cv-convo-text">
                     <span className="cv-convo-title">
                       {c.title || `${c.type.charAt(0).toUpperCase() + c.type.slice(1)} Chat`}
                     </span>
                     <span className="cv-convo-preview">
-                      {c.type === "agent" ? "Agent conversation" : c.type}
+                      {c.type === 'agent' ? 'Agent conversation' : c.type}
                     </span>
                   </div>
                   <span className="cv-convo-time">
-                    {c.last_message_at ? formatRelativeTime(c.last_message_at) : ""}
+                    {c.last_message_at ? formatRelativeTime(c.last_message_at) : ''}
                   </span>
                 </button>
               </li>
@@ -639,13 +641,13 @@ export function ChatView({
               onClick={() => void fetchConversations(conversationCursor)}
               disabled={loadingConversations}
             >
-              {loadingConversations ? "Loading..." : "Load more"}
+              {loadingConversations ? 'Loading...' : 'Load more'}
             </button>
           )}
         </aside>
 
         {/* -- Thread ---------------------------------------------- */}
-        <div className={`cv-thread ${!mobileShowThread ? "cv-hide-mobile" : ""}`}>
+        <div className={`cv-thread ${!mobileShowThread ? 'cv-hide-mobile' : ''}`}>
           {selectedConversation ? (
             <>
               {/* Thread header */}
@@ -664,9 +666,10 @@ export function ChatView({
                   </h3>
                   <span className="cv-thread-meta">
                     {selectedConversation.type}
-                    {selectedConversation.type === "agent" && agentStatus && (
+                    {selectedConversation.type === 'agent' && agentStatus && (
                       <>
-                        {" "}&middot;{" "}
+                        {' '}
+                        &middot;{' '}
                         <span className="cv-agent-status-inline">
                           <span className="cv-pulse-dot" />
                           {agentStatus.message}
@@ -678,11 +681,7 @@ export function ChatView({
               </header>
 
               {/* Connection banner */}
-              {!wsConnected && (
-                <div className="cv-conn-banner">
-                  Reconnecting to server...
-                </div>
-              )}
+              {!wsConnected && <div className="cv-conn-banner">Reconnecting to server...</div>}
 
               {/* Messages */}
               <div className="cv-messages" ref={messageListRef}>
@@ -693,7 +692,7 @@ export function ChatView({
                     onClick={() => void loadOlderMessages()}
                     disabled={loadingMessages}
                   >
-                    {loadingMessages ? "Loading..." : "Load older messages"}
+                    {loadingMessages ? 'Loading...' : 'Load older messages'}
                   </button>
                 )}
 
@@ -705,26 +704,27 @@ export function ChatView({
                       </div>
                     )}
                     {group.messages.map((msg, idx) => {
-                      const senderId = typeof msg.sender_id === "string" ? msg.sender_id : null;
+                      const senderId = typeof msg.sender_id === 'string' ? msg.sender_id : null;
                       const isOwn = senderId === currentUser.id;
                       const isFirst = idx === 0;
                       const isEditing = editingMessageId === msg.id;
-                      const isSystem = msg.sender_type === "system" || msg.type === "system";
-                      const isTemp = msg.id.startsWith("temp-");
+                      const isSystem = msg.sender_type === 'system' || msg.type === 'system';
+                      const isTemp = msg.id.startsWith('temp-');
                       const displayName = senderId
                         ? memberNameById.get(senderId) || senderId.slice(0, 8)
-                        : "System";
+                        : 'System';
 
                       // Parse content blocks
                       const contentBlocks = parseContentBlocks(msg.content);
-                      const hasRichBlocks = contentBlocks.length > 0 &&
-                        contentBlocks.some((b) => b.type !== "text" || contentBlocks.length > 1);
+                      const hasRichBlocks =
+                        contentBlocks.length > 0 &&
+                        contentBlocks.some((b) => b.type !== 'text' || contentBlocks.length > 1);
                       const legacyText = asTextContent(msg.content);
 
                       if (isSystem) {
                         return (
                           <div key={msg.id} className="cv-msg-system">
-                            <em>{legacyText || "System message"}</em>
+                            <em>{legacyText || 'System message'}</em>
                           </div>
                         );
                       }
@@ -732,7 +732,7 @@ export function ChatView({
                       return (
                         <div
                           key={msg.id}
-                          className={`cv-msg ${isOwn ? "cv-msg-own" : "cv-msg-other"} ${isTemp ? "cv-msg-pending" : ""}`}
+                          className={`cv-msg ${isOwn ? 'cv-msg-own' : 'cv-msg-other'} ${isTemp ? 'cv-msg-pending' : ''}`}
                           data-message-id={msg.id}
                         >
                           {!isOwn && isFirst && (
@@ -766,23 +766,32 @@ export function ChatView({
                                   rows={2}
                                 />
                                 <div className="cv-edit-actions">
-                                  <button type="submit" className="cv-btn-sm cv-btn-accent">Save</button>
+                                  <button type="submit" className="cv-btn-sm cv-btn-accent">
+                                    Save
+                                  </button>
                                   <button
                                     type="button"
                                     className="cv-btn-sm"
-                                    onClick={() => { setEditingMessageId(null); setEditingDraft(""); }}
+                                    onClick={() => {
+                                      setEditingMessageId(null);
+                                      setEditingDraft('');
+                                    }}
                                   >
                                     Cancel
                                   </button>
                                 </div>
                               </form>
                             ) : hasRichBlocks ? (
-                              <div className={`cv-msg-bubble ${isOwn ? "cv-bubble-sent" : "cv-bubble-received"}`}>
+                              <div
+                                className={`cv-msg-bubble ${isOwn ? 'cv-bubble-sent' : 'cv-bubble-received'}`}
+                              >
                                 <ContentBlockRenderer blocks={contentBlocks} />
                                 {msg.edited_at && <span className="cv-msg-edited">(edited)</span>}
                               </div>
                             ) : (
-                              <div className={`cv-msg-bubble ${isOwn ? "cv-bubble-sent" : "cv-bubble-received"}`}>
+                              <div
+                                className={`cv-msg-bubble ${isOwn ? 'cv-bubble-sent' : 'cv-bubble-received'}`}
+                              >
                                 <MessageContent text={legacyText} content={msg.content} />
                                 {msg.edited_at && <span className="cv-msg-edited">(edited)</span>}
                               </div>
@@ -793,7 +802,7 @@ export function ChatView({
                               <div className="cv-reactions">
                                 {aggregateReactions(msg.reactions).map(([emoji, count]) => (
                                   <span key={emoji} className="cv-reaction-pill">
-                                    {emoji} {count > 1 ? count : ""}
+                                    {emoji} {count > 1 ? count : ''}
                                   </span>
                                 ))}
                               </div>
@@ -813,7 +822,10 @@ export function ChatView({
                                   type="button"
                                   className="cv-btn-icon"
                                   title="Edit"
-                                  onClick={() => { setEditingMessageId(msg.id); setEditingDraft(legacyText); }}
+                                  onClick={() => {
+                                    setEditingMessageId(msg.id);
+                                    setEditingDraft(legacyText);
+                                  }}
                                 >
                                   &#9998;
                                 </button>
@@ -838,9 +850,7 @@ export function ChatView({
                 {isStreaming && streamingMessage && streamingMessage.blocks.length > 0 && (
                   <div className="cv-msg cv-msg-other cv-msg-streaming">
                     <div className="cv-msg-avatar">
-                      <div className="cv-avatar-circle cv-avatar-sm cv-avatar-agent">
-                        AI
-                      </div>
+                      <div className="cv-avatar-circle cv-avatar-sm cv-avatar-agent">AI</div>
                     </div>
                     <div className="cv-msg-content-wrap">
                       <div className="cv-msg-bubble cv-bubble-received">
@@ -898,12 +908,12 @@ export function ChatView({
                     }
                     let highlightedArgs: string;
                     try {
-                      highlightedArgs = hljs.highlight(formattedArgs, { language: "json" }).value;
+                      highlightedArgs = hljs.highlight(formattedArgs, { language: 'json' }).value;
                     } catch {
                       highlightedArgs = formattedArgs
-                        .replace(/&/g, "&amp;")
-                        .replace(/</g, "&lt;")
-                        .replace(/>/g, "&gt;");
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
                     }
                     return (
                       <div key={req.request_id} className="cv-approval-card">
@@ -917,7 +927,9 @@ export function ChatView({
                         {req.scopes.length > 0 && (
                           <div className="cv-approval-scopes">
                             {req.scopes.map((scope) => (
-                              <span key={scope} className="cv-approval-scope-tag">{scope}</span>
+                              <span key={scope} className="cv-approval-scope-tag">
+                                {scope}
+                              </span>
                             ))}
                           </div>
                         )}
@@ -928,28 +940,34 @@ export function ChatView({
                           <button
                             type="button"
                             className="cv-btn-sm cv-btn-accent"
-                            onClick={() => void sendApprovalDecision(req.request_id, "approve", "allow_once")}
+                            onClick={() =>
+                              void sendApprovalDecision(req.request_id, 'approve', 'allow_once')
+                            }
                           >
                             Allow Once
                           </button>
                           <button
                             type="button"
                             className="cv-btn-sm cv-btn-accent"
-                            onClick={() => void sendApprovalDecision(req.request_id, "approve", "allow_session")}
+                            onClick={() =>
+                              void sendApprovalDecision(req.request_id, 'approve', 'allow_session')
+                            }
                           >
                             Allow for Session
                           </button>
                           <button
                             type="button"
                             className="cv-btn-sm cv-btn-accent"
-                            onClick={() => void sendApprovalDecision(req.request_id, "approve", "allow_always")}
+                            onClick={() =>
+                              void sendApprovalDecision(req.request_id, 'approve', 'allow_always')
+                            }
                           >
                             Always Allow
                           </button>
                           <button
                             type="button"
                             className="cv-btn-sm cv-btn-deny"
-                            onClick={() => void sendApprovalDecision(req.request_id, "deny")}
+                            onClick={() => void sendApprovalDecision(req.request_id, 'deny')}
                           >
                             Deny
                           </button>
@@ -970,13 +988,13 @@ export function ChatView({
                   placeholder="Type a message..."
                   rows={1}
                   style={{
-                    height: "auto",
-                    minHeight: "40px",
-                    maxHeight: `${8 * 1.5 * 14 + 16}px`
+                    height: 'auto',
+                    minHeight: '40px',
+                    maxHeight: `${8 * 1.5 * 14 + 16}px`,
                   }}
                   ref={(el) => {
                     if (el) {
-                      el.style.height = "auto";
+                      el.style.height = 'auto';
                       el.style.height = `${Math.min(el.scrollHeight, 8 * 1.5 * 14 + 16)}px`;
                     }
                   }}
@@ -987,7 +1005,7 @@ export function ChatView({
                     className="cv-btn-send cv-btn-stop"
                     title="Stop generating"
                     onClick={() => {
-                      if (selectedConversation?.type === "agent") {
+                      if (selectedConversation?.type === 'agent') {
                         wsClient.emitStopAgent(selectedConversation.id);
                       }
                     }}
@@ -1016,7 +1034,7 @@ export function ChatView({
         </div>
 
         {/* -- Side panel (agent tools) ------------------------------ */}
-        {selectedConversation?.type === "agent" && (
+        {selectedConversation?.type === 'agent' && (
           <aside className="cv-sidepanel cv-hide-mobile">
             <div className="cv-sidepanel-header">
               <h3>Agent</h3>
@@ -1036,26 +1054,32 @@ export function ChatView({
                   className="cv-tool-log-toggle"
                   onClick={() => setToolLogExpanded(!toolLogExpanded)}
                 >
-                  Tool Log ({toolLog.length}) {toolLogExpanded ? "\u25B2" : "\u25BC"}
+                  Tool Log ({toolLog.length}) {toolLogExpanded ? '\u25B2' : '\u25BC'}
                 </button>
                 {toolLogExpanded && (
                   <ul className="cv-tool-log-list">
                     {toolLog.map((evt, i) => {
-                      const toolName = typeof evt.payload.toolName === "string" ? evt.payload.toolName : evt.kind;
-                      const isMemory = toolName === "memory" || toolName === "memory_save" || toolName === "memory_retrieve";
+                      const toolName =
+                        typeof evt.payload.toolName === 'string' ? evt.payload.toolName : evt.kind;
+                      const isMemory =
+                        toolName === 'memory' ||
+                        toolName === 'memory_save' ||
+                        toolName === 'memory_retrieve';
                       return (
                         <li key={`${evt.kind}-${evt.at}-${i}`} className="cv-tool-log-item">
                           <div className="cv-tool-log-header">
-                            <span className={`cv-tool-status-icon ${evt.kind === "tool_call_end" ? "cv-tool-done" : "cv-tool-running"}`}>
-                              {evt.kind === "tool_call_end" ? "\u2713" : "\u25CF"}
+                            <span
+                              className={`cv-tool-status-icon ${evt.kind === 'tool_call_end' ? 'cv-tool-done' : 'cv-tool-running'}`}
+                            >
+                              {evt.kind === 'tool_call_end' ? '\u2713' : '\u25CF'}
                             </span>
                             <strong>{toolName}</strong>
                             {isMemory && (
                               <span className="cv-memory-badge">
-                                {evt.kind === "tool_call_start" ? "saving" : "recalled"}
+                                {evt.kind === 'tool_call_start' ? 'saving' : 'recalled'}
                               </span>
                             )}
-                            {typeof evt.payload.durationMs === "number" && (
+                            {typeof evt.payload.durationMs === 'number' && (
                               <span className="cv-tool-duration">{evt.payload.durationMs}ms</span>
                             )}
                           </div>
@@ -1077,7 +1101,7 @@ export function ChatView({
                 {members.map((m) => (
                   <li key={m.id} className="cv-member-item">
                     <div className="cv-avatar-circle cv-avatar-xs">
-                      {getInitials(m.user?.display_name || m.user?.username || "?")}
+                      {getInitials(m.user?.display_name || m.user?.username || '?')}
                     </div>
                     <span>{m.user?.display_name || m.user?.username || m.user_id.slice(0, 8)}</span>
                   </li>
@@ -1090,8 +1114,14 @@ export function ChatView({
 
       {/* New conversation modal */}
       {showNewConvoModal && (
-        <div className="cv-modal-overlay" onClick={() => setShowNewConvoModal(false)}>
-          <div className="cv-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="cv-modal-overlay">
+          <button
+            type="button"
+            className="cv-modal-overlay-dismiss"
+            aria-label="Close modal"
+            onClick={() => setShowNewConvoModal(false)}
+          />
+          <div className="cv-modal" role="dialog" aria-modal="true">
             <div className="cv-modal-header">
               <h3>New Conversation</h3>
               <button
@@ -1105,27 +1135,26 @@ export function ChatView({
             <div className="cv-modal-tabs">
               <button
                 type="button"
-                className={`cv-modal-tab ${newConvoTab === "dm" ? "cv-tab-active" : ""}`}
-                onClick={() => setNewConvoTab("dm")}
+                className={`cv-modal-tab ${newConvoTab === 'dm' ? 'cv-tab-active' : ''}`}
+                onClick={() => setNewConvoTab('dm')}
               >
                 DM
               </button>
               <button
                 type="button"
-                className={`cv-modal-tab ${newConvoTab === "group" ? "cv-tab-active" : ""}`}
-                onClick={() => setNewConvoTab("group")}
+                className={`cv-modal-tab ${newConvoTab === 'group' ? 'cv-tab-active' : ''}`}
+                onClick={() => setNewConvoTab('group')}
               >
                 Group
               </button>
             </div>
-            {newConvoTab === "dm" ? (
+            {newConvoTab === 'dm' ? (
               <form className="cv-modal-form" onSubmit={createDm}>
                 <input
                   type="text"
                   placeholder="Enter username..."
                   value={newDmUsername}
                   onChange={(e) => setNewDmUsername(e.target.value)}
-                  autoFocus
                 />
                 <button type="submit" className="cv-btn-accent cv-btn-full">
                   Open DM
@@ -1138,7 +1167,6 @@ export function ChatView({
                   placeholder="Group title..."
                   value={newGroupTitle}
                   onChange={(e) => setNewGroupTitle(e.target.value)}
-                  autoFocus
                 />
                 <button type="submit" className="cv-btn-accent cv-btn-full">
                   Create Group
@@ -1151,14 +1179,14 @@ export function ChatView({
 
       {/* Banners */}
       {info && (
-        <div className="cv-toast cv-toast-info" onClick={() => setInfo(null)}>
+        <button type="button" className="cv-toast cv-toast-info" onClick={() => setInfo(null)}>
           {info}
-        </div>
+        </button>
       )}
       {error && (
-        <div className="cv-toast cv-toast-error" onClick={() => setError(null)}>
+        <button type="button" className="cv-toast cv-toast-error" onClick={() => setError(null)}>
           {error}
-        </div>
+        </button>
       )}
     </>
   );
@@ -1177,26 +1205,24 @@ function MessageContent({ text, content }: { text: string; content: Record<strin
   return (
     <>
       {parts.map((part, i) => {
-        if (part.startsWith("```") && part.endsWith("```")) {
+        if (part.startsWith('```') && part.endsWith('```')) {
           const inner = part.slice(3, -3);
-          const newlineIdx = inner.indexOf("\n");
-          const lang = newlineIdx > -1 ? inner.slice(0, newlineIdx).trim() : "";
+          const newlineIdx = inner.indexOf('\n');
+          const lang = newlineIdx > -1 ? inner.slice(0, newlineIdx).trim() : '';
           const code = newlineIdx > -1 ? inner.slice(newlineIdx + 1) : inner;
           let highlighted: string;
           try {
-            highlighted = lang && hljs.getLanguage(lang)
-              ? hljs.highlight(code, { language: lang }).value
-              : hljs.highlightAuto(code).value;
+            highlighted =
+              lang && hljs.getLanguage(lang)
+                ? hljs.highlight(code, { language: lang }).value
+                : hljs.highlightAuto(code).value;
           } catch {
-            highlighted = code
-              .replace(/&/g, "&amp;")
-              .replace(/</g, "&lt;")
-              .replace(/>/g, "&gt;");
+            highlighted = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           }
           return (
             <div key={i} className="cv-code-block">
               <div className="cv-code-header">
-                <span>{lang || "code"}</span>
+                <span>{lang || 'code'}</span>
                 <button
                   type="button"
                   className="cv-btn-copy"
@@ -1205,11 +1231,17 @@ function MessageContent({ text, content }: { text: string; content: Record<strin
                   Copy
                 </button>
               </div>
-              <pre><code dangerouslySetInnerHTML={{ __html: highlighted }} /></pre>
+              <pre>
+                <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+              </pre>
             </div>
           );
         }
-        return part ? <span key={i} className="cv-msg-text">{part}</span> : null;
+        return part ? (
+          <span key={i} className="cv-msg-text">
+            {part}
+          </span>
+        ) : null;
       })}
     </>
   );
@@ -1227,7 +1259,7 @@ type MessageGroup = {
 
 function groupMessages(messages: Message[]): MessageGroup[] {
   const groups: MessageGroup[] = [];
-  let lastDateLabel = "";
+  let lastDateLabel = '';
 
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
@@ -1240,7 +1272,8 @@ function groupMessages(messages: Message[]): MessageGroup[] {
       prevMsg &&
       prevMsg.sender_id === msg.sender_id &&
       !showDate &&
-      new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime() < GROUPING_WINDOW_MS;
+      new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime() <
+        GROUPING_WINDOW_MS;
 
     if (canGroup && groups.length > 0) {
       groups[groups.length - 1].messages.push(msg);
@@ -1248,7 +1281,7 @@ function groupMessages(messages: Message[]): MessageGroup[] {
       groups.push({
         key: msg.id,
         dateSeparator: showDate ? dateLabel : null,
-        messages: [msg]
+        messages: [msg],
       });
     }
   }
@@ -1260,11 +1293,17 @@ function groupMessages(messages: Message[]): MessageGroup[] {
    Helpers — data manipulation
    ================================================================ */
 
-function mergeConversations(prev: Conversation[], incoming: Conversation[], append: boolean): Conversation[] {
+function mergeConversations(
+  prev: Conversation[],
+  incoming: Conversation[],
+  append: boolean,
+): Conversation[] {
   const byId = new Map<string, Conversation>();
   if (!append) {
     incoming.forEach((c) => byId.set(c.id, c));
-    prev.forEach((c) => { if (!byId.has(c.id)) byId.set(c.id, c); });
+    prev.forEach((c) => {
+      if (!byId.has(c.id)) byId.set(c.id, c);
+    });
   } else {
     prev.forEach((c) => byId.set(c.id, c));
     incoming.forEach((c) => byId.set(c.id, c));
@@ -1289,9 +1328,11 @@ function replaceMessage(prev: Message[], next: Message): Message[] {
 }
 
 function bumpConversation(prev: Conversation[], conversationId: string): Conversation[] {
-  return [...prev.map((c) =>
-    c.id === conversationId ? { ...c, last_message_at: new Date().toISOString() } : c
-  )].sort(compareConversationRecency);
+  return [
+    ...prev.map((c) =>
+      c.id === conversationId ? { ...c, last_message_at: new Date().toISOString() } : c,
+    ),
+  ].sort(compareConversationRecency);
 }
 
 function compareMessageChronological(a: Message, b: Message): number {
@@ -1317,28 +1358,28 @@ function formatDateSeparator(iso: string): string {
   const msgDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const diff = today.getTime() - msgDay.getTime();
 
-  if (diff === 0) return "Today";
-  if (diff === 86400000) return "Yesterday";
+  if (diff === 0) return 'Today';
+  if (diff === 86400000) return 'Yesterday';
 
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) return "now";
+  if (seconds < 60) return 'now';
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d`;
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function formatMessageTime(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
 function getInitials(name: string): string {
@@ -1355,18 +1396,20 @@ function aggregateReactions(reactions: Array<{ emoji: string }>): Array<[string,
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
-  if (error && typeof error === "object" && "reason" in error) return String((error as { reason: unknown }).reason);
-  return "Request failed";
+  if (error && typeof error === 'object' && 'reason' in error)
+    return String((error as { reason: unknown }).reason);
+  return 'Request failed';
 }
 
 function extractMessageFromEvent(payload: unknown): Message | null {
-  if (!payload || typeof payload !== "object") return null;
+  if (!payload || typeof payload !== 'object') return null;
   const candidate = payload as Record<string, unknown>;
   const maybeMessage =
-    candidate.message && typeof candidate.message === "object"
+    candidate.message && typeof candidate.message === 'object'
       ? (candidate.message as Record<string, unknown>)
       : candidate;
-  if (typeof maybeMessage.id !== "string" || typeof maybeMessage.conversation_id !== "string") return null;
+  if (typeof maybeMessage.id !== 'string' || typeof maybeMessage.conversation_id !== 'string')
+    return null;
   return maybeMessage as unknown as Message;
 }
 
@@ -2333,6 +2376,14 @@ const chatStyles = `
   align-items: center;
   justify-content: center;
   z-index: 100;
+}
+
+.cv-modal-overlay-dismiss {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: transparent;
+  cursor: default;
 }
 
 .cv-modal {

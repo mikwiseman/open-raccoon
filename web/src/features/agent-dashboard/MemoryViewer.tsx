@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import type { WaiAgentsApi } from "@/lib/api/services";
-import type { AgentMemory } from "@/lib/types";
+import { useCallback, useEffect, useState } from 'react';
+import type { WaiAgentsApi } from '@/lib/api/services';
+import type { AgentMemory } from '@/lib/types';
 
 type Props = {
   api: WaiAgentsApi;
@@ -21,7 +21,7 @@ export function MemoryViewer({ api, agentId }: Props) {
       const res = await api.listMemories(agentId);
       setMemories(res.items);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load memories");
+      setError(err instanceof Error ? err.message : 'Failed to load memories');
     } finally {
       setLoading(false);
     }
@@ -36,12 +36,12 @@ export function MemoryViewer({ api, agentId }: Props) {
       await api.deleteMemory(agentId, memoryId);
       setMemories((prev) => prev.filter((m) => m.id !== memoryId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete memory");
+      setError(err instanceof Error ? err.message : 'Failed to delete memory');
     }
   }
 
   return (
-    <div className="ad-memory-viewer" aria-label="memory-viewer">
+    <div className="ad-memory-viewer">
       {error && <p className="error-text">{error}</p>}
 
       {loading && (
@@ -73,7 +73,9 @@ export function MemoryViewer({ api, agentId }: Props) {
               {memory.tags.length > 0 && (
                 <div className="ad-memory-tags">
                   {memory.tags.map((tag) => (
-                    <span key={tag} className="ad-memory-tag">{tag}</span>
+                    <span key={tag} className="ad-memory-tag">
+                      {tag}
+                    </span>
                   ))}
                 </div>
               )}

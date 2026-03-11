@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { SocketClient, AgentStreamEvent } from "@/lib/ws/socket-client";
-import type { ContentBlock } from "./content-blocks";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { AgentStreamEvent, SocketClient } from '@/lib/ws/socket-client';
+import type { ContentBlock } from './content-blocks';
 
 export type StreamingMessage = {
   runId: string;
@@ -35,7 +35,7 @@ export function useAgentStream(socketClient: SocketClient, conversationId: strin
       }
 
       switch (event.type) {
-        case "run_started": {
+        case 'run_started': {
           const newStream: StreamingMessage = {
             runId: event.runId || crypto.randomUUID(),
             agentId: event.agentId,
@@ -48,7 +48,7 @@ export function useAgentStream(socketClient: SocketClient, conversationId: strin
           break;
         }
 
-        case "text_delta": {
+        case 'text_delta': {
           if (!streamRef.current) {
             // Start a new stream implicitly if we get text without run_started
             const implicitStream: StreamingMessage = {
@@ -61,11 +61,11 @@ export function useAgentStream(socketClient: SocketClient, conversationId: strin
             setIsStreaming(true);
           }
 
-          const text = event.text || "";
+          const text = event.text || '';
           const blocks = [...streamRef.current.blocks];
           const lastBlock = blocks[blocks.length - 1];
 
-          if (lastBlock && lastBlock.type === "text") {
+          if (lastBlock && lastBlock.type === 'text') {
             // Append to existing text block
             blocks[blocks.length - 1] = {
               ...lastBlock,
@@ -73,7 +73,7 @@ export function useAgentStream(socketClient: SocketClient, conversationId: strin
             };
           } else {
             // Create a new text block
-            blocks.push({ type: "text", text });
+            blocks.push({ type: 'text', text });
           }
 
           const updated = { ...streamRef.current, blocks };
@@ -82,16 +82,16 @@ export function useAgentStream(socketClient: SocketClient, conversationId: strin
           break;
         }
 
-        case "tool_call_start": {
+        case 'tool_call_start': {
           if (!streamRef.current) break;
 
           const blocks = [...streamRef.current.blocks];
           blocks.push({
-            type: "tool_call",
-            toolName: event.toolName || "unknown",
+            type: 'tool_call',
+            toolName: event.toolName || 'unknown',
             toolCallId: event.toolCallId,
             input: event.toolInput,
-            status: "running" as const,
+            status: 'running' as const,
           });
 
           const updated = { ...streamRef.current, blocks };
@@ -100,7 +100,7 @@ export function useAgentStream(socketClient: SocketClient, conversationId: strin
           break;
         }
 
-        case "tool_call_end": {
+        case 'tool_call_end': {
           if (!streamRef.current) break;
 
           const blocks = [...streamRef.current.blocks];
@@ -109,19 +109,19 @@ export function useAgentStream(socketClient: SocketClient, conversationId: strin
           for (let i = blocks.length - 1; i >= 0; i--) {
             const block = blocks[i];
             if (
-              block.type === "tool_call" &&
-              block.status === "running" &&
+              block.type === 'tool_call' &&
+              block.status === 'running' &&
               (!event.toolCallId || block.toolCallId === event.toolCallId)
             ) {
-              blocks[i] = { ...block, status: "done" as const };
+              blocks[i] = { ...block, status: 'done' as const };
               break;
             }
           }
 
           // Add tool_result block
           blocks.push({
-            type: "tool_result",
-            toolName: event.toolName || "unknown",
+            type: 'tool_result',
+            toolName: event.toolName || 'unknown',
             toolCallId: event.toolCallId,
             result: event.toolResult,
             durationMs: event.durationMs,
@@ -134,13 +134,13 @@ export function useAgentStream(socketClient: SocketClient, conversationId: strin
           break;
         }
 
-        case "thinking": {
+        case 'thinking': {
           if (!streamRef.current) break;
 
           const blocks = [...streamRef.current.blocks];
           blocks.push({
-            type: "thinking",
-            text: event.text || "",
+            type: 'thinking',
+            text: event.text || '',
           });
 
           const updated = { ...streamRef.current, blocks };
@@ -149,12 +149,12 @@ export function useAgentStream(socketClient: SocketClient, conversationId: strin
           break;
         }
 
-        case "status": {
+        case 'status': {
           // Status events don't modify blocks, they're handled by the ChatView directly
           break;
         }
 
-        case "run_finished": {
+        case 'run_finished': {
           if (!streamRef.current) break;
 
           const updated = {
@@ -167,12 +167,12 @@ export function useAgentStream(socketClient: SocketClient, conversationId: strin
           break;
         }
 
-        case "run_error": {
+        case 'run_error': {
           if (streamRef.current) {
             const blocks = [...streamRef.current.blocks];
             blocks.push({
-              type: "text",
-              text: `Error: ${event.error || event.message || "Agent run failed"}`,
+              type: 'text',
+              text: `Error: ${event.error || event.message || 'Agent run failed'}`,
             });
             const updated = { ...streamRef.current, blocks };
             streamRef.current = updated;
@@ -192,7 +192,7 @@ export function useAgentStream(socketClient: SocketClient, conversationId: strin
   // Reset when conversation changes
   useEffect(() => {
     resetStream();
-  }, [conversationId, resetStream]);
+  }, [resetStream]);
 
   return { streamingMessage, isStreaming, resetStream };
 }

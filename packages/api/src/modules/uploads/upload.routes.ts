@@ -1,17 +1,25 @@
+import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { getDownloadUrl, getUploadUrl } from '../../lib/s3.js';
 import { authMiddleware } from '../auth/auth.middleware.js';
-import { getUploadUrl, getDownloadUrl } from '../../lib/s3.js';
-import { randomUUID } from 'node:crypto';
 
 export const uploadRoutes = new Hono();
 
 const ALLOWED_CONTENT_TYPES = [
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-  'video/mp4', 'video/webm',
-  'audio/mpeg', 'audio/wav', 'audio/ogg',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
+  'video/mp4',
+  'video/webm',
+  'audio/mpeg',
+  'audio/wav',
+  'audio/ogg',
   'application/pdf',
-  'text/plain', 'text/csv',
+  'text/plain',
+  'text/csv',
 ] as const;
 
 const PresignSchema = z.object({
@@ -27,8 +35,12 @@ uploadRoutes.post('/uploads/presign', authMiddleware, async (c) => {
     return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422);
   }
 
-  const ext = parsed.data.filename.split('.').pop()?.replace(/[^a-zA-Z0-9]/g, '') || '';
-  const key = `uploads/${userId}/${randomUUID()}${ext ? '.' + ext : ''}`;
+  const ext =
+    parsed.data.filename
+      .split('.')
+      .pop()
+      ?.replace(/[^a-zA-Z0-9]/g, '') || '';
+  const key = `uploads/${userId}/${randomUUID()}${ext ? `.${ext}` : ''}`;
 
   try {
     const url = await getUploadUrl(key, parsed.data.content_type, 300);

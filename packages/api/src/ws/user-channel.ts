@@ -3,7 +3,7 @@ import { getOnlineUsers } from './presence.js';
 
 export function setupUserHandlers(io: SocketIOServer): void {
   io.on('connection', (socket) => {
-    const userId = socket.data.userId as string;
+    const _userId = socket.data.userId as string;
 
     // Send current online users to newly connected client
     socket.emit('presence:snapshot', { onlineUsers: getOnlineUsers() });

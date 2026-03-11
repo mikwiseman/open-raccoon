@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { z } from 'zod';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -16,16 +15,16 @@ vi.stubGlobal('fetch', mockFetch);
 
 import { sql } from './db.js';
 import {
-  SendToAgentInput,
   CreateAgentConversationInput,
-  ReadConversationInput,
-  ListAgentConversationsInput,
   GetAgentInfoInput,
-  handleSendToAgent,
   handleCreateAgentConversation,
-  handleReadConversation,
-  handleListAgentConversations,
   handleGetAgentInfo,
+  handleListAgentConversations,
+  handleReadConversation,
+  handleSendToAgent,
+  ListAgentConversationsInput,
+  ReadConversationInput,
+  SendToAgentInput,
 } from './tools.js';
 
 const AGENT_ID_1 = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -146,7 +145,10 @@ describe('CreateAgentConversationInput schema', () => {
 
 describe('ReadConversationInput schema', () => {
   it('accepts valid input with defaults', () => {
-    const result = ReadConversationInput.safeParse({ conversation_id: CONV_ID, agent_id: AGENT_ID_1 });
+    const result = ReadConversationInput.safeParse({
+      conversation_id: CONV_ID,
+      agent_id: AGENT_ID_1,
+    });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.limit).toBe(20);
@@ -154,7 +156,10 @@ describe('ReadConversationInput schema', () => {
   });
 
   it('rejects invalid UUID', () => {
-    const result = ReadConversationInput.safeParse({ conversation_id: 'bad', agent_id: AGENT_ID_1 });
+    const result = ReadConversationInput.safeParse({
+      conversation_id: 'bad',
+      agent_id: AGENT_ID_1,
+    });
     expect(result.success).toBe(false);
   });
 
@@ -209,12 +214,12 @@ describe('handleSendToAgent', () => {
   it('uses existing conversation when found', async () => {
     // Flow: get caller name, find existing conv, insert message, insert task, update task→working, update task→completed
     vi.mocked(sql)
-      .mockReturnValueOnce(mockSql([{ name: 'TestAgent' }], 1))  // get caller name
-      .mockReturnValueOnce(mockSql([{ id: CONV_ID }], 1))        // find existing conv
-      .mockReturnValueOnce(mockSql([], 1))                        // insert message
-      .mockReturnValueOnce(mockSql([], 1))                        // insert task
-      .mockReturnValueOnce(mockSql([], 1))                        // update task→working
-      .mockReturnValueOnce(mockSql([], 1));                       // update task→completed
+      .mockReturnValueOnce(mockSql([{ name: 'TestAgent' }], 1)) // get caller name
+      .mockReturnValueOnce(mockSql([{ id: CONV_ID }], 1)) // find existing conv
+      .mockReturnValueOnce(mockSql([], 1)) // insert message
+      .mockReturnValueOnce(mockSql([], 1)) // insert task
+      .mockReturnValueOnce(mockSql([], 1)) // update task→working
+      .mockReturnValueOnce(mockSql([], 1)); // update task→completed
 
     const result = await handleSendToAgent({
       from_agent_id: AGENT_ID_1,
@@ -231,14 +236,14 @@ describe('handleSendToAgent', () => {
   it('creates new conversation when none exists', async () => {
     // Flow: get caller name, no existing conv, create conv, insert members, insert msg, insert task, update→working, update→completed
     vi.mocked(sql)
-      .mockReturnValueOnce(mockSql([{ name: 'TestAgent' }], 1))  // get caller name
-      .mockReturnValueOnce(mockSql([], 0))                        // no existing conv
-      .mockReturnValueOnce(mockSql([], 1))                        // create conversation
-      .mockReturnValueOnce(mockSql([], 2))                        // insert members
-      .mockReturnValueOnce(mockSql([], 1))                        // insert message
-      .mockReturnValueOnce(mockSql([], 1))                        // insert task
-      .mockReturnValueOnce(mockSql([], 1))                        // update task→working
-      .mockReturnValueOnce(mockSql([], 1));                       // update task→completed
+      .mockReturnValueOnce(mockSql([{ name: 'TestAgent' }], 1)) // get caller name
+      .mockReturnValueOnce(mockSql([], 0)) // no existing conv
+      .mockReturnValueOnce(mockSql([], 1)) // create conversation
+      .mockReturnValueOnce(mockSql([], 2)) // insert members
+      .mockReturnValueOnce(mockSql([], 1)) // insert message
+      .mockReturnValueOnce(mockSql([], 1)) // insert task
+      .mockReturnValueOnce(mockSql([], 1)) // update task→working
+      .mockReturnValueOnce(mockSql([], 1)); // update task→completed
 
     const result = await handleSendToAgent({
       from_agent_id: AGENT_ID_1,
@@ -254,12 +259,12 @@ describe('handleSendToAgent', () => {
 
   it('increments a2a_depth in API call', async () => {
     vi.mocked(sql)
-      .mockReturnValueOnce(mockSql([{ name: 'TestAgent' }], 1))  // get caller name
-      .mockReturnValueOnce(mockSql([{ id: CONV_ID }], 1))        // find existing conv
-      .mockReturnValueOnce(mockSql([], 1))                        // insert message
-      .mockReturnValueOnce(mockSql([], 1))                        // insert task
-      .mockReturnValueOnce(mockSql([], 1))                        // update task→working
-      .mockReturnValueOnce(mockSql([], 1));                       // update task→completed
+      .mockReturnValueOnce(mockSql([{ name: 'TestAgent' }], 1)) // get caller name
+      .mockReturnValueOnce(mockSql([{ id: CONV_ID }], 1)) // find existing conv
+      .mockReturnValueOnce(mockSql([], 1)) // insert message
+      .mockReturnValueOnce(mockSql([], 1)) // insert task
+      .mockReturnValueOnce(mockSql([], 1)) // update task→working
+      .mockReturnValueOnce(mockSql([], 1)); // update task→completed
 
     await handleSendToAgent({
       from_agent_id: AGENT_ID_1,
@@ -275,12 +280,12 @@ describe('handleSendToAgent', () => {
 
   it('throws when API call fails', async () => {
     vi.mocked(sql)
-      .mockReturnValueOnce(mockSql([{ name: 'TestAgent' }], 1))  // get caller name
-      .mockReturnValueOnce(mockSql([{ id: CONV_ID }], 1))        // find existing conv
-      .mockReturnValueOnce(mockSql([], 1))                        // insert message
-      .mockReturnValueOnce(mockSql([], 1))                        // insert task
-      .mockReturnValueOnce(mockSql([], 1))                        // update task→working
-      .mockReturnValueOnce(mockSql([], 1));                       // update task→failed
+      .mockReturnValueOnce(mockSql([{ name: 'TestAgent' }], 1)) // get caller name
+      .mockReturnValueOnce(mockSql([{ id: CONV_ID }], 1)) // find existing conv
+      .mockReturnValueOnce(mockSql([], 1)) // insert message
+      .mockReturnValueOnce(mockSql([], 1)) // insert task
+      .mockReturnValueOnce(mockSql([], 1)) // update task→working
+      .mockReturnValueOnce(mockSql([], 1)); // update task→failed
 
     mockFetch.mockResolvedValue({
       ok: false,
@@ -303,8 +308,8 @@ describe('handleSendToAgent', () => {
 describe('handleCreateAgentConversation', () => {
   it('creates conversation and inserts members', async () => {
     vi.mocked(sql)
-      .mockReturnValueOnce(mockSql([], 1))  // insert conversation
-      .mockReturnValueOnce(mockSql([], 1))  // insert member 1
+      .mockReturnValueOnce(mockSql([], 1)) // insert conversation
+      .mockReturnValueOnce(mockSql([], 1)) // insert member 1
       .mockReturnValueOnce(mockSql([], 1)); // insert member 2
 
     const result = await handleCreateAgentConversation({
@@ -349,8 +354,8 @@ describe('handleReadConversation', () => {
       },
     ];
     vi.mocked(sql)
-      .mockReturnValueOnce(mockSql([{ id: 'member-id' }], 1))  // membership check
-      .mockReturnValueOnce(mockSql(mockMessages, 2));            // messages query
+      .mockReturnValueOnce(mockSql([{ id: 'member-id' }], 1)) // membership check
+      .mockReturnValueOnce(mockSql(mockMessages, 2)); // messages query
 
     const result = await handleReadConversation({
       conversation_id: CONV_ID,
@@ -365,8 +370,8 @@ describe('handleReadConversation', () => {
 
   it('returns empty array when no messages', async () => {
     vi.mocked(sql)
-      .mockReturnValueOnce(mockSql([{ id: 'member-id' }], 1))  // membership check
-      .mockReturnValueOnce(mockSql([], 0));                      // messages query
+      .mockReturnValueOnce(mockSql([{ id: 'member-id' }], 1)) // membership check
+      .mockReturnValueOnce(mockSql([], 0)); // messages query
 
     const result = await handleReadConversation({
       conversation_id: CONV_ID,
@@ -378,7 +383,7 @@ describe('handleReadConversation', () => {
   });
 
   it('throws when agent is not a member', async () => {
-    vi.mocked(sql).mockReturnValueOnce(mockSql([], 0));  // no membership
+    vi.mocked(sql).mockReturnValueOnce(mockSql([], 0)); // no membership
 
     await expect(
       handleReadConversation({

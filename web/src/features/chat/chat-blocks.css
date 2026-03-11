@@ -475,8 +475,13 @@
 }
 
 @keyframes cb-pulse-icon {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 /* ---- Image Block ---- */
@@ -737,7 +742,8 @@
 }
 
 @keyframes cb-streaming-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }

@@ -1,5 +1,5 @@
-import { createQueue, createWorker } from './queue.js';
 import { sql } from '../db/connection.js';
+import { createQueue, createWorker } from './queue.js';
 
 const QUEUE_NAME = 'trending-score';
 
@@ -9,10 +9,8 @@ export const trendingQueue = createQueue(QUEUE_NAME);
  * Recalculate trending scores for all feed items.
  * Formula: score = (likes * 2 + forks * 3 + views * 0.1) / (age_hours + 2)^1.5
  */
-export const trendingWorker = createWorker(
-  QUEUE_NAME,
-  async () => {
-    await sql`
+export const trendingWorker = createWorker(QUEUE_NAME, async () => {
+  await sql`
       UPDATE feed_items
       SET
         trending_score = (
@@ -21,8 +19,7 @@ export const trendingWorker = createWorker(
         ),
         updated_at = NOW()
     `;
-  },
-);
+});
 
 /**
  * Schedule the trending score recalculation to run every 15 minutes.

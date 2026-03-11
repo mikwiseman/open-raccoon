@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { callLLM } from '../llm/index.js';
 
 // Mock the LLM providers
@@ -52,7 +52,7 @@ describe('callLLM factory', () => {
 
   it('throws for unknown model prefix', async () => {
     await expect(callLLM({ ...baseOptions, model: 'gemini-pro' })).rejects.toThrow(
-      "Unsupported model: gemini-pro"
+      'Unsupported model: gemini-pro',
     );
   });
 

@@ -2,13 +2,13 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../auth/auth.middleware.js';
 import { CreateAgentSchema, UpdateAgentSchema } from './agent.schema.js';
 import {
-  listAgents,
   createAgent,
-  getAgent,
-  updateAgent,
   deleteAgent,
-  startConversation,
+  getAgent,
   getAgentPerformance,
+  listAgents,
+  startConversation,
+  updateAgent,
 } from './agent.service.js';
 import { listTemplates } from './templates.js';
 

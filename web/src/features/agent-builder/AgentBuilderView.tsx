@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import type { WaiAgentsApi } from "@/lib/api/services";
-import type { SessionUser } from "@/lib/state/session-store";
-import type { Agent } from "@/lib/types";
-import { AgentCard } from "./AgentCard";
-import { AgentForm } from "./AgentForm";
+import { useCallback, useEffect, useState } from 'react';
+import type { WaiAgentsApi } from '@/lib/api/services';
+import type { SessionUser } from '@/lib/state/session-store';
+import type { Agent } from '@/lib/types';
+import { AgentCard } from './AgentCard';
+import { AgentForm } from './AgentForm';
 
 type Props = {
   api: WaiAgentsApi;
@@ -13,7 +13,7 @@ type Props = {
   currentUser: SessionUser;
 };
 
-export function AgentBuilderView({ api, accessToken, currentUser }: Props) {
+export function AgentBuilderView({ api, accessToken }: Props) {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +29,7 @@ export function AgentBuilderView({ api, accessToken, currentUser }: Props) {
       const res = await api.listMyAgents();
       setAgents(res.items);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load agents");
+      setError(err instanceof Error ? err.message : 'Failed to load agents');
     } finally {
       setLoading(false);
     }
@@ -61,14 +61,14 @@ export function AgentBuilderView({ api, accessToken, currentUser }: Props) {
         setSelectedAgentId(null);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete agent");
+      setError(err instanceof Error ? err.message : 'Failed to delete agent');
     }
   }
 
   const showForm = showCreateForm || selectedAgent !== null;
 
   return (
-    <div className="ab-layout" aria-label="agent-builder-view">
+    <div className="ab-layout">
       {/* Sidebar: Agent list */}
       <aside className="ab-sidebar">
         <div className="ab-sidebar-header">
@@ -117,7 +117,7 @@ export function AgentBuilderView({ api, accessToken, currentUser }: Props) {
         {showForm ? (
           <div className="ab-form-container">
             <AgentForm
-              key={selectedAgent?.id ?? "new"}
+              key={selectedAgent?.id ?? 'new'}
               api={api}
               accessToken={accessToken}
               agent={selectedAgent ?? undefined}
@@ -141,9 +141,7 @@ export function AgentBuilderView({ api, accessToken, currentUser }: Props) {
           </div>
         ) : (
           <div className="ab-empty-main">
-            <p className="ab-empty-main-text">
-              Select an agent to edit, or create a new one.
-            </p>
+            <p className="ab-empty-main-text">Select an agent to edit, or create a new one.</p>
           </div>
         )}
       </main>

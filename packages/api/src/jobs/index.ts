@@ -1,23 +1,27 @@
-export { trendingQueue, trendingWorker, scheduleTrending } from './trending-worker.js';
-export { memoryDecayQueue, memoryDecayWorker, scheduleMemoryDecay } from './memory-decay-worker.js';
+export {
+  reflectionQueue,
+  reflectionWorker,
+  scheduleReflection,
+} from './agent-reflection-worker.js';
 export {
   articleCollectionQueue,
   articleCollectionWorker,
   scheduleArticleCollection,
 } from './article-collection-worker.js';
-export { reflectionQueue, reflectionWorker, scheduleReflection } from './agent-reflection-worker.js';
 export {
   idempotencyCleanupQueue,
   idempotencyCleanupWorker,
   scheduleIdempotencyCleanup,
 } from './idempotency-cleanup-worker.js';
+export { memoryDecayQueue, memoryDecayWorker, scheduleMemoryDecay } from './memory-decay-worker.js';
 export { connection, createQueue, createWorker } from './queue.js';
+export { scheduleTrending, trendingQueue, trendingWorker } from './trending-worker.js';
 
-import { scheduleTrending } from './trending-worker.js';
-import { scheduleMemoryDecay } from './memory-decay-worker.js';
-import { scheduleArticleCollection } from './article-collection-worker.js';
 import { scheduleReflection } from './agent-reflection-worker.js';
+import { scheduleArticleCollection } from './article-collection-worker.js';
 import { scheduleIdempotencyCleanup } from './idempotency-cleanup-worker.js';
+import { scheduleMemoryDecay } from './memory-decay-worker.js';
+import { scheduleTrending } from './trending-worker.js';
 
 /**
  * Initialize all BullMQ workers and schedule repeating jobs.
@@ -29,5 +33,7 @@ export async function initWorkers(): Promise<void> {
   await scheduleArticleCollection();
   await scheduleReflection();
   await scheduleIdempotencyCleanup();
-  console.log('BullMQ workers initialized: trending (15m), memory-decay (1h), article-collection (30m), agent-reflection (6h), idempotency-cleanup (1h)');
+  console.log(
+    'BullMQ workers initialized: trending (15m), memory-decay (1h), article-collection (30m), agent-reflection (6h), idempotency-cleanup (1h)',
+  );
 }

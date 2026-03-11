@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { Hono } from 'hono';
-import { socialRoutes } from './social.routes.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateTokens } from '../auth/auth.service.js';
+import { socialRoutes } from './social.routes.js';
 
 // Mock DB connection
 vi.mock('../../db/connection.js', () => {
@@ -48,11 +49,7 @@ async function request(
   return { status: res.status, body: json };
 }
 
-async function unauthRequest(
-  app: ReturnType<typeof buildApp>,
-  method: string,
-  path: string,
-) {
+async function unauthRequest(app: ReturnType<typeof buildApp>, method: string, path: string) {
   const req = new Request(`http://localhost${path}`, { method });
   const res = await app.fetch(req);
   return { status: res.status };
@@ -154,17 +151,33 @@ describe('POST /feed/:id/like', () => {
     // 2. Insert like (inside transaction)
     sqlMock.mockResolvedValueOnce([] as any);
     // 3. Update + RETURNING feed item
-    sqlMock.mockResolvedValueOnce([{
-      id: FEED_ITEM_ID, creator_id: OTHER_USER_ID, type: 'agent',
-      reference_id: AGENT_ID, reference_type: 'agent', title: 'Test',
-      description: 'Desc', thumbnail_url: null, quality_score: 0,
-      trending_score: 5.0, like_count: 4, fork_count: 1, view_count: 100,
-      inserted_at: new Date('2026-01-01'), updated_at: new Date('2026-01-01'),
-    }] as any);
+    sqlMock.mockResolvedValueOnce([
+      {
+        id: FEED_ITEM_ID,
+        creator_id: OTHER_USER_ID,
+        type: 'agent',
+        reference_id: AGENT_ID,
+        reference_type: 'agent',
+        title: 'Test',
+        description: 'Desc',
+        thumbnail_url: null,
+        quality_score: 0,
+        trending_score: 5.0,
+        like_count: 4,
+        fork_count: 1,
+        view_count: 100,
+        inserted_at: new Date('2026-01-01'),
+        updated_at: new Date('2026-01-01'),
+      },
+    ] as any);
     // 4. Creator lookup
-    sqlMock.mockResolvedValueOnce([{
-      username: 'testuser', display_name: 'Test User', avatar_url: null,
-    }] as any);
+    sqlMock.mockResolvedValueOnce([
+      {
+        username: 'testuser',
+        display_name: 'Test User',
+        avatar_url: null,
+      },
+    ] as any);
 
     const { status, body } = await request(app, 'POST', `/feed/${FEED_ITEM_ID}/like`);
     expect(status).toBe(200);
@@ -175,7 +188,11 @@ describe('POST /feed/:id/like', () => {
     const { sql } = await import('../../db/connection.js');
     vi.mocked(sql).mockResolvedValueOnce([] as any);
 
-    const { status } = await request(app, 'POST', '/feed/00000000-0000-0000-0000-000000000099/like');
+    const { status } = await request(
+      app,
+      'POST',
+      '/feed/00000000-0000-0000-0000-000000000099/like',
+    );
     expect(status).toBe(404);
   });
 });
@@ -204,22 +221,24 @@ describe('POST /feed/:id/fork', () => {
     const sqlMock = vi.mocked(sql);
 
     // Source agent lookup
-    sqlMock.mockResolvedValueOnce([{
-      id: AGENT_ID,
-      name: 'Test Agent',
-      slug: 'test-agent',
-      description: 'A test agent',
-      avatar_url: null,
-      system_prompt: 'You are a test agent.',
-      model: 'claude-sonnet-4-6',
-      temperature: 0.7,
-      max_tokens: 4096,
-      tools: [],
-      mcp_servers: [],
-      visibility: 'public',
-      category: 'productivity',
-      metadata: {},
-    }] as any);
+    sqlMock.mockResolvedValueOnce([
+      {
+        id: AGENT_ID,
+        name: 'Test Agent',
+        slug: 'test-agent',
+        description: 'A test agent',
+        avatar_url: null,
+        system_prompt: 'You are a test agent.',
+        model: 'claude-sonnet-4-6',
+        temperature: 0.7,
+        max_tokens: 4096,
+        tools: [],
+        mcp_servers: [],
+        visibility: 'public',
+        category: 'productivity',
+        metadata: {},
+      },
+    ] as any);
     // Slug check
     sqlMock.mockResolvedValueOnce([] as any);
     // Insert new agent
@@ -229,25 +248,27 @@ describe('POST /feed/:id/fork', () => {
     // Insert feed item
     sqlMock.mockResolvedValueOnce([] as any);
     // Return new agent
-    sqlMock.mockResolvedValueOnce([{
-      id: 'new-agent-id',
-      creator_id: USER_ID,
-      name: 'Test Agent',
-      slug: 'test-agent-fork',
-      description: 'A test agent',
-      avatar_url: null,
-      system_prompt: 'You are a test agent.',
-      model: 'claude-sonnet-4-6',
-      visibility: 'private',
-      category: 'productivity',
-      usage_count: 0,
-      rating_sum: 0,
-      rating_count: 0,
-      execution_mode: 'raw',
-      metadata: { forked_from: AGENT_ID },
-      inserted_at: new Date(),
-      updated_at: new Date(),
-    }] as any);
+    sqlMock.mockResolvedValueOnce([
+      {
+        id: 'new-agent-id',
+        creator_id: USER_ID,
+        name: 'Test Agent',
+        slug: 'test-agent-fork',
+        description: 'A test agent',
+        avatar_url: null,
+        system_prompt: 'You are a test agent.',
+        model: 'claude-sonnet-4-6',
+        visibility: 'private',
+        category: 'productivity',
+        usage_count: 0,
+        rating_sum: 0,
+        rating_count: 0,
+        execution_mode: 'raw',
+        metadata: { forked_from: AGENT_ID },
+        inserted_at: new Date(),
+        updated_at: new Date(),
+      },
+    ] as any);
 
     const { status, body } = await request(app, 'POST', `/feed/${AGENT_ID}/fork`);
     expect(status).toBe(201);
@@ -258,7 +279,11 @@ describe('POST /feed/:id/fork', () => {
     const { sql } = await import('../../db/connection.js');
     vi.mocked(sql).mockResolvedValueOnce([] as any);
 
-    const { status } = await request(app, 'POST', '/feed/00000000-0000-0000-0000-000000000099/fork');
+    const { status } = await request(
+      app,
+      'POST',
+      '/feed/00000000-0000-0000-0000-000000000099/fork',
+    );
     expect(status).toBe(404);
   });
 });
@@ -270,26 +295,28 @@ describe('POST /feed/:id/fork', () => {
 describe('GET /marketplace', () => {
   it('returns 200 with marketplace agents', async () => {
     const { sql } = await import('../../db/connection.js');
-    vi.mocked(sql).mockResolvedValueOnce([{
-      id: AGENT_ID,
-      creator_id: OTHER_USER_ID,
-      name: 'Test Agent',
-      slug: 'test-agent',
-      description: 'Desc',
-      avatar_url: null,
-      model: 'claude-sonnet-4-6',
-      visibility: 'public',
-      category: 'productivity',
-      usage_count: 42,
-      rating_sum: 20,
-      rating_count: 5,
-      rating_avg: 4.0,
-      inserted_at: new Date(),
-      updated_at: new Date(),
-      username: 'creator',
-      display_name: 'Creator',
-      creator_avatar_url: null,
-    }] as any);
+    vi.mocked(sql).mockResolvedValueOnce([
+      {
+        id: AGENT_ID,
+        creator_id: OTHER_USER_ID,
+        name: 'Test Agent',
+        slug: 'test-agent',
+        description: 'Desc',
+        avatar_url: null,
+        model: 'claude-sonnet-4-6',
+        visibility: 'public',
+        category: 'productivity',
+        usage_count: 42,
+        rating_sum: 20,
+        rating_count: 5,
+        rating_avg: 4.0,
+        inserted_at: new Date(),
+        updated_at: new Date(),
+        username: 'creator',
+        display_name: 'Creator',
+        creator_avatar_url: null,
+      },
+    ] as any);
 
     const { status, body } = await request(app, 'GET', '/marketplace');
     expect(status).toBe(200);
@@ -315,26 +342,28 @@ describe('GET /marketplace/search', () => {
 
   it('returns 200 with search results', async () => {
     const { sql } = await import('../../db/connection.js');
-    vi.mocked(sql).mockResolvedValueOnce([{
-      id: AGENT_ID,
-      creator_id: OTHER_USER_ID,
-      name: 'Test Agent',
-      slug: 'test-agent',
-      description: 'Desc',
-      avatar_url: null,
-      model: 'claude-sonnet-4-6',
-      visibility: 'public',
-      category: 'productivity',
-      usage_count: 42,
-      rating_sum: 20,
-      rating_count: 5,
-      rating_avg: 4.0,
-      inserted_at: new Date(),
-      updated_at: new Date(),
-      username: 'creator',
-      display_name: 'Creator',
-      creator_avatar_url: null,
-    }] as any);
+    vi.mocked(sql).mockResolvedValueOnce([
+      {
+        id: AGENT_ID,
+        creator_id: OTHER_USER_ID,
+        name: 'Test Agent',
+        slug: 'test-agent',
+        description: 'Desc',
+        avatar_url: null,
+        model: 'claude-sonnet-4-6',
+        visibility: 'public',
+        category: 'productivity',
+        usage_count: 42,
+        rating_sum: 20,
+        rating_count: 5,
+        rating_avg: 4.0,
+        inserted_at: new Date(),
+        updated_at: new Date(),
+        username: 'creator',
+        display_name: 'Creator',
+        creator_avatar_url: null,
+      },
+    ] as any);
 
     const { status, body } = await request(app, 'GET', '/marketplace/search?q=test');
     expect(status).toBe(200);
@@ -359,28 +388,30 @@ describe('GET /marketplace/categories', () => {
 describe('GET /marketplace/agents/:slug', () => {
   it('returns 200 with agent details', async () => {
     const { sql } = await import('../../db/connection.js');
-    vi.mocked(sql).mockResolvedValueOnce([{
-      id: AGENT_ID,
-      creator_id: OTHER_USER_ID,
-      name: 'Test Agent',
-      slug: 'test-agent',
-      description: 'Desc',
-      avatar_url: null,
-      system_prompt: 'Prompt',
-      model: 'claude-sonnet-4-6',
-      visibility: 'public',
-      category: 'productivity',
-      usage_count: 42,
-      rating_sum: 20,
-      rating_count: 5,
-      rating_avg: 4.0,
-      metadata: {},
-      inserted_at: new Date(),
-      updated_at: new Date(),
-      username: 'creator',
-      display_name: 'Creator',
-      creator_avatar_url: null,
-    }] as any);
+    vi.mocked(sql).mockResolvedValueOnce([
+      {
+        id: AGENT_ID,
+        creator_id: OTHER_USER_ID,
+        name: 'Test Agent',
+        slug: 'test-agent',
+        description: 'Desc',
+        avatar_url: null,
+        system_prompt: 'Prompt',
+        model: 'claude-sonnet-4-6',
+        visibility: 'public',
+        category: 'productivity',
+        usage_count: 42,
+        rating_sum: 20,
+        rating_count: 5,
+        rating_avg: 4.0,
+        metadata: {},
+        inserted_at: new Date(),
+        updated_at: new Date(),
+        username: 'creator',
+        display_name: 'Creator',
+        creator_avatar_url: null,
+      },
+    ] as any);
 
     const { status, body } = await request(app, 'GET', '/marketplace/agents/test-agent');
     expect(status).toBe(200);
@@ -434,9 +465,14 @@ describe('POST /marketplace/agents/:id/rate', () => {
     const { sql } = await import('../../db/connection.js');
     vi.mocked(sql).mockResolvedValueOnce([] as any);
 
-    const { status } = await request(app, 'POST', `/marketplace/agents/00000000-0000-0000-0000-000000000099/rate`, {
-      body: { rating: 4 },
-    });
+    const { status } = await request(
+      app,
+      'POST',
+      `/marketplace/agents/00000000-0000-0000-0000-000000000099/rate`,
+      {
+        body: { rating: 4 },
+      },
+    );
     expect(status).toBe(404);
   });
 });
@@ -468,7 +504,11 @@ describe('POST /users/:id/follow', () => {
     const { sql } = await import('../../db/connection.js');
     vi.mocked(sql).mockResolvedValueOnce([] as any);
 
-    const { status } = await request(app, 'POST', '/users/00000000-0000-0000-0000-000000000099/follow');
+    const { status } = await request(
+      app,
+      'POST',
+      '/users/00000000-0000-0000-0000-000000000099/follow',
+    );
     expect(status).toBe(404);
   });
 });

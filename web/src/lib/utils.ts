@@ -1,5 +1,5 @@
 export function createIdempotencyKey(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
   }
 
@@ -10,46 +10,50 @@ export function createIdempotencyKey(): string {
 
 export function asTextContent(content: unknown): string {
   if (!content) {
-    return "";
+    return '';
   }
 
-  if (typeof content === "string") {
+  if (typeof content === 'string') {
     return content;
   }
 
   if (Array.isArray(content)) {
     return content
       .map((block) => {
-        if (typeof block === "string") {
+        if (typeof block === 'string') {
           return block;
         }
 
-        if (typeof block === "object" && block !== null && typeof (block as { text?: unknown }).text === "string") {
+        if (
+          typeof block === 'object' &&
+          block !== null &&
+          typeof (block as { text?: unknown }).text === 'string'
+        ) {
           return (block as { text: string }).text;
         }
 
-        return "";
+        return '';
       })
       .filter(Boolean)
-      .join("\n");
+      .join('\n');
   }
 
-  if (typeof content === "object" && content !== null) {
+  if (typeof content === 'object' && content !== null) {
     const text = (content as { text?: unknown }).text;
-    return typeof text === "string" ? text : "";
+    return typeof text === 'string' ? text : '';
   }
 
-  return "";
+  return '';
 }
 
 export function toIsoLocal(dateIso?: string | null): string {
   if (!dateIso) {
-    return "";
+    return '';
   }
 
   const date = new Date(dateIso);
   if (Number.isNaN(date.getTime())) {
-    return "";
+    return '';
   }
 
   return date.toLocaleString();

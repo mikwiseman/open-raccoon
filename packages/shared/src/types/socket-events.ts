@@ -14,12 +14,15 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  'join:conversation': (data: { conversationId: string }, callback?: (success: boolean) => void) => void;
+  'join:conversation': (
+    data: { conversationId: string },
+    callback?: (success: boolean) => void,
+  ) => void;
   'leave:conversation': (data: { conversationId: string }) => void;
   'join:agent': (data: { conversationId: string }, callback?: (success: boolean) => void) => void;
   'leave:agent': (data: { conversationId: string }) => void;
   'typing:start': (data: { conversationId: string }) => void;
   'typing:stop': (data: { conversationId: string }) => void;
-  'read': (data: { conversationId: string; messageId: string }) => void;
+  read: (data: { conversationId: string; messageId: string }) => void;
   'agent:stop': (data: { conversationId: string }) => void;
 }

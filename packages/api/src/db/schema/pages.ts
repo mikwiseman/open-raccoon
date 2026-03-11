@@ -1,17 +1,16 @@
 import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
-  integer,
   bigint,
-  jsonb,
+  integer,
+  pgTable,
+  text,
   timestamp,
   uniqueIndex,
+  uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { users } from './users.js';
 import { agents } from './agents.js';
 import { conversations } from './conversations.js';
+import { users } from './users.js';
 
 export const pages = pgTable(
   'pages',
@@ -40,7 +39,7 @@ export const pages = pgTable(
   },
   (table) => ({
     uniqCreatorSlug: uniqueIndex('pages_creator_slug_idx').on(table.creatorId, table.slug),
-  })
+  }),
 );
 
 export type Page = typeof pages.$inferSelect;
@@ -60,7 +59,7 @@ export const pageVersions = pgTable(
   },
   (table) => ({
     uniqPageVersion: uniqueIndex('page_versions_page_version_idx').on(table.pageId, table.version),
-  })
+  }),
 );
 
 export type PageVersion = typeof pageVersions.$inferSelect;

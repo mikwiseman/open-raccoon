@@ -1,1 +1,1 @@
-export * from "./AuthPlaceholder";
+export * from './AuthPlaceholder';

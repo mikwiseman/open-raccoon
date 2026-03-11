@@ -1,10 +1,10 @@
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
-import type { User } from "../types";
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import type { User } from '../types';
 
 export type SessionUser = Pick<
   User,
-  "id" | "username" | "display_name" | "email" | "avatar_url" | "bio"
+  'id' | 'username' | 'display_name' | 'email' | 'avatar_url' | 'bio'
 >;
 
 type SessionState = {
@@ -13,11 +13,7 @@ type SessionState = {
   user?: SessionUser;
   isAuthenticated: boolean;
   hydrated: boolean;
-  setSession: (next: {
-    accessToken: string;
-    refreshToken?: string;
-    user?: SessionUser;
-  }) => void;
+  setSession: (next: { accessToken: string; refreshToken?: string; user?: SessionUser }) => void;
   setHydrated: () => void;
   clearSession: () => void;
 };
@@ -27,8 +23,8 @@ const initialState = {
   refreshToken: undefined,
   user: undefined,
   isAuthenticated: false,
-  hydrated: false
-} satisfies Omit<SessionState, "setSession" | "clearSession" | "setHydrated">;
+  hydrated: false,
+} satisfies Omit<SessionState, 'setSession' | 'clearSession' | 'setHydrated'>;
 
 export const useSessionStore = create<SessionState>()(
   persist(
@@ -39,39 +35,39 @@ export const useSessionStore = create<SessionState>()(
           accessToken,
           refreshToken: refreshToken ?? state.refreshToken,
           user,
-          isAuthenticated: true
+          isAuthenticated: true,
         }));
       },
       clearSession: () => {
         set({
           ...initialState,
-          hydrated: true
+          hydrated: true,
         });
       },
       setHydrated: () => {
         set({ hydrated: true });
-      }
+      },
     }),
     {
-      name: "wai-agents-session",
+      name: 'wai-agents-session',
       partialize: (state) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         user: state.user,
-        isAuthenticated: state.isAuthenticated
+        isAuthenticated: state.isAuthenticated,
       }),
       storage: createJSONStorage(() =>
-        typeof window === "undefined"
+        typeof window === 'undefined'
           ? {
               getItem: () => null,
               setItem: () => undefined,
-              removeItem: () => undefined
+              removeItem: () => undefined,
             }
-          : localStorage
+          : localStorage,
       ),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated();
-      }
-    }
-  )
+      },
+    },
+  ),
 );

@@ -1,5 +1,5 @@
-import { Suspense } from "react";
-import { MagicLinkVerifyClient } from "./MagicLinkVerifyClient";
+import { Suspense } from 'react';
+import { MagicLinkVerifyClient } from './MagicLinkVerifyClient';
 
 export default function MagicLinkVerifyPage() {
   return (

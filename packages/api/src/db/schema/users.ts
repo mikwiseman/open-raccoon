@@ -1,13 +1,4 @@
-import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
-  boolean,
-  bigint,
-  jsonb,
-  timestamp,
-} from 'drizzle-orm/pg-core';
+import { bigint, jsonb, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { bytea } from './custom-types.js';
 
 export const users = pgTable('users', {

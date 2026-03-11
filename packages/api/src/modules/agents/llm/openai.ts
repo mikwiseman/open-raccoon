@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import type { McpTool, ToolCall, LLMResponse } from './anthropic.js';
+import type { LLMResponse, McpTool, ToolCall } from './anthropic.js';
 
 export interface CallOpenAIOptions {
   model: string;
@@ -59,10 +59,7 @@ export async function callOpenAI(options: CallOpenAIOptions): Promise<LLMRespons
     stream_options: { include_usage: true },
   });
 
-  const pendingToolCalls = new Map<
-    number,
-    { id: string; name: string; argumentsJson: string }
-  >();
+  const pendingToolCalls = new Map<number, { id: string; name: string; argumentsJson: string }>();
 
   for await (const chunk of stream) {
     if (abortSignal?.aborted) break;
@@ -84,7 +81,8 @@ export async function callOpenAI(options: CallOpenAIOptions): Promise<LLMRespons
             argumentsJson: '',
           });
         }
-        const pending = pendingToolCalls.get(idx)!;
+        const pending = pendingToolCalls.get(idx);
+        if (!pending) continue;
         if (tc.id) pending.id = tc.id;
         if (tc.function?.name) pending.name = tc.function.name;
         if (tc.function?.arguments) pending.argumentsJson += tc.function.arguments;

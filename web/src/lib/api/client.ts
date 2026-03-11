@@ -1,4 +1,4 @@
-import { ApiError, parseApiError } from "./errors";
+import { ApiError, parseApiError } from './errors';
 
 export type SessionStoreAdapter = {
   getRefreshToken: () => string | undefined;
@@ -15,13 +15,13 @@ export type ApiClientOptions = {
 
 export class ApiClient {
   private readonly baseUrl: string;
-  private readonly getAccessToken?: ApiClientOptions["getAccessToken"];
+  private readonly getAccessToken?: ApiClientOptions['getAccessToken'];
   private readonly fetchImpl: typeof fetch;
   private readonly sessionStore?: SessionStoreAdapter;
   private refreshPromise: Promise<boolean> | null = null;
 
   constructor(options: ApiClientOptions = {}) {
-    this.baseUrl = options.baseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+    this.baseUrl = options.baseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
     this.getAccessToken = options.getAccessToken;
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
     this.sessionStore = options.sessionStore;
@@ -31,22 +31,22 @@ export class ApiClient {
     const token = this.getAccessToken ? await this.getAccessToken() : undefined;
     const headers = new Headers(init.headers);
 
-    if (!headers.has("Content-Type") && init.body && !(init.body instanceof FormData)) {
-      headers.set("Content-Type", "application/json");
+    if (!headers.has('Content-Type') && init.body && !(init.body instanceof FormData)) {
+      headers.set('Content-Type', 'application/json');
     }
 
     if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
+      headers.set('Authorization', `Bearer ${token}`);
     }
 
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
       ...init,
       headers,
-      cache: "no-store"
+      cache: 'no-store',
     });
 
-    const contentType = response.headers.get("content-type") ?? "";
-    const isJson = contentType.includes("application/json");
+    const contentType = response.headers.get('content-type') ?? '';
+    const isJson = contentType.includes('application/json');
     const payload = isJson ? await response.json() : await response.text();
 
     if (!response.ok) {
@@ -82,22 +82,22 @@ export class ApiClient {
   }
 
   private async doRefreshToken(): Promise<boolean> {
-    const refreshToken = this.sessionStore!.getRefreshToken();
+    const refreshToken = this.sessionStore?.getRefreshToken();
     if (!refreshToken) {
-      this.sessionStore!.clearSession();
+      this.sessionStore?.clearSession();
       return false;
     }
 
     try {
       const response = await this.fetchImpl(`${this.baseUrl}/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refreshToken }),
-        cache: "no-store"
+        cache: 'no-store',
       });
 
       if (!response.ok) {
-        this.sessionStore!.clearSession();
+        this.sessionStore?.clearSession();
         return false;
       }
 
@@ -106,14 +106,14 @@ export class ApiClient {
       const newRefreshToken: string | undefined = data.refresh_token ?? data.tokens?.refresh_token;
 
       if (!newAccessToken) {
-        this.sessionStore!.clearSession();
+        this.sessionStore?.clearSession();
         return false;
       }
 
-      this.sessionStore!.setTokens(newAccessToken, newRefreshToken ?? refreshToken);
+      this.sessionStore?.setTokens(newAccessToken, newRefreshToken ?? refreshToken);
       return true;
     } catch {
-      this.sessionStore!.clearSession();
+      this.sessionStore?.clearSession();
       return false;
     }
   }

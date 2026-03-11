@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { TextBlock, type TextBlockData } from "./TextBlock";
-import { ToolCallBlock, type ToolCallBlockData } from "./ToolCallBlock";
-import { ToolResultBlock, type ToolResultBlockData } from "./ToolResultBlock";
-import { CodeBlock, type CodeBlockData } from "./CodeBlock";
-import { ThinkingBlock, type ThinkingBlockData } from "./ThinkingBlock";
-import { ProposalBlock, type ProposalBlockData } from "./ProposalBlock";
-import { ProgressBlock, type ProgressBlockData } from "./ProgressBlock";
-import { ImageBlock, type ImageBlockData } from "./ImageBlock";
-import { FileBlock, type FileBlockData } from "./FileBlock";
-import { TableBlock, type TableBlockData } from "./TableBlock";
-import { ActionCardBlock, type ActionCardBlockData } from "./ActionCardBlock";
+import { ActionCardBlock, type ActionCardBlockData } from './ActionCardBlock';
+import { CodeBlock, type CodeBlockData } from './CodeBlock';
+import { FileBlock, type FileBlockData } from './FileBlock';
+import { ImageBlock, type ImageBlockData } from './ImageBlock';
+import { ProgressBlock, type ProgressBlockData } from './ProgressBlock';
+import { ProposalBlock, type ProposalBlockData } from './ProposalBlock';
+import { TableBlock, type TableBlockData } from './TableBlock';
+import { TextBlock, type TextBlockData } from './TextBlock';
+import { ThinkingBlock, type ThinkingBlockData } from './ThinkingBlock';
+import { ToolCallBlock, type ToolCallBlockData } from './ToolCallBlock';
+import { ToolResultBlock, type ToolResultBlockData } from './ToolResultBlock';
 
 export type ContentBlock =
   | TextBlockData
@@ -45,27 +45,27 @@ export function ContentBlockRenderer({ blocks }: ContentBlockRendererProps) {
 
 function ContentBlockItem({ block }: { block: ContentBlock }) {
   switch (block.type) {
-    case "text":
+    case 'text':
       return <TextBlock block={block} />;
-    case "tool_call":
+    case 'tool_call':
       return <ToolCallBlock block={block} />;
-    case "tool_result":
+    case 'tool_result':
       return <ToolResultBlock block={block} />;
-    case "code":
+    case 'code':
       return <CodeBlock block={block} />;
-    case "thinking":
+    case 'thinking':
       return <ThinkingBlock block={block} />;
-    case "proposal":
+    case 'proposal':
       return <ProposalBlock block={block} />;
-    case "progress":
+    case 'progress':
       return <ProgressBlock block={block} />;
-    case "image":
+    case 'image':
       return <ImageBlock block={block} />;
-    case "file":
+    case 'file':
       return <FileBlock block={block} />;
-    case "table":
+    case 'table':
       return <TableBlock block={block} />;
-    case "action_card":
+    case 'action_card':
       return <ActionCardBlock block={block} />;
     default: {
       // Render unknown block type as JSON
@@ -92,20 +92,20 @@ export function parseContentBlocks(content: unknown): ContentBlock[] {
   }
 
   // If it's a string, try to parse as JSON first
-  if (typeof content === "string") {
+  if (typeof content === 'string') {
     try {
       const parsed = JSON.parse(content);
       if (Array.isArray(parsed)) {
         return parsed as ContentBlock[];
       }
       // If it's an object with a "type" field, wrap in array
-      if (parsed && typeof parsed === "object" && "type" in parsed) {
+      if (parsed && typeof parsed === 'object' && 'type' in parsed) {
         return [parsed as ContentBlock];
       }
     } catch {
       // Not JSON, treat as plain text
     }
-    return [{ type: "text", text: content }];
+    return [{ type: 'text', text: content }];
   }
 
   // If it's already an array, use directly
@@ -114,17 +114,17 @@ export function parseContentBlocks(content: unknown): ContentBlock[] {
   }
 
   // If it's an object, check for content block structure
-  if (typeof content === "object" && content !== null) {
+  if (typeof content === 'object' && content !== null) {
     const obj = content as Record<string, unknown>;
 
     // If it has a "type" field, it's a single content block
-    if (typeof obj.type === "string") {
+    if (typeof obj.type === 'string') {
       return [obj as unknown as ContentBlock];
     }
 
     // Legacy: { text: "..." } format
-    if (typeof obj.text === "string") {
-      return [{ type: "text", text: obj.text }];
+    if (typeof obj.text === 'string') {
+      return [{ type: 'text', text: obj.text }];
     }
 
     // Legacy: { blocks: [...] } wrapper

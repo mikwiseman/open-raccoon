@@ -1,18 +1,18 @@
 import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
   boolean,
   integer,
   jsonb,
+  pgTable,
+  text,
   timestamp,
   uniqueIndex,
+  uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { bytea } from './custom-types.js';
-import { users } from './users.js';
 import { agents } from './agents.js';
 import { conversations } from './conversations.js';
+import { bytea } from './custom-types.js';
+import { users } from './users.js';
 
 export const bridgeConnections = pgTable(
   'bridge_connections',
@@ -34,9 +34,9 @@ export const bridgeConnections = pgTable(
     uniqUserPlatformMethod: uniqueIndex('bridge_connections_user_platform_method_idx').on(
       table.userId,
       table.platform,
-      table.method
+      table.method,
     ),
-  })
+  }),
 );
 
 export type BridgeConnection = typeof bridgeConnections.$inferSelect;
@@ -63,9 +63,9 @@ export const integrationCredentials = pgTable(
   (table) => ({
     uniqUserService: uniqueIndex('integration_credentials_user_service_idx').on(
       table.userId,
-      table.service
+      table.service,
     ),
-  })
+  }),
 );
 
 export type IntegrationCredential = typeof integrationCredentials.$inferSelect;
@@ -88,9 +88,9 @@ export const integrationRateLimits = pgTable(
     uniqUserServiceWindow: uniqueIndex('integration_rate_limits_user_service_window_idx').on(
       table.userId,
       table.service,
-      table.windowStart
+      table.windowStart,
     ),
-  })
+  }),
 );
 
 export type IntegrationRateLimit = typeof integrationRateLimits.$inferSelect;
@@ -136,9 +136,9 @@ export const channelRoutes = pgTable(
   (table) => ({
     uniqServiceExternalChatId: uniqueIndex('channel_routes_service_external_chat_id_idx').on(
       table.service,
-      table.externalChatId
+      table.externalChatId,
     ),
-  })
+  }),
 );
 
 export type ChannelRoute = typeof channelRoutes.$inferSelect;

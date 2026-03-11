@@ -108,7 +108,8 @@ export async function callAnthropic(options: CallAnthropicOptions): Promise<LLMR
     } else if (event.type === 'message_delta') {
       stopReason = event.delta.stop_reason ?? 'end_turn';
       if ('usage' in event) {
-        outputTokens = (event as any).usage?.output_tokens ?? outputTokens;
+        outputTokens =
+          (event as { usage?: { output_tokens?: number } }).usage?.output_tokens ?? outputTokens;
       }
     }
   }

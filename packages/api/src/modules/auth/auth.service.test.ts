@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import * as argon2 from 'argon2';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  hashPassword,
-  verifyPassword,
   generateTokens,
+  hashPassword,
   verifyAccessToken,
+  verifyPassword,
   verifyRefreshToken,
 } from './auth.service.js';
 
@@ -100,7 +101,7 @@ describe('generateTokens / verifyAccessToken / verifyRefreshToken', () => {
 
   it('verifyAccessToken rejects a tampered token', async () => {
     const { access_token } = await generateTokens(userId, role);
-    const tampered = access_token.slice(0, -4) + 'XXXX';
+    const tampered = `${access_token.slice(0, -4)}XXXX`;
     await expect(verifyAccessToken(tampered)).rejects.toThrow();
   });
 });

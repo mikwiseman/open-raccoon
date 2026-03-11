@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import type { Agent } from "@/lib/types";
+import type { Agent } from '@/lib/types';
 
 type Props = {
   agent: Agent;
@@ -12,7 +12,7 @@ export function AgentCard({ agent, selected, onSelect }: Props) {
   return (
     <button
       type="button"
-      className={`ab-agent-card ${selected ? "selected" : ""}`}
+      className={`ab-agent-card ${selected ? 'selected' : ''}`}
       onClick={onSelect}
       aria-label={`agent-card-${agent.slug}`}
     >
@@ -28,13 +28,9 @@ export function AgentCard({ agent, selected, onSelect }: Props) {
           <span className="ab-agent-card-name">{agent.name}</span>
           <span className="ab-agent-card-model">{agent.model}</span>
         </div>
-        <span className={`agent-visibility-badge ${agent.visibility}`}>
-          {agent.visibility}
-        </span>
+        <span className={`agent-visibility-badge ${agent.visibility}`}>{agent.visibility}</span>
       </div>
-      {agent.description && (
-        <p className="ab-agent-card-desc">{agent.description}</p>
-      )}
+      {agent.description && <p className="ab-agent-card-desc">{agent.description}</p>}
     </button>
   );
 }

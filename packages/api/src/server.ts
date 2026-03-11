@@ -1,25 +1,24 @@
-import { serve } from '@hono/node-server';
 import { timingSafeEqual } from 'node:crypto';
+import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-
-import { authRoutes } from './modules/auth/auth.routes.js';
-import { conversationRoutes } from './modules/conversations/conversation.routes.js';
-import { agentRoutes } from './modules/agents/agent.routes.js';
-import { socialRoutes } from './modules/social/social.routes.js';
-import { uploadRoutes } from './modules/uploads/upload.routes.js';
-import { userRoutes } from './modules/auth/user.routes.js';
-import { createSocketServer } from './ws/index.js';
 import { initWorkers } from './jobs/index.js';
+import { agentRoutes } from './modules/agents/agent.routes.js';
 import { runAgentLoop } from './modules/agents/loop.js';
 import type { CallerContext } from './modules/agents/soul.js';
+import { authRoutes } from './modules/auth/auth.routes.js';
+import { userRoutes } from './modules/auth/user.routes.js';
+import { conversationRoutes } from './modules/conversations/conversation.routes.js';
+import { socialRoutes } from './modules/social/social.routes.js';
+import { uploadRoutes } from './modules/uploads/upload.routes.js';
+import { createSocketServer } from './ws/index.js';
 
 const app = new Hono();
 
 app.onError((err, c) => {
   console.error(err);
-  if (err.message && err.message.includes('invalid input syntax for type uuid')) {
+  if (err.message?.includes('invalid input syntax for type uuid')) {
     return c.json({ error: 'Invalid ID format' }, 400);
   }
   return c.json({ error: 'Internal server error' }, 500);
@@ -39,9 +38,10 @@ app.use('*', async (c, next) => {
 app.use(
   '*',
   cors({
-    origin: process.env.NODE_ENV === 'production'
-      ? ['https://openraccoon.com']
-      : ['http://localhost:3000', 'https://openraccoon.com'],
+    origin:
+      process.env.NODE_ENV === 'production'
+        ? ['https://openraccoon.com']
+        : ['http://localhost:3000', 'https://openraccoon.com'],
     credentials: true,
   }),
 );
@@ -64,8 +64,11 @@ app.post('/api/v1/internal/agent/execute', async (c) => {
   if (!expectedKey) {
     return c.json({ error: 'Internal server error' }, 500);
   }
-  if (!internalKey || Buffer.byteLength(internalKey) !== Buffer.byteLength(expectedKey) ||
-      !timingSafeEqual(Buffer.from(internalKey), Buffer.from(expectedKey))) {
+  if (
+    !internalKey ||
+    Buffer.byteLength(internalKey) !== Buffer.byteLength(expectedKey) ||
+    !timingSafeEqual(Buffer.from(internalKey), Buffer.from(expectedKey))
+  ) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
 
@@ -77,8 +80,11 @@ app.post('/api/v1/internal/agent/execute', async (c) => {
   }
 
   const { agentId, conversationId, message, a2aDepth, callerContext } = body as {
-    agentId: unknown; conversationId: unknown; message: unknown;
-    a2aDepth: unknown; callerContext: CallerContext | undefined;
+    agentId: unknown;
+    conversationId: unknown;
+    message: unknown;
+    a2aDepth: unknown;
+    callerContext: CallerContext | undefined;
   };
 
   // Validate required fields
@@ -117,7 +123,7 @@ const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`WaiAgents API running on port ${info.port}`);
 });
 
-const io = createSocketServer(server as any);
+const io = createSocketServer(server as unknown as import('http').Server);
 
 // Initialize BullMQ workers (non-blocking — logs on failure)
 initWorkers().catch((err) => {

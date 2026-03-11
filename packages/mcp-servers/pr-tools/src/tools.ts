@@ -1,7 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { sql } from './db.js';
-import Anthropic from '@anthropic-ai/sdk';
-import { randomUUID } from 'node:crypto';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -12,11 +12,13 @@ function extractTag(xml: string, tag: string): string {
   return match ? match[1].replace(/<!\[CDATA\[(.*?)\]\]>/s, '$1').trim() : '';
 }
 
-function parseRSS(xml: string): Array<{ title: string; url: string; content: string; published_at: string }> {
+function parseRSS(
+  xml: string,
+): Array<{ title: string; url: string; content: string; published_at: string }> {
   const items: Array<{ title: string; url: string; content: string; published_at: string }> = [];
   const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
-  let match;
-  while ((match = itemRegex.exec(xml)) !== null) {
+  let match: RegExpExecArray | null = itemRegex.exec(xml);
+  while (match !== null) {
     const item = match[1];
     items.push({
       title: extractTag(item, 'title'),
@@ -24,6 +26,7 @@ function parseRSS(xml: string): Array<{ title: string; url: string; content: str
       content: extractTag(item, 'description'),
       published_at: extractTag(item, 'pubDate'),
     });
+    match = itemRegex.exec(xml);
   }
   return items;
 }
@@ -257,9 +260,7 @@ export async function handleUpdateSource(input: z.infer<typeof UpdateSourceInput
 // ─── Article Handlers ─────────────────────────────────────────────────────────
 
 export async function handleCollectArticles(input: z.infer<typeof CollectArticlesInput>) {
-  const sources = await sql<
-    Array<{ id: string; type: string; url: string }>
-  >`
+  const sources = await sql<Array<{ id: string; type: string; url: string }>>`
     SELECT id, type, url FROM agent_sources WHERE agent_id = ${input.agent_id}::uuid
   `;
 
@@ -278,7 +279,17 @@ export async function handleCollectArticles(input: z.infer<typeof CollectArticle
       }
 
       const body = await response.text();
-      const items = source.type === 'rss' ? parseRSS(body) : [{ title: source.url, url: source.url, content: body.slice(0, 5000), published_at: '' }];
+      const items =
+        source.type === 'rss'
+          ? parseRSS(body)
+          : [
+              {
+                title: source.url,
+                url: source.url,
+                content: body.slice(0, 5000),
+                published_at: '',
+              },
+            ];
 
       for (const item of items) {
         if (!item.url) continue;
@@ -329,7 +340,14 @@ export async function handleSearchArticles(input: z.infer<typeof SearchArticlesI
 
   const rows = input.date_range
     ? await sql<
-        Array<{ id: string; title: string; url: string; content: string; published_at: string; collected_at: string }>
+        Array<{
+          id: string;
+          title: string;
+          url: string;
+          content: string;
+          published_at: string;
+          collected_at: string;
+        }>
       >`
         SELECT id, title, url, content, published_at, collected_at
         FROM agent_articles
@@ -341,7 +359,14 @@ export async function handleSearchArticles(input: z.infer<typeof SearchArticlesI
         LIMIT 50
       `
     : await sql<
-        Array<{ id: string; title: string; url: string; content: string; published_at: string; collected_at: string }>
+        Array<{
+          id: string;
+          title: string;
+          url: string;
+          content: string;
+          published_at: string;
+          collected_at: string;
+        }>
       >`
         SELECT id, title, url, content, published_at, collected_at
         FROM agent_articles
@@ -383,7 +408,9 @@ export async function handleGetArticleDetails(input: z.infer<typeof GetArticleDe
 }
 
 export async function handleSummarizeArticle(input: z.infer<typeof SummarizeArticleInput>) {
-  const rows = await sql<Array<{ id: string; title: string; content: string; summary: string | null }>>`
+  const rows = await sql<
+    Array<{ id: string; title: string; content: string; summary: string | null }>
+  >`
     SELECT id, title, content, summary FROM agent_articles
     WHERE id = ${input.article_id}::uuid
       AND agent_id = ${input.agent_id}::uuid
@@ -481,7 +508,13 @@ export async function handleCreateProposal(input: z.infer<typeof CreateProposalI
 export async function handleListProposals(input: z.infer<typeof ListProposalsInput>) {
   const rows = input.status
     ? await sql<
-        Array<{ id: string; title: string; description: string; status: string; inserted_at: string }>
+        Array<{
+          id: string;
+          title: string;
+          description: string;
+          status: string;
+          inserted_at: string;
+        }>
       >`
         SELECT id, title, description, status, inserted_at
         FROM agent_proposals
@@ -489,7 +522,13 @@ export async function handleListProposals(input: z.infer<typeof ListProposalsInp
         ORDER BY inserted_at DESC
       `
     : await sql<
-        Array<{ id: string; title: string; description: string; status: string; inserted_at: string }>
+        Array<{
+          id: string;
+          title: string;
+          description: string;
+          status: string;
+          inserted_at: string;
+        }>
       >`
         SELECT id, title, description, status, inserted_at
         FROM agent_proposals
@@ -561,7 +600,40 @@ export async function handleAnalyzeTrends(input: z.infer<typeof AnalyzeTrendsInp
     LIMIT 30
   `;
 
-  const stopWords = new Set(['their', 'there', 'these', 'those', 'about', 'which', 'where', 'would', 'could', 'should', 'after', 'before', 'other', 'being', 'having', 'will', 'with', 'from', 'this', 'that', 'have', 'been', 'were', 'they', 'said', 'also', 'more', 'when', 'what', 'some', 'than', 'then']);
+  const stopWords = new Set([
+    'their',
+    'there',
+    'these',
+    'those',
+    'about',
+    'which',
+    'where',
+    'would',
+    'could',
+    'should',
+    'after',
+    'before',
+    'other',
+    'being',
+    'having',
+    'will',
+    'with',
+    'from',
+    'this',
+    'that',
+    'have',
+    'been',
+    'were',
+    'they',
+    'said',
+    'also',
+    'more',
+    'when',
+    'what',
+    'some',
+    'than',
+    'then',
+  ]);
   const trends = rows
     .filter((r) => !stopWords.has(r.word))
     .map((r) => ({ keyword: r.word, count: Number(r.count) }));
@@ -585,9 +657,7 @@ export async function handleSuggestTopics(input: z.infer<typeof SuggestTopicsInp
     return { topics: [], message: 'No recent articles found. Collect articles first.' };
   }
 
-  const articleSummaries = rows
-    .map((r, i) => `${i + 1}. ${r.title}`)
-    .join('\n');
+  const articleSummaries = rows.map((r, i) => `${i + 1}. ${r.title}`).join('\n');
 
   const message = await anthropic.messages.create({
     model: 'claude-opus-4-6',
@@ -607,7 +677,9 @@ export async function handleSuggestTopics(input: z.infer<typeof SuggestTopicsInp
 
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) as { topics: Array<{ title: string; rationale: string }> } : { topics: [] };
+    const parsed = jsonMatch
+      ? (JSON.parse(jsonMatch[0]) as { topics: Array<{ title: string; rationale: string }> })
+      : { topics: [] };
     return parsed;
   } catch {
     return { topics: [], raw: text };

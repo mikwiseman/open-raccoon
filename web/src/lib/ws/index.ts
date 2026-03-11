@@ -1,2 +1,2 @@
-export * from "./registry";
-export * from "./socket-client";
+export * from './registry';
+export * from './socket-client';

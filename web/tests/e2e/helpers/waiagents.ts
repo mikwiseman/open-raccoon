@@ -1,9 +1,9 @@
-import { randomUUID } from "node:crypto";
-import { APIRequestContext, expect } from "@playwright/test";
-import { Channel, Socket } from "phoenix";
+import { randomUUID } from 'node:crypto';
+import { type APIRequestContext, expect } from '@playwright/test';
+import { type Channel, Socket } from 'phoenix';
 
-export const API_BASE_URL = process.env.E2E_API_BASE_URL ?? "https://waiagents.com/api/v1";
-export const WS_URL = normalizeSocketUrl(process.env.E2E_WS_URL ?? "wss://waiagents.com/socket");
+export const API_BASE_URL = process.env.E2E_API_BASE_URL ?? 'https://waiagents.com/api/v1';
+export const WS_URL = normalizeSocketUrl(process.env.E2E_WS_URL ?? 'wss://waiagents.com/socket');
 
 type SeedUser = {
   username: string;
@@ -19,28 +19,28 @@ type AuthSession = {
   userId: string;
 };
 
-const seedUsers: Record<"alex" | "maya", SeedUser> = {
+const seedUsers: Record<'alex' | 'maya', SeedUser> = {
   alex: {
-    username: process.env.E2E_ALEX_USERNAME ?? "alex_dev",
-    email: process.env.E2E_ALEX_EMAIL ?? "alex@waiagents.com",
-    password: process.env.E2E_ALEX_PASSWORD ?? "TestPass123!"
+    username: process.env.E2E_ALEX_USERNAME ?? 'alex_dev',
+    email: process.env.E2E_ALEX_EMAIL ?? 'alex@waiagents.com',
+    password: process.env.E2E_ALEX_PASSWORD ?? 'TestPass123!',
   },
   maya: {
-    username: process.env.E2E_MAYA_USERNAME ?? "maya_writer",
-    email: process.env.E2E_MAYA_EMAIL ?? "maya@waiagents.com",
-    password: process.env.E2E_MAYA_PASSWORD ?? "TestPass123!"
-  }
+    username: process.env.E2E_MAYA_USERNAME ?? 'maya_writer',
+    email: process.env.E2E_MAYA_EMAIL ?? 'maya@waiagents.com',
+    password: process.env.E2E_MAYA_PASSWORD ?? 'TestPass123!',
+  },
 };
 
 const loginCache = new Map<string, Promise<AuthSession>>();
 
-export function seededUser(key: "alex" | "maya"): SeedUser {
+export function seededUser(key: 'alex' | 'maya'): SeedUser {
   return seedUsers[key];
 }
 
 export async function getSeedSession(
   request: APIRequestContext,
-  key: "alex" | "maya"
+  key: 'alex' | 'maya',
 ): Promise<AuthSession> {
   const cacheKey = `seed:${key}`;
 
@@ -68,8 +68,8 @@ async function loginWithRetry(request: APIRequestContext, user: SeedUser): Promi
     const response = await request.post(`${API_BASE_URL}/auth/login`, {
       data: {
         email: user.email,
-        password: user.password
-      }
+        password: user.password,
+      },
     });
 
     if (response.status() === 429) {
@@ -89,7 +89,7 @@ async function loginWithRetry(request: APIRequestContext, user: SeedUser): Promi
       email: payload.user.email,
       userId: payload.user.id,
       accessToken: payload.tokens.access_token,
-      refreshToken: payload.tokens.refresh_token
+      refreshToken: payload.tokens.refresh_token,
     };
   }
 
@@ -98,14 +98,14 @@ async function loginWithRetry(request: APIRequestContext, user: SeedUser): Promi
 
 export async function apiCall<T = unknown>(
   request: APIRequestContext,
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   path: string,
   options: {
     token?: string;
     data?: unknown;
     idempotencyKey?: string;
     expectedStatus?: number;
-  } = {}
+  } = {},
 ): Promise<{ status: number; body: T }> {
   const headers: Record<string, string> = {};
 
@@ -114,13 +114,13 @@ export async function apiCall<T = unknown>(
   }
 
   if (options.idempotencyKey) {
-    headers["Idempotency-Key"] = options.idempotencyKey;
+    headers['Idempotency-Key'] = options.idempotencyKey;
   }
 
   const response = await request.fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
-    data: options.data
+    data: options.data,
   });
 
   const status = response.status();
@@ -128,8 +128,8 @@ export async function apiCall<T = unknown>(
     expect(status, `${method} ${path}`).toBe(options.expectedStatus);
   }
 
-  const contentType = response.headers()["content-type"] ?? "";
-  const body = contentType.includes("application/json")
+  const contentType = response.headers()['content-type'] ?? '';
+  const body = contentType.includes('application/json')
     ? ((await response.json()) as T)
     : ((await response.text()) as T);
 
@@ -139,8 +139,8 @@ export async function apiCall<T = unknown>(
 export async function connectSocket(token: string): Promise<Socket> {
   const socket = new Socket(WS_URL, {
     params: {
-      token
-    }
+      token,
+    },
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -150,7 +150,7 @@ export async function connectSocket(token: string): Promise<Socket> {
     };
 
     const timeout = setTimeout(() => {
-      reject(new Error("Timed out connecting websocket"));
+      reject(new Error('Timed out connecting websocket'));
     }, 10_000);
 
     typedSocket.onOpen(() => {
@@ -172,16 +172,18 @@ export async function connectSocket(token: string): Promise<Socket> {
 export async function joinTopic(
   socket: Socket,
   topic: string,
-  params: Record<string, unknown> = {}
+  params: Record<string, unknown> = {},
 ): Promise<Channel> {
   const channel = socket.channel(topic, params);
 
   await new Promise<void>((resolve, reject) => {
     channel
       .join(10_000)
-      .receive("ok", () => resolve())
-      .receive("error", (error) => reject(new Error(`Join ${topic} failed: ${JSON.stringify(error)}`)))
-      .receive("timeout", () => reject(new Error(`Join ${topic} timed out`)));
+      .receive('ok', () => resolve())
+      .receive('error', (error) =>
+        reject(new Error(`Join ${topic} failed: ${JSON.stringify(error)}`)),
+      )
+      .receive('timeout', () => reject(new Error(`Join ${topic} timed out`)));
   });
 
   return channel;
@@ -190,7 +192,7 @@ export async function joinTopic(
 export function waitForChannelEvent<T>(
   channel: Channel,
   event: string,
-  timeoutMs = 20_000
+  timeoutMs = 20_000,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const channelAny = channel as unknown as {
@@ -212,14 +214,17 @@ export function waitForChannelEvent<T>(
   });
 }
 
-export async function leaveAndDisconnect(channel: Channel | null, socket: Socket | null): Promise<void> {
+export async function leaveAndDisconnect(
+  channel: Channel | null,
+  socket: Socket | null,
+): Promise<void> {
   if (channel) {
     await new Promise<void>((resolve) => {
       channel
         .leave(3_000)
-        .receive("ok", () => resolve())
-        .receive("error", () => resolve())
-        .receive("timeout", () => resolve());
+        .receive('ok', () => resolve())
+        .receive('error', () => resolve())
+        .receive('timeout', () => resolve());
     });
   }
 
@@ -239,5 +244,5 @@ export async function sleep(ms: number): Promise<void> {
 }
 
 function normalizeSocketUrl(url: string): string {
-  return url.endsWith("/websocket") ? url.slice(0, -10) : url;
+  return url.endsWith('/websocket') ? url.slice(0, -10) : url;
 }

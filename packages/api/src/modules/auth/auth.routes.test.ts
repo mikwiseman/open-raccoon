@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { Hono } from 'hono';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { authRoutes } from './auth.routes.js';
-import { userRoutes } from './user.routes.js';
 import { generateTokens } from './auth.service.js';
 import { createRateLimiter } from './rate-limiter.js';
+import { userRoutes } from './user.routes.js';
 
 // Mock DB connection
 vi.mock('../../db/connection.js', () => ({
@@ -278,9 +279,7 @@ describe('Rate limiter', () => {
 
     const ip = '192.168.100.1';
     const makeRequest = () =>
-      testApp.fetch(
-        new Request('http://localhost/ping', { headers: { 'x-real-ip': ip } }),
-      );
+      testApp.fetch(new Request('http://localhost/ping', { headers: { 'x-real-ip': ip } }));
 
     // First 5 should succeed
     for (let i = 0; i < 5; i++) {

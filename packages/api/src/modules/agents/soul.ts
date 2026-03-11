@@ -1,6 +1,6 @@
+import { eq } from 'drizzle-orm';
 import { db } from '../../db/connection.js';
 import { agentCoreMemories } from '../../db/schema/agents.js';
-import { eq } from 'drizzle-orm';
 import { getCompactPerformanceInsight } from './agent.service.js';
 
 const BLOCK_ORDER = ['identity', 'rules', 'priorities', 'preferences'] as const;
@@ -43,9 +43,7 @@ export async function assembleSoulPrompt(
     }
   }
 
-  sections.push(
-    `[Context]\nCurrent date: ${new Date().toISOString()}\nUser ID: ${userId}`
-  );
+  sections.push(`[Context]\nCurrent date: ${new Date().toISOString()}\nUser ID: ${userId}`);
 
   // Compact performance self-awareness (~50 tokens)
   const insight = await getCompactPerformanceInsight(agentId);
@@ -55,7 +53,7 @@ export async function assembleSoulPrompt(
 
   if (callerContext) {
     sections.push(
-      `[A2A Context]\nYou were called by agent "${callerContext.caller_agent_name}" (ID: ${callerContext.caller_agent_id}).\nTask: ${callerContext.task_summary}${callerContext.expected_output ? `\nExpected output format: ${callerContext.expected_output}` : ''}\nRespond concisely and return your findings directly.`
+      `[A2A Context]\nYou were called by agent "${callerContext.caller_agent_name}" (ID: ${callerContext.caller_agent_id}).\nTask: ${callerContext.task_summary}${callerContext.expected_output ? `\nExpected output format: ${callerContext.expected_output}` : ''}\nRespond concisely and return your findings directly.`,
     );
   }
 

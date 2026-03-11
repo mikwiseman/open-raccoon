@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import { FormEvent, useMemo, useState } from "react";
-import type { SessionUser } from "@/lib/state/session-store";
-import type { WaiAgentsApi } from "@/lib/api";
-import type { SessionTokens } from "@/lib/types";
+import { type FormEvent, useMemo, useState } from 'react';
+import type { WaiAgentsApi } from '@/lib/api';
+import type { SessionUser } from '@/lib/state/session-store';
+import type { SessionTokens } from '@/lib/types';
 
 type AuthViewProps = {
   api: WaiAgentsApi;
   onAuthenticated: (payload: { user: SessionUser; tokens: SessionTokens }) => void;
 };
 
-type AuthMode = "login" | "register";
-type LoginMethod = "password" | "magic-link";
-type MagicLinkStep = "request" | "verify";
+type AuthMode = 'login' | 'register';
+type LoginMethod = 'password' | 'magic-link';
+type MagicLinkStep = 'request' | 'verify';
 
-type PasswordStrength = "very-weak" | "weak" | "fair" | "strong";
+type PasswordStrength = 'very-weak' | 'weak' | 'fair' | 'strong';
 
 function getPasswordStrength(password: string): PasswordStrength {
-  if (password.length < 6) return "very-weak";
-  if (password.length < 8) return "weak";
-  if (password.length < 12) return "fair";
+  if (password.length < 6) return 'very-weak';
+  if (password.length < 8) return 'weak';
+  if (password.length < 12) return 'fair';
 
   const hasUpper = /[A-Z]/.test(password);
   const hasLower = /[a-z]/.test(password);
@@ -27,33 +27,33 @@ function getPasswordStrength(password: string): PasswordStrength {
   const hasSymbol = /[^A-Za-z0-9]/.test(password);
   const mixCount = [hasUpper, hasLower, hasNumber, hasSymbol].filter(Boolean).length;
 
-  if (mixCount >= 3) return "strong";
-  return "fair";
+  if (mixCount >= 3) return 'strong';
+  return 'fair';
 }
 
 const strengthConfig: Record<PasswordStrength, { label: string; bars: number; color: string }> = {
-  "very-weak": { label: "Very Weak", bars: 1, color: "var(--color-error)" },
-  weak: { label: "Weak", bars: 2, color: "var(--color-warning)" },
-  fair: { label: "Fair", bars: 3, color: "#d4b400" },
-  strong: { label: "Strong", bars: 4, color: "var(--color-success)" },
+  'very-weak': { label: 'Very Weak', bars: 1, color: 'var(--color-error)' },
+  weak: { label: 'Weak', bars: 2, color: 'var(--color-warning)' },
+  fair: { label: 'Fair', bars: 3, color: '#d4b400' },
+  strong: { label: 'Strong', bars: 4, color: 'var(--color-success)' },
 };
 
 export function AuthView({ api, onAuthenticated }: AuthViewProps) {
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>("password");
-  const [magicLinkStep, setMagicLinkStep] = useState<MagicLinkStep>("request");
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>('password');
+  const [magicLinkStep, setMagicLinkStep] = useState<MagicLinkStep>('request');
 
   // Shared fields
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   // Register fields
-  const [displayName, setDisplayName] = useState("");
-  const [username, setUsername] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   // Magic link fields
-  const [magicToken, setMagicToken] = useState("");
+  const [magicToken, setMagicToken] = useState('');
 
   // State
   const [error, setError] = useState<string | null>(null);
@@ -75,10 +75,10 @@ export function AuthView({ api, onAuthenticated }: AuthViewProps) {
     setPending(true);
 
     try {
-      if (loginMethod === "magic-link") {
-        if (magicLinkStep === "request") {
+      if (loginMethod === 'magic-link') {
+        if (magicLinkStep === 'request') {
           await api.requestMagicLink(email);
-          setMagicLinkStep("verify");
+          setMagicLinkStep('verify');
           return;
         }
         // verify step
@@ -103,7 +103,12 @@ export function AuthView({ api, onAuthenticated }: AuthViewProps) {
     setPending(true);
 
     try {
-      const response = await api.register({ username: username.trim(), email, password, display_name: displayName.trim() || undefined });
+      const response = await api.register({
+        username: username.trim(),
+        email,
+        password,
+        display_name: displayName.trim() || undefined,
+      });
       onAuthenticated({ user: toSessionUser(response.user), tokens: response.tokens });
     } catch (err) {
       setError(getErrorMessage(err));
@@ -119,7 +124,7 @@ export function AuthView({ api, onAuthenticated }: AuthViewProps) {
 
   const switchLoginMethod = (method: LoginMethod) => {
     setLoginMethod(method);
-    setMagicLinkStep("request");
+    setMagicLinkStep('request');
     setError(null);
   };
 
@@ -129,42 +134,42 @@ export function AuthView({ api, onAuthenticated }: AuthViewProps) {
       <div style={modeTabsContainerStyle}>
         <button
           type="button"
-          onClick={() => switchMode("login")}
-          style={authMode === "login" ? modeTabActiveStyle : modeTabStyle}
+          onClick={() => switchMode('login')}
+          style={authMode === 'login' ? modeTabActiveStyle : modeTabStyle}
         >
           Log In
         </button>
         <button
           type="button"
-          onClick={() => switchMode("register")}
-          style={authMode === "register" ? modeTabActiveStyle : modeTabStyle}
+          onClick={() => switchMode('register')}
+          style={authMode === 'register' ? modeTabActiveStyle : modeTabStyle}
         >
           Register
         </button>
       </div>
 
       {/* ---- LOGIN ---- */}
-      {authMode === "login" && (
+      {authMode === 'login' && (
         <>
           {/* Sub-mode: Password vs Magic Link */}
           <div style={segmentedControlContainer}>
             <button
               type="button"
-              onClick={() => switchLoginMethod("password")}
-              style={loginMethod === "password" ? segmentActiveStyle : segmentStyle}
+              onClick={() => switchLoginMethod('password')}
+              style={loginMethod === 'password' ? segmentActiveStyle : segmentStyle}
             >
               Password
             </button>
             <button
               type="button"
-              onClick={() => switchLoginMethod("magic-link")}
-              style={loginMethod === "magic-link" ? segmentActiveStyle : segmentStyle}
+              onClick={() => switchLoginMethod('magic-link')}
+              style={loginMethod === 'magic-link' ? segmentActiveStyle : segmentStyle}
             >
               Magic Link
             </button>
           </div>
 
-          {loginMethod === "password" && (
+          {loginMethod === 'password' && (
             <form onSubmit={onSubmitLogin} style={formStyle}>
               <label style={labelStyle}>
                 <span style={labelTextStyle}>Email</span>
@@ -195,14 +200,14 @@ export function AuthView({ api, onAuthenticated }: AuthViewProps) {
               {error && <p style={errorTextStyle}>{error}</p>}
 
               <button type="submit" disabled={pending} style={primaryButtonStyle}>
-                {pending ? "Logging in..." : "Log In"}
+                {pending ? 'Logging in...' : 'Log In'}
               </button>
             </form>
           )}
 
-          {loginMethod === "magic-link" && (
+          {loginMethod === 'magic-link' && (
             <form onSubmit={onSubmitLogin} style={formStyle}>
-              {magicLinkStep === "request" && (
+              {magicLinkStep === 'request' && (
                 <>
                   <label style={labelStyle}>
                     <span style={labelTextStyle}>Email</span>
@@ -220,18 +225,18 @@ export function AuthView({ api, onAuthenticated }: AuthViewProps) {
                   {error && <p style={errorTextStyle}>{error}</p>}
 
                   <button type="submit" disabled={pending} style={primaryButtonStyle}>
-                    {pending ? "Sending..." : "Send Magic Link"}
+                    {pending ? 'Sending...' : 'Send Magic Link'}
                   </button>
                 </>
               )}
 
-              {magicLinkStep === "verify" && (
+              {magicLinkStep === 'verify' && (
                 <>
                   <div style={successBoxStyle}>
                     <p style={successTitleStyle}>Check your email!</p>
                     <p style={successDescStyle}>
-                      We sent a magic link to <strong>{email}</strong>. Click the link in the email, or paste the
-                      token below.
+                      We sent a magic link to <strong>{email}</strong>. Click the link in the email,
+                      or paste the token below.
                     </p>
                   </div>
 
@@ -250,15 +255,19 @@ export function AuthView({ api, onAuthenticated }: AuthViewProps) {
 
                   {error && <p style={errorTextStyle}>{error}</p>}
 
-                  <button type="submit" disabled={pending || magicToken.trim().length === 0} style={primaryButtonStyle}>
-                    {pending ? "Verifying..." : "Verify Token"}
+                  <button
+                    type="submit"
+                    disabled={pending || magicToken.trim().length === 0}
+                    style={primaryButtonStyle}
+                  >
+                    {pending ? 'Verifying...' : 'Verify Token'}
                   </button>
 
                   <button
                     type="button"
                     onClick={() => {
-                      setMagicLinkStep("request");
-                      setMagicToken("");
+                      setMagicLinkStep('request');
+                      setMagicToken('');
                       setError(null);
                     }}
                     style={linkButtonStyle}
@@ -273,7 +282,7 @@ export function AuthView({ api, onAuthenticated }: AuthViewProps) {
       )}
 
       {/* ---- REGISTER ---- */}
-      {authMode === "register" && (
+      {authMode === 'register' && (
         <form onSubmit={onSubmitRegister} style={formStyle}>
           <label style={labelStyle}>
             <span style={labelTextStyle}>Display Name</span>
@@ -336,7 +345,7 @@ export function AuthView({ api, onAuthenticated }: AuthViewProps) {
                         key={i}
                         style={{
                           ...strengthBarStyle,
-                          background: filled ? cfg.color : "var(--color-border-primary)",
+                          background: filled ? cfg.color : 'var(--color-border-primary)',
                         }}
                       />
                     );
@@ -344,9 +353,9 @@ export function AuthView({ api, onAuthenticated }: AuthViewProps) {
                 </div>
                 <span
                   style={{
-                    fontSize: "var(--text-xs)",
+                    fontSize: 'var(--text-xs)',
                     color: strengthConfig[passwordStrength].color,
-                    fontWeight: "var(--weight-medium)" as unknown as number,
+                    fontWeight: 'var(--weight-medium)' as unknown as number,
                   }}
                 >
                   {strengthConfig[passwordStrength].label}
@@ -366,15 +375,13 @@ export function AuthView({ api, onAuthenticated }: AuthViewProps) {
               style={inputStyle}
               placeholder="Re-enter your password"
             />
-            {!passwordsMatch && (
-              <span style={mismatchStyle}>Passwords do not match</span>
-            )}
+            {!passwordsMatch && <span style={mismatchStyle}>Passwords do not match</span>}
           </label>
 
           {error && <p style={errorTextStyle}>{error}</p>}
 
           <button type="submit" disabled={pending || !registerValid} style={primaryButtonStyle}>
-            {pending ? "Creating account..." : "Create Account"}
+            {pending ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
       )}
@@ -406,182 +413,184 @@ function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
-  return "Request failed";
+  return 'Request failed';
 }
 
 // ---- Styles ----
 
 const cardStyle: React.CSSProperties = {
   maxWidth: 420,
-  width: "100%",
-  padding: "var(--space-6)",
-  display: "grid",
-  gap: "var(--space-5)",
+  width: '100%',
+  padding: 'var(--space-6)',
+  display: 'grid',
+  gap: 'var(--space-5)',
 };
 
 const modeTabsContainerStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
   gap: 0,
-  borderRadius: "var(--radius-lg)",
-  overflow: "hidden",
-  border: "1px solid var(--color-border-primary)",
+  borderRadius: 'var(--radius-lg)',
+  overflow: 'hidden',
+  border: '1px solid var(--color-border-primary)',
 };
 
 const modeTabBase: React.CSSProperties = {
-  padding: "var(--space-3) var(--space-4)",
-  fontSize: "var(--text-base)",
+  padding: 'var(--space-3) var(--space-4)',
+  fontSize: 'var(--text-base)',
   fontWeight: 600,
-  cursor: "pointer",
-  border: "none",
+  cursor: 'pointer',
+  border: 'none',
   borderRadius: 0,
-  transition: "background var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default)",
+  transition:
+    'background var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default)',
 };
 
 const modeTabStyle: React.CSSProperties = {
   ...modeTabBase,
-  background: "var(--color-bg-secondary)",
-  color: "var(--color-text-secondary)",
+  background: 'var(--color-bg-secondary)',
+  color: 'var(--color-text-secondary)',
 };
 
 const modeTabActiveStyle: React.CSSProperties = {
   ...modeTabBase,
-  background: "var(--color-accent-primary)",
-  color: "#fff",
+  background: 'var(--color-accent-primary)',
+  color: '#fff',
 };
 
 const segmentedControlContainer: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
   gap: 0,
-  borderRadius: "var(--radius-md)",
-  overflow: "hidden",
-  border: "1px solid var(--color-border-primary)",
+  borderRadius: 'var(--radius-md)',
+  overflow: 'hidden',
+  border: '1px solid var(--color-border-primary)',
 };
 
 const segmentBase: React.CSSProperties = {
-  padding: "var(--space-2) var(--space-3)",
-  fontSize: "var(--text-sm)",
+  padding: 'var(--space-2) var(--space-3)',
+  fontSize: 'var(--text-sm)',
   fontWeight: 500,
-  cursor: "pointer",
-  border: "none",
+  cursor: 'pointer',
+  border: 'none',
   borderRadius: 0,
-  transition: "background var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default)",
+  transition:
+    'background var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default)',
 };
 
 const segmentStyle: React.CSSProperties = {
   ...segmentBase,
-  background: "var(--color-bg-secondary)",
-  color: "var(--color-text-secondary)",
+  background: 'var(--color-bg-secondary)',
+  color: 'var(--color-text-secondary)',
 };
 
 const segmentActiveStyle: React.CSSProperties = {
   ...segmentBase,
-  background: "var(--color-accent-subtle)",
-  color: "var(--color-accent-primary)",
+  background: 'var(--color-accent-subtle)',
+  color: 'var(--color-accent-primary)',
   fontWeight: 600,
 };
 
 const formStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "var(--space-4)",
+  display: 'grid',
+  gap: 'var(--space-4)',
 };
 
 const labelStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "var(--space-2)",
-  fontSize: "var(--text-base)",
+  display: 'grid',
+  gap: 'var(--space-2)',
+  fontSize: 'var(--text-base)',
 };
 
 const labelTextStyle: React.CSSProperties = {
-  fontSize: "var(--text-sm)",
+  fontSize: 'var(--text-sm)',
   fontWeight: 500,
-  color: "var(--color-text-secondary)",
+  color: 'var(--color-text-secondary)',
 };
 
 const inputStyle: React.CSSProperties = {
   height: 48,
-  padding: "0 var(--space-4)",
-  fontSize: "var(--text-base)",
-  borderRadius: "var(--radius-md)",
-  border: "1px solid var(--color-border-primary)",
-  background: "var(--color-bg-input)",
-  color: "var(--color-text-primary)",
-  outline: "none",
-  transition: "border-color var(--duration-fast) var(--ease-default)",
+  padding: '0 var(--space-4)',
+  fontSize: 'var(--text-base)',
+  borderRadius: 'var(--radius-md)',
+  border: '1px solid var(--color-border-primary)',
+  background: 'var(--color-bg-input)',
+  color: 'var(--color-text-primary)',
+  outline: 'none',
+  transition: 'border-color var(--duration-fast) var(--ease-default)',
 };
 
 const primaryButtonStyle: React.CSSProperties = {
   height: 48,
-  borderRadius: "var(--radius-md)",
-  border: "none",
-  background: "var(--color-accent-primary)",
-  color: "#fff",
-  fontSize: "var(--text-base)",
+  borderRadius: 'var(--radius-md)',
+  border: 'none',
+  background: 'var(--color-accent-primary)',
+  color: '#fff',
+  fontSize: 'var(--text-base)',
   fontWeight: 600,
-  cursor: "pointer",
-  transition: "background var(--duration-fast) var(--ease-default)",
+  cursor: 'pointer',
+  transition: 'background var(--duration-fast) var(--ease-default)',
 };
 
 const linkButtonStyle: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  color: "var(--color-accent-primary)",
-  fontSize: "var(--text-sm)",
-  cursor: "pointer",
+  background: 'none',
+  border: 'none',
+  color: 'var(--color-accent-primary)',
+  fontSize: 'var(--text-sm)',
+  cursor: 'pointer',
   padding: 0,
-  textAlign: "center",
+  textAlign: 'center',
 };
 
 const errorTextStyle: React.CSSProperties = {
-  color: "var(--color-error)",
-  fontSize: "var(--text-sm)",
+  color: 'var(--color-error)',
+  fontSize: 'var(--text-sm)',
   margin: 0,
 };
 
 const successBoxStyle: React.CSSProperties = {
-  background: "var(--color-accent-subtle)",
-  border: "1px solid var(--color-accent-primary)",
-  borderRadius: "var(--radius-md)",
-  padding: "var(--space-4)",
-  display: "grid",
-  gap: "var(--space-2)",
+  background: 'var(--color-accent-subtle)',
+  border: '1px solid var(--color-accent-primary)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-4)',
+  display: 'grid',
+  gap: 'var(--space-2)',
 };
 
 const successTitleStyle: React.CSSProperties = {
-  fontSize: "var(--text-md)",
+  fontSize: 'var(--text-md)',
   fontWeight: 600,
-  color: "var(--color-accent-primary)",
+  color: 'var(--color-accent-primary)',
 };
 
 const successDescStyle: React.CSSProperties = {
-  fontSize: "var(--text-sm)",
-  color: "var(--color-text-secondary)",
-  lineHeight: "var(--leading-normal)",
+  fontSize: 'var(--text-sm)',
+  color: 'var(--color-text-secondary)',
+  lineHeight: 'var(--leading-normal)',
 };
 
 const strengthContainerStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "var(--space-3)",
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-3)',
 };
 
 const strengthBarsStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "var(--space-1)",
+  display: 'flex',
+  gap: 'var(--space-1)',
   flex: 1,
 };
 
 const strengthBarStyle: React.CSSProperties = {
   height: 4,
   flex: 1,
-  borderRadius: "var(--radius-full)",
-  transition: "background var(--duration-fast) var(--ease-default)",
+  borderRadius: 'var(--radius-full)',
+  transition: 'background var(--duration-fast) var(--ease-default)',
 };
 
 const mismatchStyle: React.CSSProperties = {
-  color: "var(--color-error)",
-  fontSize: "var(--text-xs)",
+  color: 'var(--color-error)',
+  fontSize: 'var(--text-xs)',
 };
 
 export function AuthPlaceholder() {

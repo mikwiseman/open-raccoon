@@ -30,8 +30,7 @@ export const agentTemplates: Record<string, AgentTemplate> = {
       },
       {
         blockLabel: 'priorities',
-        content:
-          '1. Accuracy of information\n2. Clear communication\n3. Timely responses',
+        content: '1. Accuracy of information\n2. Clear communication\n3. Timely responses',
       },
       {
         blockLabel: 'preferences',
@@ -61,8 +60,7 @@ export const agentTemplates: Record<string, AgentTemplate> = {
       },
       {
         blockLabel: 'priorities',
-        content:
-          '1. Source credibility\n2. Comprehensive coverage\n3. Clear synthesis',
+        content: '1. Source credibility\n2. Comprehensive coverage\n3. Clear synthesis',
       },
       {
         blockLabel: 'preferences',
@@ -75,7 +73,7 @@ export const agentTemplates: Record<string, AgentTemplate> = {
     name: 'Creative Writer',
     description: 'Storytelling and creative writing assistant with style memory.',
     systemPrompt:
-      'You are a Creative Writer agent. You help users craft stories, scripts, poems, and other creative content. You adapt to the user\'s style and preferences over time.',
+      "You are a Creative Writer agent. You help users craft stories, scripts, poems, and other creative content. You adapt to the user's style and preferences over time.",
     model: 'claude-sonnet-4-6',
     tools: ['store_memory', 'search_memories'],
     mcpServers: [],
@@ -88,12 +86,11 @@ export const agentTemplates: Record<string, AgentTemplate> = {
       {
         blockLabel: 'rules',
         content:
-          '- Match the user\'s requested tone and style.\n- Respect content boundaries.\n- Always deliver complete drafts when asked.',
+          "- Match the user's requested tone and style.\n- Respect content boundaries.\n- Always deliver complete drafts when asked.",
       },
       {
         blockLabel: 'priorities',
-        content:
-          '1. Creative quality\n2. User style alignment\n3. Completeness of output',
+        content: '1. Creative quality\n2. User style alignment\n3. Completeness of output',
       },
       {
         blockLabel: 'preferences',
@@ -123,8 +120,7 @@ export const agentTemplates: Record<string, AgentTemplate> = {
       },
       {
         blockLabel: 'priorities',
-        content:
-          '1. Correctness\n2. Security\n3. Readability\n4. Performance',
+        content: '1. Correctness\n2. Security\n3. Readability\n4. Performance',
       },
       {
         blockLabel: 'preferences',
@@ -150,7 +146,7 @@ export const agentTemplates: Record<string, AgentTemplate> = {
       {
         blockLabel: 'rules',
         content:
-          '- Guide users step by step through agent design.\n- Always validate that an agent\'s purpose is clear before suggesting a model or tools.\n- Recommend the least-capable model that meets the task requirements to minimize cost.',
+          "- Guide users step by step through agent design.\n- Always validate that an agent's purpose is clear before suggesting a model or tools.\n- Recommend the least-capable model that meets the task requirements to minimize cost.",
       },
       {
         blockLabel: 'priorities',

@@ -1,36 +1,34 @@
-"use client";
+'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from "react";
-import dynamic from "next/dynamic";
-import { createWaiAgentsApi } from "@/lib/api";
-import { useSessionStore } from "@/lib/state";
-import type { SessionUser } from "@/lib/state/session-store";
-import { AuthView } from "@/features/auth";
-import { SettingsView } from "@/features/settings";
+import dynamic from 'next/dynamic';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AuthView } from '@/features/auth';
+import { SettingsView } from '@/features/settings';
+import { createWaiAgentsApi } from '@/lib/api';
+import { useSessionStore } from '@/lib/state';
+import type { SessionUser } from '@/lib/state/session-store';
 
-const ChatView = dynamic(
-  () => import("@/features/chat").then((m) => ({ default: m.ChatView })),
-  { loading: () => <div className="view-loading">Loading...</div> }
-);
+const ChatView = dynamic(() => import('@/features/chat').then((m) => ({ default: m.ChatView })), {
+  loading: () => <div className="view-loading">Loading...</div>,
+});
 
 const AgentBuilderView = dynamic(
-  () => import("@/features/agent-builder").then((m) => ({ default: m.AgentBuilderView })),
-  { loading: () => <div className="view-loading">Loading...</div> }
+  () => import('@/features/agent-builder').then((m) => ({ default: m.AgentBuilderView })),
+  { loading: () => <div className="view-loading">Loading...</div> },
 );
 
-const FeedView = dynamic(
-  () => import("@/features/feed").then((m) => ({ default: m.FeedView })),
-  { loading: () => <div className="view-loading">Loading...</div> }
-);
+const FeedView = dynamic(() => import('@/features/feed').then((m) => ({ default: m.FeedView })), {
+  loading: () => <div className="view-loading">Loading...</div>,
+});
 
 const MarketplaceView = dynamic(
-  () => import("@/features/marketplace").then((m) => ({ default: m.MarketplaceView })),
-  { loading: () => <div className="view-loading">Loading...</div> }
+  () => import('@/features/marketplace').then((m) => ({ default: m.MarketplaceView })),
+  { loading: () => <div className="view-loading">Loading...</div> },
 );
 
 const PagesView = dynamic(
-  () => import("@/features/pages").then((m) => ({ default: m.PagesView })),
-  { loading: () => <div className="view-loading">Loading...</div> }
+  () => import('@/features/pages').then((m) => ({ default: m.PagesView })),
+  { loading: () => <div className="view-loading">Loading...</div> },
 );
 
 class ErrorBoundary extends React.Component<
@@ -44,16 +42,16 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error) {
-    console.error("UI Error:", error);
+    console.error('UI Error:', error);
   }
 
   render() {
     if (this.state.hasError) {
       return (
         this.props.fallback || (
-          <div style={{ padding: 40, textAlign: "center" }}>
+          <div style={{ padding: 40, textAlign: 'center' }}>
             <h2>Something went wrong</h2>
-            <button onClick={() => this.setState({ hasError: false })}>
+            <button type="button" onClick={() => this.setState({ hasError: false })}>
               Try again
             </button>
           </div>
@@ -64,42 +62,32 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-type Tab = "chats" | "agents" | "feed" | "pages" | "marketplace" | "settings";
+type Tab = 'chats' | 'agents' | 'feed' | 'pages' | 'marketplace' | 'settings';
 
 const TABS: Array<{ key: Tab; label: string; icon: string }> = [
-  { key: "chats", label: "Chats", icon: "💬" },
-  { key: "agents", label: "Agents", icon: "🤖" },
-  { key: "feed", label: "Feed", icon: "📡" },
-  { key: "pages", label: "Pages", icon: "📄" },
-  { key: "marketplace", label: "Marketplace", icon: "🏪" },
-  { key: "settings", label: "Settings", icon: "⚙️" },
+  { key: 'chats', label: 'Chats', icon: '💬' },
+  { key: 'agents', label: 'Agents', icon: '🤖' },
+  { key: 'feed', label: 'Feed', icon: '📡' },
+  { key: 'pages', label: 'Pages', icon: '📄' },
+  { key: 'marketplace', label: 'Marketplace', icon: '🏪' },
+  { key: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
 export default function HomePage() {
-  const api = useMemo(
-    () => createWaiAgentsApi(() => useSessionStore.getState().accessToken),
-    []
-  );
+  const api = useMemo(() => createWaiAgentsApi(() => useSessionStore.getState().accessToken), []);
 
-  const {
-    hydrated,
-    isAuthenticated,
-    accessToken,
-    refreshToken,
-    user,
-    setSession,
-    clearSession,
-  } = useSessionStore((state) => ({
-    hydrated: state.hydrated,
-    isAuthenticated: state.isAuthenticated,
-    accessToken: state.accessToken,
-    refreshToken: state.refreshToken,
-    user: state.user,
-    setSession: state.setSession,
-    clearSession: state.clearSession,
-  }));
+  const { hydrated, isAuthenticated, accessToken, refreshToken, user, setSession, clearSession } =
+    useSessionStore((state) => ({
+      hydrated: state.hydrated,
+      isAuthenticated: state.isAuthenticated,
+      accessToken: state.accessToken,
+      refreshToken: state.refreshToken,
+      user: state.user,
+      setSession: state.setSession,
+      clearSession: state.clearSession,
+    }));
 
-  const [activeTab, setActiveTab] = useState<Tab>("chats");
+  const [activeTab, setActiveTab] = useState<Tab>('chats');
   const [focusConversationId, setFocusConversationId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -138,12 +126,12 @@ export default function HomePage() {
       }
     }
     clearSession();
-    setStatusMessage("Logged out.");
+    setStatusMessage('Logged out.');
   }, [api, clearSession, refreshToken]);
 
   const handleStartAgentConversation = useCallback((conversationId: string) => {
     setFocusConversationId(conversationId);
-    setActiveTab("chats");
+    setActiveTab('chats');
   }, []);
 
   // Loading state
@@ -165,9 +153,7 @@ export default function HomePage() {
         <div className="auth-branding">
           <div className="auth-logo">🦝</div>
           <h1 className="auth-title">WaiAgents</h1>
-          <p className="auth-subtitle">
-            Messaging, AI agents, and pages — all in one place.
-          </p>
+          <p className="auth-subtitle">Messaging, AI agents, and pages — all in one place.</p>
         </div>
 
         <AuthView
@@ -189,7 +175,7 @@ export default function HomePage() {
 
   // Main app
   return (
-    <div className="app-layout" aria-label="web-app-shell">
+    <div className="app-layout" role="application" aria-label="web-app-shell">
       {/* Sidebar Navigation */}
       <nav className="app-sidebar" aria-label="primary-navigation">
         <div className="sidebar-brand">
@@ -202,7 +188,7 @@ export default function HomePage() {
             <button
               key={tab.key}
               type="button"
-              className={`sidebar-nav-item ${activeTab === tab.key ? "active" : ""}`}
+              className={`sidebar-nav-item ${activeTab === tab.key ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.key)}
               title={tab.label}
             >
@@ -213,12 +199,8 @@ export default function HomePage() {
         </div>
 
         <div className="sidebar-user">
-          <div className="avatar avatar-sm">
-            {getInitials(user.display_name || user.username)}
-          </div>
-          <span className="sidebar-username">
-            {user.display_name || user.username}
-          </span>
+          <div className="avatar avatar-sm">{getInitials(user.display_name || user.username)}</div>
+          <span className="sidebar-username">{user.display_name || user.username}</span>
         </div>
       </nav>
 
@@ -228,7 +210,7 @@ export default function HomePage() {
           <button
             key={tab.key}
             type="button"
-            className={`mobile-nav-item ${activeTab === tab.key ? "active" : ""}`}
+            className={`mobile-nav-item ${activeTab === tab.key ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.key)}
           >
             <span className="nav-icon">{tab.icon}</span>
@@ -239,7 +221,7 @@ export default function HomePage() {
 
       {/* Main Content */}
       <main className="app-main">
-        {activeTab === "chats" && (
+        {activeTab === 'chats' && (
           <ErrorBoundary>
             <ChatView
               api={api}
@@ -253,25 +235,25 @@ export default function HomePage() {
           </ErrorBoundary>
         )}
 
-        {activeTab === "agents" && (
+        {activeTab === 'agents' && (
           <ErrorBoundary>
             <AgentBuilderView api={api} accessToken={accessToken} currentUser={user} />
           </ErrorBoundary>
         )}
 
-        {activeTab === "feed" && (
+        {activeTab === 'feed' && (
           <ErrorBoundary>
             <FeedView api={api} currentUser={user} />
           </ErrorBoundary>
         )}
 
-        {activeTab === "pages" && (
+        {activeTab === 'pages' && (
           <ErrorBoundary>
             <PagesView api={api} currentUser={user} />
           </ErrorBoundary>
         )}
 
-        {activeTab === "marketplace" && (
+        {activeTab === 'marketplace' && (
           <ErrorBoundary>
             <MarketplaceView
               api={api}
@@ -281,7 +263,7 @@ export default function HomePage() {
           </ErrorBoundary>
         )}
 
-        {activeTab === "settings" && (
+        {activeTab === 'settings' && (
           <ErrorBoundary>
             <SettingsView
               api={api}
@@ -332,6 +314,6 @@ function getInitials(name: string): string {
     .split(/\s+/)
     .map((w) => w[0])
     .slice(0, 2)
-    .join("")
+    .join('')
     .toUpperCase();
 }

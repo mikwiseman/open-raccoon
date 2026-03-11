@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { assembleSoulPrompt } from '../soul.js';
 
 vi.mock('../../../db/connection.js', () => ({
@@ -80,9 +80,7 @@ describe('assembleSoulPrompt', () => {
     const dbMock = db as any;
     dbMock.select.mockReturnValue({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue([
-          { blockLabel: 'identity', content: 'I am here.' },
-        ]),
+        where: vi.fn().mockResolvedValue([{ blockLabel: 'identity', content: 'I am here.' }]),
       }),
     });
 

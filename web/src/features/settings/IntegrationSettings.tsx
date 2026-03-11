@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import type { WaiAgentsApi } from "@/lib/api/services";
-import type { IntegrationStatus } from "@/lib/types";
-import { IntegrationCard } from "./IntegrationCard";
+import { useCallback, useEffect, useState } from 'react';
+import type { WaiAgentsApi } from '@/lib/api/services';
+import type { IntegrationStatus } from '@/lib/types';
+import { IntegrationCard } from './IntegrationCard';
 
 type Props = {
   api: WaiAgentsApi;
@@ -22,7 +22,7 @@ export function IntegrationSettings({ api }: Props) {
       const res = await api.listIntegrations();
       setIntegrations(res.items);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load integrations");
+      setError(err instanceof Error ? err.message : 'Failed to load integrations');
     } finally {
       setLoading(false);
     }
@@ -37,9 +37,9 @@ export function IntegrationSettings({ api }: Props) {
     setError(null);
     try {
       const res = await api.authorizeIntegration(service);
-      const popup = window.open(res.authorize_url, `oauth-${service}`, "width=600,height=700");
+      const popup = window.open(res.authorize_url, `oauth-${service}`, 'width=600,height=700');
       if (!popup) {
-        setError("Popup blocked. Please allow popups for this site.");
+        setError('Popup blocked. Please allow popups for this site.');
         setConnectingService(null);
         return;
       }
@@ -51,7 +51,7 @@ export function IntegrationSettings({ api }: Props) {
         }
       }, 500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start OAuth flow");
+      setError(err instanceof Error ? err.message : 'Failed to start OAuth flow');
       setConnectingService(null);
     }
   }
@@ -62,12 +62,12 @@ export function IntegrationSettings({ api }: Props) {
       await api.disconnectIntegration(service);
       void loadIntegrations();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to disconnect");
+      setError(err instanceof Error ? err.message : 'Failed to disconnect');
     }
   }
 
   return (
-    <div className="is-settings" aria-label="integration-settings">
+    <div className="is-settings">
       <h3 className="is-title">Integrations</h3>
       <p className="is-description">
         Connect third-party services to extend your agents with real-world capabilities.

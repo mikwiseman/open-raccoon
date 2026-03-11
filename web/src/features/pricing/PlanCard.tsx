@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 type Props = {
   name: string;
@@ -22,7 +22,9 @@ export function PlanCard({
   onSelect,
 }: Props) {
   return (
-    <div className={`pr-plan-card ${highlighted ? "pr-plan-highlighted" : ""} ${current ? "pr-plan-current" : ""}`}>
+    <div
+      className={`pr-plan-card ${highlighted ? 'pr-plan-highlighted' : ''} ${current ? 'pr-plan-current' : ''}`}
+    >
       {current && <span className="pr-plan-badge">Current Plan</span>}
       <h3 className="pr-plan-name">{name}</h3>
       <div className="pr-plan-price">
@@ -31,16 +33,18 @@ export function PlanCard({
       </div>
       <ul className="pr-plan-features">
         {features.map((feature) => (
-          <li key={feature} className="pr-plan-feature">{feature}</li>
+          <li key={feature} className="pr-plan-feature">
+            {feature}
+          </li>
         ))}
       </ul>
       <button
         type="button"
-        className={`ab-btn ${highlighted ? "ab-btn-primary" : "ab-btn-secondary"} pr-plan-cta`}
+        className={`ab-btn ${highlighted ? 'ab-btn-primary' : 'ab-btn-secondary'} pr-plan-cta`}
         onClick={onSelect}
         disabled={current}
       >
-        {current ? "Current" : ctaLabel}
+        {current ? 'Current' : ctaLabel}
       </button>
     </div>
   );

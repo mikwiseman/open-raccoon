@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useCallback, useState } from "react";
-import type { WaiAgentsApi } from "@/lib/api/services";
+import { useCallback, useState } from 'react';
+import type { WaiAgentsApi } from '@/lib/api/services';
 
 type Props = {
   api: WaiAgentsApi;
@@ -18,9 +18,9 @@ export function OAuthConnectButton({ api, service, onConnected }: Props) {
     setError(null);
     try {
       const res = await api.authorizeIntegration(service);
-      const popup = window.open(res.authorize_url, `oauth-${service}`, "width=600,height=700");
+      const popup = window.open(res.authorize_url, `oauth-${service}`, 'width=600,height=700');
       if (!popup) {
-        setError("Popup blocked. Please allow popups for this site.");
+        setError('Popup blocked. Please allow popups for this site.');
         setConnecting(false);
         return;
       }
@@ -34,7 +34,7 @@ export function OAuthConnectButton({ api, service, onConnected }: Props) {
         }
       }, 500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start OAuth flow");
+      setError(err instanceof Error ? err.message : 'Failed to start OAuth flow');
       setConnecting(false);
     }
   }, [api, service, onConnected]);
@@ -47,7 +47,7 @@ export function OAuthConnectButton({ api, service, onConnected }: Props) {
         onClick={() => void handleConnect()}
         disabled={connecting}
       >
-        {connecting ? "Connecting..." : "Connect"}
+        {connecting ? 'Connecting...' : 'Connect'}
       </button>
       {error && <span className="error-text">{error}</span>}
     </div>

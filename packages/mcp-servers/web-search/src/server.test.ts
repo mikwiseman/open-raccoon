@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { stripHtml, extractTitle } from './html-utils.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { extractTitle, stripHtml } from './html-utils.js';
 
 // ─── HTML Utils Tests ────────────────────────────────────────────────────────
 
@@ -21,7 +21,7 @@ describe('stripHtml', () => {
 
   it('decodes HTML entities', () => {
     const result = stripHtml('&amp; &lt; &gt; &quot; &#39; &nbsp;');
-    expect(result).toBe("& < > \" '");
+    expect(result).toBe('& < > " \'');
   });
 
   it('collapses whitespace', () => {
@@ -100,9 +100,7 @@ describe('handleWebSearch', () => {
         tools: expect.arrayContaining([
           expect.objectContaining({ type: 'web_search_20250305', name: 'web_search' }),
         ]),
-        messages: expect.arrayContaining([
-          expect.objectContaining({ role: 'user' }),
-        ]),
+        messages: expect.arrayContaining([expect.objectContaining({ role: 'user' })]),
       }),
     );
 
@@ -142,7 +140,11 @@ describe('handleFetchPage', () => {
       ok: true,
       status: 200,
       statusText: 'OK',
-      text: vi.fn().mockResolvedValue('<html><head><title>Test Page</title></head><body><p>Hello world</p></body></html>'),
+      text: vi
+        .fn()
+        .mockResolvedValue(
+          '<html><head><title>Test Page</title></head><body><p>Hello world</p></body></html>',
+        ),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -157,12 +159,15 @@ describe('handleFetchPage', () => {
 
   it('truncates content to max_length', async () => {
     const longContent = 'A'.repeat(20000);
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      text: vi.fn().mockResolvedValue(`<body>${longContent}</body>`),
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: vi.fn().mockResolvedValue(`<body>${longContent}</body>`),
+      }),
+    );
 
     const { handleFetchPage } = await import('./tools.js');
     const result = await handleFetchPage({ url: 'https://example.com', max_length: 100 });
@@ -170,14 +175,19 @@ describe('handleFetchPage', () => {
   });
 
   it('throws on non-ok HTTP response', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      statusText: 'Not Found',
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      }),
+    );
 
     const { handleFetchPage } = await import('./tools.js');
-    await expect(handleFetchPage({ url: 'https://example.com/missing', max_length: 10000 })).rejects.toThrow('HTTP 404');
+    await expect(
+      handleFetchPage({ url: 'https://example.com/missing', max_length: 10000 }),
+    ).rejects.toThrow('HTTP 404');
   });
 });
 
@@ -187,16 +197,24 @@ describe('handleSummarizeUrl', () => {
   });
 
   it('fetches page and summarizes with Claude', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      text: vi.fn().mockResolvedValue('<html><body><p>Test content about TypeScript</p></body></html>'),
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: vi
+          .fn()
+          .mockResolvedValue('<html><body><p>Test content about TypeScript</p></body></html>'),
+      }),
+    );
 
     const summaryResponse = {
       summary: 'This content discusses TypeScript.',
-      key_points: ['TypeScript is a typed superset of JavaScript', 'It compiles to plain JavaScript'],
+      key_points: [
+        'TypeScript is a typed superset of JavaScript',
+        'It compiles to plain JavaScript',
+      ],
     };
 
     vi.doMock('@anthropic-ai/sdk', () => ({
@@ -220,12 +238,15 @@ describe('handleSummarizeUrl', () => {
   });
 
   it('passes focus to Claude prompt', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      text: vi.fn().mockResolvedValue('<body>Content</body>'),
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: vi.fn().mockResolvedValue('<body>Content</body>'),
+      }),
+    );
 
     const mockCreate = vi.fn().mockResolvedValue({
       content: [{ type: 'text', text: '{"summary": "Focused summary", "key_points": []}' }],

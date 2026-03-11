@@ -7,7 +7,10 @@ export const RegisterSchema = z.object({
     .max(32, 'Username must be at most 32 characters')
     .regex(/^[a-zA-Z0-9_]+$/, 'Username may only contain letters, numbers, and underscores'),
   email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters').max(128, 'Password must be at most 128 characters'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(128, 'Password must be at most 128 characters'),
 });
 
 export const LoginSchema = z.object({
@@ -28,8 +31,16 @@ export const MagicLinkVerifySchema = z.object({
 });
 
 export const UpdateProfileSchema = z.object({
-  display_name: z.string().max(128).transform(v => v.replace(/<[^>]*>/g, '')).optional(),
-  bio: z.string().max(2000).transform(v => v.replace(/<[^>]*>/g, '')).optional(),
+  display_name: z
+    .string()
+    .max(128)
+    .transform((v) => v.replace(/<[^>]*>/g, ''))
+    .optional(),
+  bio: z
+    .string()
+    .max(2000)
+    .transform((v) => v.replace(/<[^>]*>/g, ''))
+    .optional(),
   avatar_url: z.union([z.string().url('Invalid URL'), z.literal('')]).optional(),
   settings: z.record(z.unknown()).optional(),
 });

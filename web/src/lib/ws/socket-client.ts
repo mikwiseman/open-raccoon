@@ -1,6 +1,6 @@
-import { io, Socket } from "socket.io-client";
+import { io, type Socket } from 'socket.io-client';
 
-type AnyCallback = (...args: any[]) => void;
+type AnyCallback = (...args: unknown[]) => void;
 
 type ListenerEntry = {
   event: string;
@@ -13,12 +13,12 @@ function resolveSocketUrl(): string {
     return explicit;
   }
 
-  if (typeof window !== "undefined") {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${protocol}//${window.location.host}`;
   }
 
-  return "ws://127.0.0.1:4000";
+  return 'ws://127.0.0.1:4000';
 }
 
 export class SocketClient {
@@ -35,23 +35,23 @@ export class SocketClient {
     const url = resolveSocketUrl();
     this.socket = io(url, {
       auth: { token },
-      transports: ["websocket", "polling"],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 30000,
     });
 
-    this.socket.on("connect", () => {
-      console.log("[WS] connected, id:", this.socket?.id);
+    this.socket.on('connect', () => {
+      console.log('[WS] connected, id:', this.socket?.id);
       this.resubscribe();
     });
 
-    this.socket.on("disconnect", (reason) => {
-      console.log("[WS] disconnected:", reason);
+    this.socket.on('disconnect', (reason) => {
+      console.log('[WS] disconnected:', reason);
     });
 
-    this.socket.on("connect_error", (err) => {
-      console.error("[WS] connection error:", err.message);
+    this.socket.on('connect_error', (err) => {
+      console.error('[WS] connection error:', err.message);
     });
 
     // Apply all existing listeners
@@ -79,7 +79,7 @@ export class SocketClient {
       return;
     }
     this.joinedConversationRooms.add(conversationId);
-    this.socket.emit("join:conversation", conversationId);
+    this.socket.emit('join:conversation', conversationId);
   }
 
   leaveConversation(conversationId: string): void {
@@ -87,7 +87,7 @@ export class SocketClient {
       return;
     }
     this.joinedConversationRooms.delete(conversationId);
-    this.socket.emit("leave:conversation", conversationId);
+    this.socket.emit('leave:conversation', conversationId);
   }
 
   joinAgent(conversationId: string): void {
@@ -95,7 +95,7 @@ export class SocketClient {
       return;
     }
     this.joinedAgentRooms.add(conversationId);
-    this.socket.emit("join:agent", conversationId);
+    this.socket.emit('join:agent', conversationId);
   }
 
   leaveAgent(conversationId: string): void {
@@ -103,49 +103,51 @@ export class SocketClient {
       return;
     }
     this.joinedAgentRooms.delete(conversationId);
-    this.socket.emit("leave:agent", conversationId);
+    this.socket.emit('leave:agent', conversationId);
   }
 
   onMessage(callback: (msg: Record<string, unknown>) => void): () => void {
-    return this.addListener("message:new", callback);
+    return this.addListener('message:new', callback);
   }
 
   onMessageUpdated(callback: (msg: Record<string, unknown>) => void): () => void {
-    return this.addListener("message:updated", callback);
+    return this.addListener('message:updated', callback);
   }
 
   onMessageDeleted(callback: (msg: Record<string, unknown>) => void): () => void {
-    return this.addListener("message:deleted", callback);
+    return this.addListener('message:deleted', callback);
   }
 
   onAgentEvent(callback: (event: AgentStreamEvent) => void): () => void {
-    return this.addListener("agent:event", callback);
+    return this.addListener('agent:event', callback);
   }
 
-  onTyping(callback: (data: { conversationId: string; userId: string; isTyping: boolean }) => void): () => void {
+  onTyping(
+    callback: (data: { conversationId: string; userId: string; isTyping: boolean }) => void,
+  ): () => void {
     const listeners: Array<ListenerEntry> = [
       {
-        event: "typing",
+        event: 'typing',
         callback: (payload: { conversationId: string; userId: string; isTyping?: boolean }) => {
           callback({
             conversationId: payload.conversationId,
             userId: payload.userId,
             isTyping: payload.isTyping ?? true,
           });
-        }
+        },
       },
       {
-        event: "typing:start",
+        event: 'typing:start',
         callback: (payload: { conversationId: string; userId: string }) => {
           callback({ ...payload, isTyping: true });
-        }
+        },
       },
       {
-        event: "typing:stop",
+        event: 'typing:stop',
         callback: (payload: { conversationId: string; userId: string }) => {
           callback({ ...payload, isTyping: false });
-        }
-      }
+        },
+      },
     ];
 
     return this.addListeners(listeners);
@@ -154,43 +156,43 @@ export class SocketClient {
   onPresence(callback: (data: { userId: string; online: boolean }) => void): () => void {
     const listeners: Array<ListenerEntry> = [
       {
-        event: "presence:update",
+        event: 'presence:update',
         callback: (payload: { userId: string; online: boolean }) => {
           callback(payload);
-        }
+        },
       },
       {
-        event: "presence:snapshot",
+        event: 'presence:snapshot',
         callback: (payload: { onlineUsers?: string[] }) => {
           for (const userId of payload.onlineUsers ?? []) {
             callback({ userId, online: true });
           }
-        }
-      }
+        },
+      },
     ];
 
     return this.addListeners(listeners);
   }
 
   emitTyping(conversationId: string): void {
-    this.socket?.emit("typing:start", conversationId);
+    this.socket?.emit('typing:start', conversationId);
   }
 
   emitStopTyping(conversationId: string): void {
-    this.socket?.emit("typing:stop", conversationId);
+    this.socket?.emit('typing:stop', conversationId);
   }
 
   emitRead(conversationId: string, messageId: string): void {
-    this.socket?.emit("read", { conversationId, messageId });
+    this.socket?.emit('read', { conversationId, messageId });
   }
 
   emitApprovalDecision(
     conversationId: string,
     requestId: string,
-    decision: "approve" | "deny",
-    scope: string = "allow_once"
+    decision: 'approve' | 'deny',
+    scope: string = 'allow_once',
   ): void {
-    this.socket?.emit("approval_decision", {
+    this.socket?.emit('approval_decision', {
       conversationId,
       requestId,
       decision,
@@ -199,7 +201,7 @@ export class SocketClient {
   }
 
   emitStopAgent(conversationId: string): void {
-    this.socket?.emit("agent:stop", { conversationId });
+    this.socket?.emit('agent:stop', { conversationId });
   }
 
   private addListener(event: string, callback: AnyCallback): () => void {
@@ -239,25 +241,25 @@ export class SocketClient {
   private resubscribe(): void {
     // Re-join rooms after reconnection
     for (const roomId of this.joinedConversationRooms) {
-      this.socket?.emit("join:conversation", roomId);
+      this.socket?.emit('join:conversation', roomId);
     }
 
     for (const roomId of this.joinedAgentRooms) {
-      this.socket?.emit("join:agent", roomId);
+      this.socket?.emit('join:agent', roomId);
     }
   }
 }
 
 export type AgentStreamEvent = {
   type:
-    | "run_started"
-    | "text_delta"
-    | "tool_call_start"
-    | "tool_call_end"
-    | "thinking"
-    | "run_finished"
-    | "run_error"
-    | "status";
+    | 'run_started'
+    | 'text_delta'
+    | 'tool_call_start'
+    | 'tool_call_end'
+    | 'thinking'
+    | 'run_finished'
+    | 'run_error'
+    | 'status';
   runId?: string;
   agentId?: string;
   conversationId?: string;
