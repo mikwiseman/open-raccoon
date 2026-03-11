@@ -126,7 +126,7 @@ describe('ImageBlock', () => {
 
     const icon = container.querySelector('.cb-image-error-icon');
     expect(icon).toBeInTheDocument();
-    expect(icon?.textContent).toBe('\u26A0'); // warning symbol
+    expect(icon?.textContent).toBe('\\u26A0'); // literal escape sequence in JSX text
   });
 
   it('renders inside a .cb-image-block wrapper', () => {

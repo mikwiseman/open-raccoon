@@ -122,6 +122,37 @@ struct APIEndpointTests {
         }
     }
 
+    @Test("Crew endpoints produce correct paths")
+    func crewPaths() throws {
+        let cases: [(APIEndpoint, String)] = [
+            (.listCrews(cursor: nil, limit: nil), "/api/v1/crews"),
+            (.createCrew(name: "C", steps: [], visibility: nil, description: nil, category: nil), "/api/v1/crews"),
+            (.getCrew(id: "cr1"), "/api/v1/crews/cr1"),
+            (.updateCrew(id: "cr1", params: [:]), "/api/v1/crews/cr1"),
+            (.deleteCrew(id: "cr1"), "/api/v1/crews/cr1"),
+            (.runCrew(id: "cr1", input: "go", idempotencyKey: "k"), "/api/v1/crews/cr1/run"),
+        ]
+        for (endpoint, expectedPath) in cases {
+            let request = try endpoint.urlRequest(baseURL: baseURL)
+            #expect(request.url?.path == expectedPath)
+        }
+    }
+
+    @Test("Trigger endpoints produce correct paths")
+    func triggerPaths() throws {
+        let cases: [(APIEndpoint, String)] = [
+            (.listTriggers(agentID: "a1"), "/api/v1/agents/a1/triggers"),
+            (.createTrigger(agentID: "a1", name: "T", triggerType: "webhook", params: nil), "/api/v1/agents/a1/triggers"),
+            (.getTrigger(agentID: "a1", triggerID: "t1"), "/api/v1/agents/a1/triggers/t1"),
+            (.updateTrigger(agentID: "a1", triggerID: "t1", params: [:]), "/api/v1/agents/a1/triggers/t1"),
+            (.deleteTrigger(agentID: "a1", triggerID: "t1"), "/api/v1/agents/a1/triggers/t1"),
+        ]
+        for (endpoint, expectedPath) in cases {
+            let request = try endpoint.urlRequest(baseURL: baseURL)
+            #expect(request.url?.path == expectedPath)
+        }
+    }
+
     @Test("Page endpoints produce correct paths")
     func pagePaths() throws {
         let cases: [(APIEndpoint, String)] = [
@@ -162,6 +193,9 @@ struct APIEndpointTests {
             .rateAgent(id: "a", rating: 5, review: nil),
             .requestMagicLink(email: "e"),
             .verifyMagicLink(token: "t"),
+            .createCrew(name: "C", steps: [], visibility: nil, description: nil, category: nil),
+            .runCrew(id: "cr", input: "go", idempotencyKey: "k"),
+            .createTrigger(agentID: "a", name: "T", triggerType: "webhook", params: nil),
         ]
         for endpoint in postEndpoints {
             #expect(endpoint.method == "POST", "\(endpoint) should be POST")
