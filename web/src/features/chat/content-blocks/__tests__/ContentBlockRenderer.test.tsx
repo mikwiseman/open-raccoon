@@ -1,6 +1,10 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ContentBlockRenderer, parseContentBlocks } from '../ContentBlockRenderer';
+import {
+  type ContentBlock,
+  ContentBlockRenderer,
+  parseContentBlocks,
+} from '../ContentBlockRenderer';
 
 afterEach(() => {
   cleanup();
@@ -61,7 +65,7 @@ describe('ContentBlockRenderer', () => {
   });
 
   it('renders unknown block types as JSON', () => {
-    const blocks = [{ type: 'unknown_type' as never, data: 'test' }];
+    const blocks = [{ type: 'unknown_type', data: 'test' }] as unknown as ContentBlock[];
     const { container } = render(<ContentBlockRenderer blocks={blocks} />);
     const unknownBlock = container.querySelector('.cb-unknown-block');
     expect(unknownBlock).toBeInTheDocument();

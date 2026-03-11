@@ -18,6 +18,7 @@ export function ExecutionHistory({ api, agentId, onEventsLoaded }: Props) {
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cursor is read for append-only pagination, should not retrigger initial load
   const loadEvents = useCallback(
     async (append = false) => {
       setLoading(true);
@@ -40,8 +41,6 @@ export function ExecutionHistory({ api, agentId, onEventsLoaded }: Props) {
         setLoading(false);
       }
     },
-    // cursor is read via state inside, not a dep that should retrigger
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [api, agentId, onEventsLoaded],
   );
 

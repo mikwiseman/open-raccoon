@@ -57,9 +57,7 @@ describe('ActionCardBlock', () => {
     const block: ActionCardBlockData = {
       type: 'action_card',
       title: 'Test',
-      buttons: [
-        { label: 'Go', action: 'go_action' },
-      ],
+      buttons: [{ label: 'Go', action: 'go_action' }],
       onAction,
     };
     render(<ActionCardBlock block={block} />);
