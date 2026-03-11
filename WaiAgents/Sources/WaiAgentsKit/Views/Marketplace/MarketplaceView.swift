@@ -28,8 +28,11 @@ public struct MarketplaceView: View {
                 .onChange(of: searchText) {
                     searchTask?.cancel()
                     searchTask = Task {
-                        try? await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
-                        guard !Task.isCancelled else { return }
+                        do {
+                            try await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
+                        } catch {
+                            return // Task was cancelled during debounce
+                        }
                         await appState.marketplaceViewModel?.searchAgents(query: searchText)
                     }
                 }

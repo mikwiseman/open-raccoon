@@ -118,6 +118,7 @@ export async function listConversations(userId: string) {
       LIMIT 1
     ) lm ON true
     ORDER BY COALESCE(c.last_message_at, c.inserted_at) DESC
+    LIMIT 200
   `;
 
   return rows.map((row) => {
@@ -376,6 +377,7 @@ export async function listMembers(conversationId: string, userId: string) {
     JOIN users u ON u.id = cm.user_id
     WHERE cm.conversation_id = ${conversationId}
     ORDER BY cm.joined_at ASC
+    LIMIT 500
   `;
 
   return rows.map((row) => formatMember(row as Record<string, unknown>));

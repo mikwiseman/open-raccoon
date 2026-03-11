@@ -85,6 +85,13 @@ export function PagesView({ api, currentUser }: PagesViewProps) {
     void loadPages();
   }, [loadPages]);
 
+  // Auto-clear info banner after 4 seconds
+  useEffect(() => {
+    if (!info) return;
+    const t = setTimeout(() => setInfo(null), 4000);
+    return () => clearTimeout(t);
+  }, [info]);
+
   useEffect(() => {
     if (featureUnavailable) {
       return;

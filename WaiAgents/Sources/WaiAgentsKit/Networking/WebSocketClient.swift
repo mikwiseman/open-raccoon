@@ -165,7 +165,7 @@ public final class WebSocketClient: @unchecked Sendable {
     }
 
     public func connect() {
-        Task { @MainActor in onConnectionStateChanged?(.connecting) }
+        Task { @MainActor [weak self] in self?.onConnectionStateChanged?(.connecting) }
 
         let currentSocket = lock.withLock { socket }
 
@@ -183,8 +183,7 @@ public final class WebSocketClient: @unchecked Sendable {
 
         currentSocket.onError { @Sendable [weak self] _ in
             Task { @MainActor in
-                guard let self else { return }
-                self.onConnectionStateChanged?(.disconnected)
+                self?.onConnectionStateChanged?(.disconnected)
             }
         }
         currentSocket.connect()
@@ -193,7 +192,7 @@ public final class WebSocketClient: @unchecked Sendable {
     public func disconnect() {
         let currentSocket = lock.withLock { socket }
         currentSocket.disconnect()
-        Task { @MainActor in onConnectionStateChanged?(.disconnected) }
+        Task { @MainActor [weak self] in self?.onConnectionStateChanged?(.disconnected) }
     }
 
     /// Attempts to refresh the access token and reconnect the WebSocket.
@@ -211,7 +210,7 @@ public final class WebSocketClient: @unchecked Sendable {
         currentSocket.disconnect()
 
         do {
-            await onConnectionStateChanged?(.connecting)
+            await MainActor.run { onConnectionStateChanged?(.connecting) }
 
             let newToken = try await authManager.validAccessToken()
             let wsURL = baseURL
@@ -253,9 +252,9 @@ public final class WebSocketClient: @unchecked Sendable {
                 rejoinTopic(topic)
             }
         } catch APIError.unauthorized {
-            await onAuthFailure?()
+            await MainActor.run { onAuthFailure?() }
         } catch {
-            await onConnectionStateChanged?(.disconnected)
+            await MainActor.run { onConnectionStateChanged?(.disconnected) }
         }
     }
 

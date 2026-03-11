@@ -113,8 +113,11 @@ public final class AuthStore {
     private func scheduleMagicLinkReset() {
         magicLinkResetTask?.cancel()
         magicLinkResetTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(60))
-            guard !Task.isCancelled else { return }
+            do {
+                try await Task.sleep(for: .seconds(60))
+            } catch {
+                return // Task was cancelled
+            }
             self?.magicLinkSent = false
         }
     }

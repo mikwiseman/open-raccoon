@@ -304,7 +304,8 @@ export async function forkAgent(agentId: string, userId: string) {
   // Get the source agent (outside transaction — read-only)
   const agentRows = await sql`
     SELECT id, name, slug, description, avatar_url, system_prompt, model,
-           temperature, max_tokens, tools, mcp_servers, visibility, category, metadata
+           temperature, max_tokens, tools, mcp_servers, visibility, category, metadata,
+           creator_id
     FROM agents
     WHERE id = ${agentId}
     LIMIT 1
@@ -313,11 +314,17 @@ export async function forkAgent(agentId: string, userId: string) {
     throw Object.assign(new Error('Agent not found'), { code: 'NOT_FOUND' });
   }
 
+  // Block forking private agents the user doesn't own
+  const sourceRow = agentRows[0] as Record<string, unknown>;
+  if (sourceRow.visibility === 'private' && sourceRow.creator_id !== userId) {
+    throw Object.assign(new Error('Agent not found'), { code: 'NOT_FOUND' });
+  }
+
   const source = agentRows[0] as Record<string, unknown>;
   const newAgentId = randomUUID();
   const now = new Date().toISOString();
 
-  // Generate a unique slug for the fork
+  // Generate a unique slug for the fork (cap at 10000 to prevent unbounded loops)
   const baseSlug = `${source.slug}-fork`;
   let slug = baseSlug;
   const existingRows =
@@ -328,7 +335,7 @@ export async function forkAgent(agentId: string, userId: string) {
     );
     if (existingSlugs.has(slug)) {
       let counter = 2;
-      while (existingSlugs.has(`${baseSlug}-${counter}`)) {
+      while (existingSlugs.has(`${baseSlug}-${counter}`) && counter < 10000) {
         counter++;
       }
       slug = `${baseSlug}-${counter}`;
@@ -659,6 +666,19 @@ export async function rateAgent(
   `;
   if (agentRows.length === 0) {
     throw Object.assign(new Error('Agent not found'), { code: 'NOT_FOUND' });
+  }
+
+  // Verify the user has actually used this agent (has a conversation with it)
+  const usageRows = await sql`
+    SELECT 1 FROM conversations c
+    JOIN conversation_members cm ON cm.conversation_id = c.id AND cm.user_id = ${userId}
+    WHERE c.agent_id = ${agentId} AND c.type = 'agent'
+    LIMIT 1
+  `;
+  if (usageRows.length === 0) {
+    throw Object.assign(new Error('You must use this agent before rating it'), {
+      code: 'BAD_REQUEST',
+    });
   }
 
   // @ts-expect-error postgres.js TransactionSql type lacks call signatures but works at runtime

@@ -37,6 +37,9 @@ const FALLBACK_CATEGORIES = [
   'Other',
 ];
 
+/** Counter to prevent stale profile fetches from overwriting state on rapid selection changes */
+let profileFetchGeneration = 0;
+
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
@@ -310,17 +313,21 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
       setRatings([]);
       return;
     }
+    const generation = ++profileFetchGeneration;
     setLoadingProfile(true);
     void api
       .marketplaceAgent(selected.slug)
       .then((res) => {
+        if (generation !== profileFetchGeneration) return; // stale response, discard
         setProfile(res);
         setRatings(res.ratings);
       })
       .catch((err) => {
+        if (generation !== profileFetchGeneration) return;
         setError(getErrorMessage(err));
       })
       .finally(() => {
+        if (generation !== profileFetchGeneration) return;
         setLoadingProfile(false);
       });
   }, [api, selected]);
@@ -433,11 +440,13 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
           </div>
 
           {/* Category pills */}
-          <div className="mp-pill-row">
+          <div className="mp-pill-row" role="tablist" aria-label="Category filter">
             {allCategories.map((cat) => (
               <button
                 key={cat}
                 type="button"
+                role="tab"
+                aria-selected={activeCategory === cat}
                 className={activeCategory === cat ? 'mp-pill active' : 'mp-pill'}
                 onClick={() => setActiveCategory(cat)}
               >

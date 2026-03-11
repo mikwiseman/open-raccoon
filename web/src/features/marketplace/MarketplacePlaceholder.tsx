@@ -37,6 +37,9 @@ const FALLBACK_CATEGORIES = [
   'Other',
 ];
 
+/** Counter to prevent stale profile fetches from overwriting state on rapid selection changes */
+let placeholderProfileFetchGeneration = 0;
+
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
@@ -211,6 +214,15 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
     }, DEBOUNCE_MS);
   }, []);
 
+  /* --- cleanup debounce timer on unmount --- */
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
   /* --- load marketplace agents --- */
   const loadMarketplace = useCallback(
     async (nextCursor?: string | null) => {
@@ -276,17 +288,21 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
       setRatings([]);
       return;
     }
+    const generation = ++placeholderProfileFetchGeneration;
     setLoadingProfile(true);
     void api
       .marketplaceAgent(selected.slug)
       .then((res) => {
+        if (generation !== placeholderProfileFetchGeneration) return;
         setProfile(res);
         setRatings(res.ratings);
       })
       .catch((err) => {
+        if (generation !== placeholderProfileFetchGeneration) return;
         setError(getErrorMessage(err));
       })
       .finally(() => {
+        if (generation !== placeholderProfileFetchGeneration) return;
         setLoadingProfile(false);
       });
   }, [api, selected]);

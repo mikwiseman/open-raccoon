@@ -144,8 +144,11 @@ public struct FeedCardView: View {
             likeScale = 1.3
         }
         Task {
-            try? await Task.sleep(nanoseconds: 150_000_000)
-            guard !Task.isCancelled else { return }
+            do {
+                try await Task.sleep(nanoseconds: 150_000_000)
+            } catch {
+                return
+            }
             withAnimation(WaiAgentsMotion.spring) {
                 likeScale = 1.0
             }

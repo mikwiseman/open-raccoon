@@ -59,8 +59,8 @@ export interface ListTracesOptions {
 export async function listTraces(agentId: string, userId: string, options?: ListTracesOptions) {
   await assertAgentCreator(agentId, userId);
 
-  const limit = Math.min(options?.limit ?? 20, 100);
-  const offset = options?.offset ?? 0;
+  const limit = Math.min(Math.max(1, options?.limit ?? 20), 100);
+  const offset = Math.max(options?.offset ?? 0, 0);
   const status = options?.status ?? null;
 
   const rows = await sql`

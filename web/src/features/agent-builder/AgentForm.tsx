@@ -67,6 +67,7 @@ export function AgentForm({ api, accessToken, agent, onSaved, onCancel }: Props)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return; // Guard against rapid double-submission before React re-renders
     setSaving(true);
     setError(null);
 

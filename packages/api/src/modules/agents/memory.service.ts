@@ -55,9 +55,11 @@ export async function listMemories(agentId: string, userId: string, options?: Li
   await assertAgentOwner(agentId, userId);
 
   const limit = Math.min(options?.limit ?? 50, 200);
-  const offset = options?.offset ?? 0;
+  const offset = Math.max(options?.offset ?? 0, 0);
   const memoryType = options?.type ?? null;
-  const search = options?.search ?? null;
+  const rawSearch = options?.search ?? null;
+  // Escape SQL LIKE wildcards to prevent user-controlled pattern matching
+  const search = rawSearch ? rawSearch.replace(/[%_\\]/g, '\\$&') : null;
   const minImportance = options?.minImportance ?? null;
 
   const rows = await sql`
@@ -179,7 +181,9 @@ export async function recallMemories(
   await assertAgentOwner(agentId, userId);
 
   const maxResults = Math.min(limit ?? 10, 50);
-  const search = query ?? null;
+  const rawSearch = query ?? null;
+  // Escape SQL LIKE wildcards to prevent user-controlled pattern matching
+  const search = rawSearch ? rawSearch.replace(/[%_\\]/g, '\\$&') : null;
 
   // Recall memories ranked by importance * recency, filtered by search if provided
   // Recency is computed as a decay factor based on time since last access or creation

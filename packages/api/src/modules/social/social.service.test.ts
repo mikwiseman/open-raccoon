@@ -425,13 +425,15 @@ describe('social.service — Marketplace', () => {
 
     // 1. Check agent exists
     sqlMock.mockResolvedValueOnce([{ id: AGENT_ID }] as any);
-    // 2. Check existing rating
+    // 2. Verify user has used the agent
+    sqlMock.mockResolvedValueOnce([{ '?column?': 1 }] as any);
+    // 3. Check existing rating
     sqlMock.mockResolvedValueOnce([] as any);
-    // 3. Insert rating
+    // 4. Insert rating
     sqlMock.mockResolvedValueOnce([] as any);
-    // 4. Update agent rating_sum/count
+    // 5. Update agent rating_sum/count
     sqlMock.mockResolvedValueOnce([] as any);
-    // 5. Return updated summary
+    // 6. Return updated summary
     sqlMock.mockResolvedValueOnce([{ rating_sum: 24, rating_count: 6, rating_avg: 4.0 }] as any);
 
     const { rateAgent } = await import('./social.service.js');
@@ -447,13 +449,15 @@ describe('social.service — Marketplace', () => {
 
     // 1. Check agent exists
     sqlMock.mockResolvedValueOnce([{ id: AGENT_ID }] as any);
-    // 2. Check existing rating — found
+    // 2. Verify user has used the agent
+    sqlMock.mockResolvedValueOnce([{ '?column?': 1 }] as any);
+    // 3. Check existing rating — found
     sqlMock.mockResolvedValueOnce([{ id: 'rating-id', old_rating: 3 }] as any);
-    // 3. Update rating
+    // 4. Update rating
     sqlMock.mockResolvedValueOnce([] as any);
-    // 4. Update agent rating_sum (diff)
+    // 5. Update agent rating_sum (diff)
     sqlMock.mockResolvedValueOnce([] as any);
-    // 5. Return updated summary
+    // 6. Return updated summary
     sqlMock.mockResolvedValueOnce([{ rating_sum: 21, rating_count: 5, rating_avg: 4.2 }] as any);
 
     const { rateAgent } = await import('./social.service.js');

@@ -1,5 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
-import { asTextContent, createIdempotencyKey, getErrorMessage, toIsoLocal, toSessionUser } from '../utils';
+import { describe, expect, it } from 'vitest';
+import {
+  asTextContent,
+  createIdempotencyKey,
+  getErrorMessage,
+  toIsoLocal,
+  toSessionUser,
+} from '../utils';
 
 /* ================================================================
  * toSessionUser

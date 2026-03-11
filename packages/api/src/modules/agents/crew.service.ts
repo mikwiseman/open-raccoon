@@ -45,6 +45,7 @@ export async function listCrews(userId: string) {
     FROM agent_crews
     WHERE creator_id = ${userId}
     ORDER BY inserted_at DESC
+    LIMIT 200
   `;
   return rows.map((row) => formatCrew(row as Record<string, unknown>));
 }
@@ -74,7 +75,7 @@ export async function createCrew(userId: string, input: CreateCrewInput) {
   const baseSlug = slugify(input.name);
   let slug = baseSlug;
 
-  // Ensure slug uniqueness
+  // Ensure slug uniqueness (cap at 10000 to prevent unbounded loops)
   const existing =
     await sql`SELECT slug FROM agent_crews WHERE slug LIKE ${`${baseSlug}%`} ORDER BY slug`;
   if (existing.length > 0) {
@@ -83,7 +84,7 @@ export async function createCrew(userId: string, input: CreateCrewInput) {
     );
     if (existingSlugs.has(slug)) {
       let counter = 2;
-      while (existingSlugs.has(`${baseSlug}-${counter}`)) {
+      while (existingSlugs.has(`${baseSlug}-${counter}`) && counter < 10000) {
         counter++;
       }
       slug = `${baseSlug}-${counter}`;

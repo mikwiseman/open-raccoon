@@ -173,24 +173,18 @@ describe('POST /uploads/presign — content type edge cases', () => {
 describe('GET /uploads/:key — access control edge cases', () => {
   it('blocks path traversal attempt', async () => {
     const authHeaders = await getTokenHeader();
-    const { status } = await request(
-      app,
-      'GET',
-      '/uploads/../../../etc/passwd',
-      { headers: authHeaders },
-    );
+    const { status } = await request(app, 'GET', '/uploads/../../../etc/passwd', {
+      headers: authHeaders,
+    });
     // Path traversal is caught — results in 404 (key doesn't match user prefix)
     expect([403, 404]).toContain(status);
   });
 
   it('blocks access to key without uploads/ prefix for user', async () => {
     const authHeaders = await getTokenHeader();
-    const { status, body } = await request(
-      app,
-      'GET',
-      '/uploads/other-prefix/user-uuid/file.png',
-      { headers: authHeaders },
-    );
+    const { status, body } = await request(app, 'GET', '/uploads/other-prefix/user-uuid/file.png', {
+      headers: authHeaders,
+    });
     expect(status).toBe(403);
     expect(body.error).toBe('Forbidden');
   });

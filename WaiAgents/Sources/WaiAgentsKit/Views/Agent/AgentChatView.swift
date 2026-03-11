@@ -212,8 +212,11 @@ public struct AgentChatView: View {
             guard isAgentStreaming else { return }
             streamingResetTask?.cancel()
             streamingResetTask = Task {
-                try? await Task.sleep(nanoseconds: 30_000_000_000)
-                guard !Task.isCancelled else { return }
+                do {
+                    try await Task.sleep(nanoseconds: 30_000_000_000)
+                } catch {
+                    return // Task was cancelled — don't reset streaming state
+                }
                 isAgentStreaming = false
                 agentStatus = ""
             }

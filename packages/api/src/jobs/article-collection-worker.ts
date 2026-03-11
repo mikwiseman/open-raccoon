@@ -79,13 +79,21 @@ export const articleCollectionWorker = createWorker(QUEUE_NAME, async () => {
       continue;
     }
     const hostname = parsedUrl.hostname.toLowerCase();
+    // Check for RFC 1918 private 172.16.0.0/12 range (172.16.x.x - 172.31.x.x)
+    const is172Private = (() => {
+      if (!hostname.startsWith('172.')) return false;
+      const parts = hostname.split('.');
+      if (parts.length < 2) return false;
+      const second = parseInt(parts[1], 10);
+      return second >= 16 && second <= 31;
+    })();
     if (
       hostname === 'localhost' ||
       hostname === '127.0.0.1' ||
       hostname === '0.0.0.0' ||
       hostname === '::1' ||
       hostname.startsWith('10.') ||
-      hostname.startsWith('172.') ||
+      is172Private ||
       hostname.startsWith('192.168.') ||
       hostname.startsWith('169.254.') ||
       hostname.endsWith('.internal') ||

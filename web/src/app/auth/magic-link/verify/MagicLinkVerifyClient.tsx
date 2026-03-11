@@ -98,5 +98,8 @@ export function MagicLinkVerifyClient() {
 }
 
 function sanitizeToken(value: string): string {
-  return value.trim().replace(/\s+/g, '');
+  // Strip whitespace then restrict to safe chars (alphanumeric, hyphens, underscores, dots)
+  // to prevent injection via the waiagents:// deep link protocol handler
+  const stripped = value.trim().replace(/\s+/g, '');
+  return stripped.replace(/[^a-zA-Z0-9\-_.]/g, '');
 }

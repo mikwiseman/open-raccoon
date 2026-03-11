@@ -72,6 +72,7 @@ describe('collaboration.service — requestCollaboration', () => {
     const result = await requestCollaboration(REQUESTER_AGENT_ID, USER_ID, CONVERSATION_ID, {
       responder_agent_id: RESPONDER_AGENT_ID,
       task_description: 'Analyze this dataset',
+      conversation_id: CONVERSATION_ID,
     });
 
     expect(result.id).toBe(COLLAB_ID);
@@ -90,6 +91,7 @@ describe('collaboration.service — requestCollaboration', () => {
       requestCollaboration(REQUESTER_AGENT_ID, OTHER_USER_ID, CONVERSATION_ID, {
         responder_agent_id: RESPONDER_AGENT_ID,
         task_description: 'Test',
+        conversation_id: CONVERSATION_ID,
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
@@ -108,6 +110,7 @@ describe('collaboration.service — requestCollaboration', () => {
       requestCollaboration(REQUESTER_AGENT_ID, USER_ID, CONVERSATION_ID, {
         responder_agent_id: 'nonexistent-id',
         task_description: 'Test',
+        conversation_id: CONVERSATION_ID,
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
@@ -126,6 +129,7 @@ describe('collaboration.service — requestCollaboration', () => {
       requestCollaboration(REQUESTER_AGENT_ID, USER_ID, 'nonexistent-conv', {
         responder_agent_id: RESPONDER_AGENT_ID,
         task_description: 'Test',
+        conversation_id: 'nonexistent-conv',
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
@@ -143,6 +147,7 @@ describe('collaboration.service — requestCollaboration', () => {
       requestCollaboration(REQUESTER_AGENT_ID, USER_ID, CONVERSATION_ID, {
         responder_agent_id: REQUESTER_AGENT_ID,
         task_description: 'Test',
+        conversation_id: CONVERSATION_ID,
       }),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
@@ -164,6 +169,7 @@ describe('collaboration.service — requestCollaboration', () => {
     const result = await requestCollaboration(REQUESTER_AGENT_ID, USER_ID, CONVERSATION_ID, {
       responder_agent_id: RESPONDER_AGENT_ID,
       task_description: 'Analyze this dataset',
+      conversation_id: CONVERSATION_ID,
       metadata: { priority: 'high' },
     });
 
@@ -185,6 +191,7 @@ describe('collaboration.service — requestCollaboration', () => {
     await requestCollaboration(REQUESTER_AGENT_ID, USER_ID, CONVERSATION_ID, {
       responder_agent_id: RESPONDER_AGENT_ID,
       task_description: 'Analyze this dataset',
+      conversation_id: CONVERSATION_ID,
     });
 
     const { emitCollaborationEvent } = await import('../../ws/emitter.js');

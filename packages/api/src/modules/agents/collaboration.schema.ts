@@ -5,6 +5,7 @@ const stripHtml = (v: string) => v.replace(/<[^>]*>/g, '');
 export const CreateCollaborationSchema = z.object({
   responder_agent_id: z.string().uuid(),
   task_description: z.string().min(1).max(10000).transform(stripHtml),
+  conversation_id: z.string().uuid(),
   metadata: z.record(z.unknown()).optional(),
 });
 

@@ -72,8 +72,11 @@ public struct ConversationDetailView: View {
                                     .onAppear {
                                         typingResetTask?.cancel()
                                         typingResetTask = Task {
-                                            try? await Task.sleep(nanoseconds: 3_000_000_000)
-                                            guard !Task.isCancelled else { return }
+                                            do {
+                                                try await Task.sleep(nanoseconds: 3_000_000_000)
+                                            } catch {
+                                                return // Task was cancelled
+                                            }
                                             viewModel.isTyping = false
                                         }
                                     }

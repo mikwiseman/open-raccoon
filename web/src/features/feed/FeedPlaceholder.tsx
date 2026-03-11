@@ -129,6 +129,8 @@ export function FeedView({ api }: FeedViewProps) {
           <button
             key={tab.key}
             type="button"
+            role="tab"
+            aria-selected={tab.key === kind}
             className={tab.key === kind ? 'active' : ''}
             onClick={() => setKind(tab.key)}
           >

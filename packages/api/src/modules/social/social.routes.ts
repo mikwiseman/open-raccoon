@@ -177,6 +177,7 @@ socialRoutes.post('/marketplace/agents/:id/rate', authMiddleware, async (c) => {
   } catch (err) {
     const e = err as Error & { code?: string };
     if (e.code === 'NOT_FOUND') return c.json({ error: 'Not found', message: e.message }, 404);
+    if (e.code === 'BAD_REQUEST') return c.json({ error: 'Bad request', message: e.message }, 400);
     throw err;
   }
 });

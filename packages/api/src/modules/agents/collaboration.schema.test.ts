@@ -13,16 +13,19 @@ describe('CreateCollaborationSchema', () => {
     const data = {
       responder_agent_id: '550e8400-e29b-41d4-a716-446655440000',
       task_description: 'Analyze this dataset',
+      conversation_id: '660e8400-e29b-41d4-a716-446655440001',
     };
     const result = CreateCollaborationSchema.parse(data);
     expect(result.responder_agent_id).toBe(data.responder_agent_id);
     expect(result.task_description).toBe(data.task_description);
+    expect(result.conversation_id).toBe(data.conversation_id);
   });
 
   it('accepts valid input with optional metadata', () => {
     const data = {
       responder_agent_id: '550e8400-e29b-41d4-a716-446655440000',
       task_description: 'Analyze data',
+      conversation_id: '660e8400-e29b-41d4-a716-446655440001',
       metadata: { priority: 'high', source: 'api' },
     };
     const result = CreateCollaborationSchema.parse(data);
@@ -33,6 +36,7 @@ describe('CreateCollaborationSchema', () => {
     const result = CreateCollaborationSchema.parse({
       responder_agent_id: '550e8400-e29b-41d4-a716-446655440000',
       task_description: '<script>alert(1)</script>',
+      conversation_id: '660e8400-e29b-41d4-a716-446655440001',
     });
     expect(result.task_description).toBe('alert(1)');
   });
@@ -87,6 +91,7 @@ describe('CreateCollaborationSchema', () => {
     const result = CreateCollaborationSchema.safeParse({
       responder_agent_id: '550e8400-e29b-41d4-a716-446655440000',
       task_description: 'x'.repeat(10000),
+      conversation_id: '660e8400-e29b-41d4-a716-446655440001',
     });
     expect(result.success).toBe(true);
   });
@@ -95,6 +100,7 @@ describe('CreateCollaborationSchema', () => {
     const result = CreateCollaborationSchema.parse({
       responder_agent_id: '550e8400-e29b-41d4-a716-446655440000',
       task_description: 'Test',
+      conversation_id: '660e8400-e29b-41d4-a716-446655440001',
     });
     expect(result.metadata).toBeUndefined();
   });

@@ -14,7 +14,6 @@ vi.mock('socket.io-client', () => ({
   io: vi.fn(() => mockSocket),
 }));
 
-import { io } from 'socket.io-client';
 import { SocketClient } from '../socket-client';
 
 describe('SocketClient — edge cases', () => {

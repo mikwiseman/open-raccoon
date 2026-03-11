@@ -1,7 +1,16 @@
 'use client';
 
-import DOMPurify from 'dompurify';
 import hljs from 'highlight.js/lib/core';
+
+// Lazy-initialize DOMPurify to avoid SSR crash (dompurify needs window.document)
+let _purify: typeof import('dompurify').default | null = null;
+function getPurify() {
+  if (!_purify && typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _purify = require('dompurify') as typeof import('dompurify').default;
+  }
+  return _purify;
+}
 
 export type TextBlockData = {
   type: 'text';
@@ -79,8 +88,12 @@ export function TextBlock({ block }: { block: TextBlockData }) {
                 </button>
               </div>
               <pre className="cb-code-fence-pre">
-                {/* biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify */}
-                <code dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(highlighted) }} />
+                <code
+                  // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify
+                  dangerouslySetInnerHTML={{
+                    __html: (getPurify()?.sanitize ?? escapeHtml)(highlighted),
+                  }}
+                />
               </pre>
             </div>
           );
@@ -94,7 +107,10 @@ export function TextBlock({ block }: { block: TextBlockData }) {
             className="cb-text-content"
             // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify
             dangerouslySetInnerHTML={{
-              __html: DOMPurify.sanitize(renderInlineMarkdown(part), PURIFY_CONFIG),
+              __html: (getPurify()?.sanitize ?? escapeHtml)(
+                renderInlineMarkdown(part),
+                PURIFY_CONFIG,
+              ),
             }}
           />
         );

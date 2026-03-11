@@ -458,6 +458,7 @@ describe('rateAgent with dimensional scores', () => {
     const sqlMock = vi.mocked(sql);
 
     sqlMock.mockResolvedValueOnce([{ id: AGENT_ID }] as any); // Agent exists
+    sqlMock.mockResolvedValueOnce([{ '?column?': 1 }] as any); // User has used the agent
     sqlMock.mockResolvedValueOnce([] as any); // No existing rating
     sqlMock.mockResolvedValueOnce([] as any); // Insert rating
     sqlMock.mockResolvedValueOnce([] as any); // Update agent

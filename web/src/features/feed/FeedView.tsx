@@ -200,6 +200,8 @@ export function FeedView({ api, currentUser: _currentUser }: FeedViewProps) {
   const [likeAnimating, setLikeAnimating] = useState<string | null>(null);
 
   const cacheRef = useRef<Partial<Record<FeedKind, TabCache>>>({});
+  // Counter to discard stale feed responses when tabs are switched rapidly
+  const feedFetchIdRef = useRef(0);
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
 
@@ -208,6 +210,7 @@ export function FeedView({ api, currentUser: _currentUser }: FeedViewProps) {
   const load = useCallback(
     async (nextKind: FeedKind, nextCursor?: string | null) => {
       const isInitial = !nextCursor;
+      const fetchId = ++feedFetchIdRef.current;
       if (isInitial) setLoading(true);
       else setLoadingMore(true);
       setError(null);
@@ -217,6 +220,9 @@ export function FeedView({ api, currentUser: _currentUser }: FeedViewProps) {
           limit: 20,
           cursor: nextCursor ?? undefined,
         });
+
+        // Discard stale responses from previous tab switches
+        if (fetchId !== feedFetchIdRef.current) return;
 
         setItems((prev) => {
           const base = isInitial ? [] : prev;
@@ -250,10 +256,13 @@ export function FeedView({ api, currentUser: _currentUser }: FeedViewProps) {
         setCursor(response.page_info.next_cursor);
         setHasMore(response.page_info.has_more);
       } catch (err) {
+        if (fetchId !== feedFetchIdRef.current) return;
         setError(getErrorMessage(err));
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        if (fetchId === feedFetchIdRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
     },
     [api],

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { WaiAgentsApi } from '@/lib/api/services';
 import type { AgentEvent } from '@/lib/types';
 
@@ -17,15 +17,17 @@ export function ExecutionHistory({ api, agentId, onEventsLoaded }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  // Use a ref to always read the current cursor value, avoiding stale closures
+  const cursorRef = useRef(cursor);
+  cursorRef.current = cursor;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: cursor is read for append-only pagination, should not retrigger initial load
   const loadEvents = useCallback(
     async (append = false) => {
       setLoading(true);
       setError(null);
       try {
         const res = await api.listAgentEvents(agentId, {
-          cursor: append ? (cursor ?? undefined) : undefined,
+          cursor: append ? (cursorRef.current ?? undefined) : undefined,
           limit: 20,
         });
         setEvents((prev) => {

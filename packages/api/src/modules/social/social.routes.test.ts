@@ -448,10 +448,17 @@ describe('POST /marketplace/agents/:id/rate', () => {
     const { sql } = await import('../../db/connection.js');
     const sqlMock = vi.mocked(sql);
 
+    // 1. Agent exists check
     sqlMock.mockResolvedValueOnce([{ id: AGENT_ID }] as any);
+    // 2. Usage verification (user has a conversation with the agent)
+    sqlMock.mockResolvedValueOnce([{ '?column?': 1 }] as any);
+    // 3. Inside tx: check existing rating
     sqlMock.mockResolvedValueOnce([] as any);
+    // 4. Inside tx: insert new rating
     sqlMock.mockResolvedValueOnce([] as any);
+    // 5. Inside tx: update agents rating_sum/count
     sqlMock.mockResolvedValueOnce([] as any);
+    // 6. Inside tx: return rating summary
     sqlMock.mockResolvedValueOnce([{ rating_sum: 24, rating_count: 6, rating_avg: 4.0 }] as any);
 
     const { status, body } = await request(app, 'POST', `/marketplace/agents/${AGENT_ID}/rate`, {

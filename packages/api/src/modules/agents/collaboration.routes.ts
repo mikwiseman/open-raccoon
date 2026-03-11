@@ -50,14 +50,13 @@ collaborationRoutes.post('/:agentId/collaborations', authMiddleware, async (c) =
     return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422);
   }
 
-  // Use the conversation_id from metadata or generate a default conversation context
-  const conversationId = (body as Record<string, unknown>)?.conversation_id;
-  if (!conversationId || typeof conversationId !== 'string') {
-    return c.json({ error: 'Validation error', message: 'conversation_id is required' }, 422);
-  }
-
   try {
-    const collaboration = await requestCollaboration(agentId, userId, conversationId, parsed.data);
+    const collaboration = await requestCollaboration(
+      agentId,
+      userId,
+      parsed.data.conversation_id,
+      parsed.data,
+    );
     return c.json({ collaboration }, 201);
   } catch (err) {
     const e = err as Error & { code?: string };

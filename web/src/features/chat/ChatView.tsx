@@ -1,7 +1,28 @@
 'use client';
 
-import DOMPurify from 'dompurify';
 import hljs from 'highlight.js/lib/core';
+
+// Lazy-initialize DOMPurify to avoid SSR crash (dompurify needs window.document)
+let _purify: typeof import('dompurify').default | null = null;
+function getPurify() {
+  if (!_purify && typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _purify = require('dompurify') as typeof import('dompurify').default;
+  }
+  return _purify;
+}
+function sanitizeHtml(html: string): string {
+  const purify = getPurify();
+  if (purify) return purify.sanitize(html);
+  // SSR fallback: escape HTML
+  return html
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 import bash from 'highlight.js/lib/languages/bash';
 import css from 'highlight.js/lib/languages/css';
 import elixir from 'highlight.js/lib/languages/elixir';
@@ -958,7 +979,7 @@ export function ChatView({
                           <code
                             // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify
                             dangerouslySetInnerHTML={{
-                              __html: DOMPurify.sanitize(highlightedArgs),
+                              __html: sanitizeHtml(highlightedArgs),
                             }}
                           />
                         </pre>
@@ -1259,7 +1280,7 @@ function MessageContent({ text, content }: { text: string; content: Record<strin
               </div>
               <pre>
                 {/* biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify */}
-                <code dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(highlighted) }} />
+                <code dangerouslySetInnerHTML={{ __html: sanitizeHtml(highlighted) }} />
               </pre>
             </div>
           );

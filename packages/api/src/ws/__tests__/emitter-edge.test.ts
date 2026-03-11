@@ -13,7 +13,6 @@ function createMockIO() {
   const toFn = vi.fn().mockReturnValue({ emit: emitFn });
   const inFn = vi.fn().mockReturnValue({ fetchSockets: fetchSocketsFn });
 
-  // biome-ignore lint/suspicious/noExplicitAny: test mock
   const io = { to: toFn, in: inFn, emit: emitFn } as any;
   return { io, toFn, inFn, emitFn, fetchSocketsFn };
 }
@@ -127,7 +126,6 @@ describe('forceLeaveRoom — error handling', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const fetchSocketsFn = vi.fn().mockRejectedValue(new Error('connection lost'));
     const inFn = vi.fn().mockReturnValue({ fetchSockets: fetchSocketsFn });
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
     const io = { to: vi.fn(), in: inFn, emit: vi.fn() } as any;
     setIO(io);
 
@@ -146,7 +144,6 @@ describe('forceLeaveRoom — error handling', () => {
   it('handles empty sockets list gracefully', async () => {
     const fetchSocketsFn = vi.fn().mockResolvedValue([]);
     const inFn = vi.fn().mockReturnValue({ fetchSockets: fetchSocketsFn });
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
     const io = { to: vi.fn(), in: inFn, emit: vi.fn() } as any;
     setIO(io);
 

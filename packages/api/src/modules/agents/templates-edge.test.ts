@@ -128,7 +128,7 @@ describe('agentTemplates record', () => {
 
   it('all models are valid model identifiers', () => {
     const validModels = ['claude-sonnet-4-6', 'claude-opus-4-6', 'gpt-4', 'gpt-4-turbo'];
-    for (const [slug, template] of Object.entries(agentTemplates)) {
+    for (const [_slug, template] of Object.entries(agentTemplates)) {
       expect(validModels).toContain(template.model);
     }
   });

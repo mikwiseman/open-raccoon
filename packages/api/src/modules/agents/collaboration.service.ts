@@ -302,6 +302,7 @@ export async function listCollaborations(
         AND requester_user_id = ${userId}
         AND (${status} IS NULL OR status = ${status})
       ORDER BY inserted_at DESC
+      LIMIT 200
     `) as unknown as Record<string, unknown>[];
   } else if (direction === 'received') {
     rows = (await sql`
@@ -310,6 +311,7 @@ export async function listCollaborations(
       WHERE responder_agent_id = ${agentId}
         AND (${status} IS NULL OR status = ${status})
       ORDER BY inserted_at DESC
+      LIMIT 200
     `) as unknown as Record<string, unknown>[];
   } else {
     rows = (await sql`
@@ -318,6 +320,7 @@ export async function listCollaborations(
       WHERE (requester_agent_id = ${agentId} OR responder_agent_id = ${agentId})
         AND (${status} IS NULL OR status = ${status})
       ORDER BY inserted_at DESC
+      LIMIT 200
     `) as unknown as Record<string, unknown>[];
   }
 
@@ -331,6 +334,8 @@ export async function getCollaboration(collaborationId: string, userId: string) 
 
 export async function discoverAgents(capability: string, userId: string, limit?: number) {
   const maxResults = Math.min(limit ?? 20, 100);
+  // Escape SQL LIKE wildcards to prevent user-controlled pattern matching
+  const escapedCapability = capability.replace(/[%_\\]/g, '\\$&');
 
   const rows = await sql`
     SELECT id, name, slug, description, category, visibility,
@@ -338,9 +343,9 @@ export async function discoverAgents(capability: string, userId: string, limit?:
     FROM agents
     WHERE visibility = 'public'
       AND (
-        name ILIKE '%' || ${capability} || '%'
-        OR description ILIKE '%' || ${capability} || '%'
-        OR category ILIKE '%' || ${capability} || '%'
+        name ILIKE '%' || ${escapedCapability} || '%'
+        OR description ILIKE '%' || ${escapedCapability} || '%'
+        OR category ILIKE '%' || ${escapedCapability} || '%'
       )
       AND creator_id != ${userId}
     ORDER BY usage_count DESC, rating_sum DESC

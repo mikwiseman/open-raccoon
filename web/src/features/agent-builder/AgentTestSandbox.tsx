@@ -46,16 +46,30 @@ export function AgentTestSandbox({ api, agentId }: Props) {
     return id;
   }, [api, agentId, conversationId]);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Abort any in-flight polling on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   const waitForAgentReply = useCallback(
     async (nextConversationId: string, sentMessageId: string): Promise<SandboxMessage | null> => {
+      // Abort any previous polling loop
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       const startedAt = Date.now();
 
       while (Date.now() - startedAt < 30_000) {
-        if (cancelledRef.current) return null;
+        if (cancelledRef.current || controller.signal.aborted) return null;
 
         const response = await api.listMessages(nextConversationId, { limit: 20 });
 
-        if (cancelledRef.current) return null;
+        if (cancelledRef.current || controller.signal.aborted) return null;
 
         const reply = [...response.items]
           .reverse()
@@ -152,6 +166,7 @@ export function AgentTestSandbox({ api, agentId }: Props) {
           }}
           placeholder="Type a test message..."
           disabled={sending}
+          aria-label="Test message input"
         />
         <button
           type="button"

@@ -167,9 +167,14 @@ public final class ConversationDetailViewModel {
 
         // Reset the debounce timer
         typingDebounceTask?.cancel()
-        typingDebounceTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            guard !Task.isCancelled, let self else { return }
+        typingDebounceTask = Task { [weak self, weak ws] in
+            do {
+                try await Task.sleep(nanoseconds: 2_000_000_000)
+            } catch {
+                // Task was cancelled — exit without sending typing=false
+                return
+            }
+            guard let self, let ws else { return }
             self.isSendingTyping = false
             ws.sendTyping(conversationID: self.conversationID, isTyping: false)
         }
@@ -237,20 +242,21 @@ public final class ConversationDetailViewModel {
         messageIDs.insert(idempotencyKey)
         messages.append(localMessage)
 
-        Task {
+        Task { [weak self] in
+            guard let self else { return }
             do {
-                let response: MessageResponse = try await apiClient.request(
+                let response: MessageResponse = try await self.apiClient.request(
                     .sendMessage(
-                        conversationID: conversationID,
+                        conversationID: self.conversationID,
                         content: messageContent,
                         idempotencyKey: idempotencyKey
                     )
                 )
                 // Replace optimistic message with server response
-                if let index = messages.firstIndex(where: { $0.id == idempotencyKey }) {
-                    messageIDs.remove(idempotencyKey)
-                    messageIDs.insert(response.message.id)
-                    messages[index] = response.message
+                if let index = self.messages.firstIndex(where: { $0.id == idempotencyKey }) {
+                    self.messageIDs.remove(idempotencyKey)
+                    self.messageIDs.insert(response.message.id)
+                    self.messages[index] = response.message
                 }
 
                 if expectAgentReply {
@@ -262,8 +268,8 @@ public final class ConversationDetailViewModel {
                 self.error = String(describing: error)
                 self.isAgentGenerating = false
                 // Remove optimistic message on failure
-                messageIDs.remove(idempotencyKey)
-                messages.removeAll { $0.id == idempotencyKey }
+                self.messageIDs.remove(idempotencyKey)
+                self.messages.removeAll { $0.id == idempotencyKey }
             }
         }
     }
@@ -276,17 +282,17 @@ public final class ConversationDetailViewModel {
 
             while Date() < deadline, !Task.isCancelled {
                 do {
-                    let response: PaginatedResponse<Message> = try await apiClient.request(
-                        .listMessages(conversationID: conversationID, cursor: nil, limit: 50)
+                    let response: PaginatedResponse<Message> = try await self.apiClient.request(
+                        .listMessages(conversationID: self.conversationID, cursor: nil, limit: 50)
                     )
 
                     if let reply = response.items.first(where: {
                         $0.id != messageID &&
-                        !messageIDs.contains($0.id) &&
+                        !self.messageIDs.contains($0.id) &&
                         ($0.senderType == .agent || $0.senderType == .system)
                     }) {
-                        mergeIncomingMessage(reply)
-                        isAgentGenerating = false
+                        self.mergeIncomingMessage(reply)
+                        self.isAgentGenerating = false
                         return
                     }
                 } catch {
@@ -294,10 +300,15 @@ public final class ConversationDetailViewModel {
                     break
                 }
 
-                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                do {
+                    try await Task.sleep(nanoseconds: 1_500_000_000)
+                } catch {
+                    // Task was cancelled during sleep — exit immediately
+                    break
+                }
             }
 
-            isAgentGenerating = false
+            self.isAgentGenerating = false
         }
     }
 

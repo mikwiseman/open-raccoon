@@ -8,7 +8,7 @@ vi.mock('../../db/connection.js', () => ({
 
 describe('presence — addToPresence', () => {
   let addToPresence: typeof import('../../ws/presence.js').addToPresence;
-  let removeFromPresence: typeof import('../../ws/presence.js').removeFromPresence;
+  let _removeFromPresence: typeof import('../../ws/presence.js').removeFromPresence;
   let getOnlineUsers: typeof import('../../ws/presence.js').getOnlineUsers;
   let isUserOnline: typeof import('../../ws/presence.js').isUserOnline;
 
@@ -21,7 +21,7 @@ describe('presence — addToPresence', () => {
     vi.resetModules();
     const mod = await import('../../ws/presence.js');
     addToPresence = mod.addToPresence;
-    removeFromPresence = mod.removeFromPresence;
+    _removeFromPresence = mod.removeFromPresence;
     getOnlineUsers = mod.getOnlineUsers;
     isUserOnline = mod.isUserOnline;
   });

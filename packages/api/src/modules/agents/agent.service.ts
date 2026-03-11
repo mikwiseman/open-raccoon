@@ -65,6 +65,7 @@ export async function listAgents(userId: string) {
     FROM agents
     WHERE creator_id = ${userId}
     ORDER BY inserted_at DESC
+    LIMIT 200
   `;
   return rows.map((row) => formatAgent(row as Record<string, unknown>));
 }
@@ -99,7 +100,7 @@ export async function createAgent(userId: string, input: CreateAgentInput) {
   const baseSlug = slugify(input.name);
   let slug = baseSlug;
 
-  // Ensure slug uniqueness
+  // Ensure slug uniqueness (cap at 10000 to prevent unbounded loops)
   const existing =
     await sql`SELECT slug FROM agents WHERE slug LIKE ${`${baseSlug}%`} ORDER BY slug`;
   if (existing.length > 0) {
@@ -108,7 +109,7 @@ export async function createAgent(userId: string, input: CreateAgentInput) {
     );
     if (existingSlugs.has(slug)) {
       let counter = 2;
-      while (existingSlugs.has(`${baseSlug}-${counter}`)) {
+      while (existingSlugs.has(`${baseSlug}-${counter}`) && counter < 10000) {
         counter++;
       }
       slug = `${baseSlug}-${counter}`;
@@ -331,7 +332,9 @@ export async function getAgentCard(agentId: string) {
 export async function discoverAgents(opts: { category?: string; query?: string; limit?: number }) {
   const limit = Math.min(opts.limit ?? 10, 50);
   if (opts.query) {
-    const pattern = `%${opts.query}%`;
+    // Escape SQL LIKE wildcards to prevent user-controlled pattern matching
+    const escaped = opts.query.replace(/[%_\\]/g, '\\$&');
+    const pattern = `%${escaped}%`;
     const rows = await sql`
       SELECT id, name, description, model, tools, mcp_servers, category, visibility,
              rating_sum, rating_count,
