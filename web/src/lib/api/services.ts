@@ -8,6 +8,7 @@ import type {
   ChannelRoute,
   Conversation,
   ConversationMember,
+  Crew,
   FeedItem,
   IntegrationStatus,
   MarketplaceAgent,
@@ -17,6 +18,7 @@ import type {
   Page,
   PageVersion,
   SessionTokens,
+  Trigger,
   User,
 } from '../types';
 import { createIdempotencyKey } from '../utils';
@@ -578,6 +580,101 @@ export class WaiAgentsApi {
 
   deleteChannelRoute(routeId: string) {
     return this.client.request<void>(`/channels/${routeId}`, { method: 'DELETE' });
+  }
+
+  // Crews
+
+  listCrews(params: CursorParams = {}) {
+    return this.client
+      .request<unknown>(`/crews${toQueryString(params)}`)
+      .then((payload) => normalizeListResponse<Crew>(payload, ['crews']));
+  }
+
+  createCrew(data: {
+    name: string;
+    description?: string;
+    agents: Crew['agents'];
+    process?: Crew['process'];
+    manager_agent_id?: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    return this.client.request<{ crew: Crew }>('/crews', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  getCrew(id: string) {
+    return this.client.request<{ crew: Crew }>(`/crews/${id}`);
+  }
+
+  updateCrew(
+    id: string,
+    data: Partial<Omit<Crew, 'id' | 'creator_id' | 'created_at' | 'updated_at'>>,
+  ) {
+    return this.client.request<{ crew: Crew }>(`/crews/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  deleteCrew(id: string) {
+    return this.client.request<void>(`/crews/${id}`, { method: 'DELETE' });
+  }
+
+  runCrew(id: string, input?: Record<string, unknown>) {
+    return this.client.request<{ run_id: string; status: string }>(`/crews/${id}/run`, {
+      method: 'POST',
+      headers: {
+        'Idempotency-Key': createIdempotencyKey(),
+      },
+      body: JSON.stringify(input ?? {}),
+    });
+  }
+
+  // Triggers
+
+  listTriggers(agentId: string, params: CursorParams = {}) {
+    return this.client
+      .request<unknown>(`/agents/${agentId}/triggers${toQueryString(params)}`)
+      .then((payload) => normalizeListResponse<Trigger>(payload, ['triggers']));
+  }
+
+  createTrigger(
+    agentId: string,
+    data: {
+      name: string;
+      trigger_type: Trigger['trigger_type'];
+      config?: Record<string, unknown>;
+      crew_id?: string;
+      enabled?: boolean;
+    },
+  ) {
+    return this.client.request<{ trigger: Trigger }>(`/agents/${agentId}/triggers`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  getTrigger(agentId: string, triggerId: string) {
+    return this.client.request<{ trigger: Trigger }>(`/agents/${agentId}/triggers/${triggerId}`);
+  }
+
+  updateTrigger(
+    agentId: string,
+    triggerId: string,
+    data: Partial<Pick<Trigger, 'name' | 'config' | 'enabled'>>,
+  ) {
+    return this.client.request<{ trigger: Trigger }>(`/agents/${agentId}/triggers/${triggerId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  deleteTrigger(agentId: string, triggerId: string) {
+    return this.client.request<void>(`/agents/${agentId}/triggers/${triggerId}`, {
+      method: 'DELETE',
+    });
   }
 }
 

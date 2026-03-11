@@ -9,6 +9,7 @@ import { callLLM } from './llm/index.js';
 import { McpManager } from './mcp-manager.js';
 import type { CallerContext } from './soul.js';
 import { assembleSoulPrompt } from './soul.js';
+import { TraceRecorder } from './trace-recorder.js';
 
 export interface AgentLoopConfig {
   agentId: string;
@@ -18,6 +19,7 @@ export interface AgentLoopConfig {
   abortSignal?: AbortSignal;
   a2aDepth?: number;
   callerContext?: CallerContext;
+  triggerType?: string;
 }
 
 export interface AgentLoopResult {
@@ -30,6 +32,7 @@ const MAX_TURNS = 25;
 export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopResult> {
   const { agentId, conversationId, userId, message, abortSignal, callerContext } = config;
   const runId = randomUUID();
+  const triggerType = config.triggerType ?? 'manual';
 
   // 1. Load agent config from DB
   const agentRows = await db.select().from(agents).where(eq(agents.id, agentId));
@@ -37,6 +40,7 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopRe
     throw new Error(`Agent ${agentId} not found`);
   }
   const agent = agentRows[0];
+  const modelName = agent.model ?? 'claude-sonnet-4-6';
 
   // 2. Assemble system prompt with SOUL blocks
   const systemPrompt = await assembleSoulPrompt(agentId, userId, callerContext);
@@ -84,8 +88,16 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopRe
   // Append the new user message
   chatMessages.push({ role: 'user', content: message });
 
-  // 5. Emit run_started
+  // 5. Emit run_started and start trace
   emitAgentEvent(conversationId, { type: 'run_started', run_id: runId, agent_id: agentId });
+
+  const recorder = new TraceRecorder();
+  let traceId: string | null = null;
+  try {
+    traceId = await recorder.startTrace(agentId, userId, conversationId, modelName, triggerType, runId);
+  } catch {
+    // Trace recording is best-effort; do not block the loop
+  }
 
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
@@ -96,8 +108,19 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopRe
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       if (abortSignal?.aborted) break;
 
+      // Trace: start LLM span
+      let llmSpanId: string | null = null;
+      const llmStart = Date.now();
+      if (traceId) {
+        try {
+          llmSpanId = await recorder.addSpan(traceId, 'llm_call', modelName, { turn });
+        } catch {
+          // best-effort
+        }
+      }
+
       const llmResponse = await callLLM({
-        model: agent.model ?? 'claude-sonnet-4-6',
+        model: modelName,
         systemPrompt,
         messages: chatMessages,
         tools,
@@ -109,9 +132,34 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopRe
         },
         onThinking: (summary) => {
           emitAgentEvent(conversationId, { type: 'thinking', summary });
+          // Trace: record thinking span
+          if (traceId) {
+            const thinkStart = Date.now();
+            recorder
+              .addSpan(traceId, 'thinking', 'thinking', { summary })
+              .then((spanId) =>
+                recorder.endSpan(spanId, 'ok', null, null, Date.now() - thinkStart),
+              )
+              .catch(() => {});
+          }
         },
         abortSignal,
       });
+
+      // Trace: end LLM span
+      if (llmSpanId) {
+        try {
+          await recorder.endSpan(
+            llmSpanId,
+            'ok',
+            { stop_reason: llmResponse.stopReason },
+            llmResponse.usage,
+            Date.now() - llmStart,
+          );
+        } catch {
+          // best-effort
+        }
+      }
 
       totalInputTokens += llmResponse.usage.input_tokens;
       totalOutputTokens += llmResponse.usage.output_tokens;
@@ -137,12 +185,37 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopRe
           }
 
           if (!approvalGate.isApproved(conversationId, toolCall.name)) {
+            // Trace: record approval span
+            let approvalSpanId: string | null = null;
+            const approvalStart = Date.now();
+            if (traceId) {
+              try {
+                approvalSpanId = await recorder.addSpan(traceId, 'approval', toolCall.name, toolCall.input);
+              } catch {
+                // best-effort
+              }
+            }
+
             const decision = await approvalGate.requestApproval(
               conversationId,
               toolCall.name,
               toolCall.input,
               abortSignal,
             );
+
+            if (approvalSpanId) {
+              try {
+                await recorder.endSpan(
+                  approvalSpanId,
+                  decision.approved ? 'ok' : 'denied',
+                  { approved: decision.approved },
+                  null,
+                  Date.now() - approvalStart,
+                );
+              } catch {
+                // best-effort
+              }
+            }
 
             if (!decision.approved) {
               // Feed denial back to LLM so it can adapt
@@ -166,9 +239,28 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopRe
           call_id: callId,
         });
 
+        // Trace: start tool span
+        let toolSpanId: string | null = null;
+        if (traceId) {
+          try {
+            toolSpanId = await recorder.addSpan(traceId, 'tool_call', toolCall.name, toolCall.input);
+          } catch {
+            // best-effort
+          }
+        }
+
         const startTime = Date.now();
         const result = await mcpManager.executeTool(toolCall.name, toolCall.input);
         const duration_ms = Date.now() - startTime;
+
+        // Trace: end tool span
+        if (toolSpanId) {
+          try {
+            await recorder.endSpan(toolSpanId, 'ok', result, null, duration_ms);
+          } catch {
+            // best-effort
+          }
+        }
 
         emitAgentEvent(conversationId, {
           type: 'tool_call_end',
@@ -225,11 +317,19 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopRe
       VALUES (${randomUUID()}, ${userId}, ${agentId}, ${usageModel}, ${totalInputTokens}, ${totalOutputTokens}, ${now})
     `;
 
-    // 9. Emit run_finished
+    // 9. Emit run_finished and end trace
     emitAgentEvent(conversationId, {
       type: 'run_finished',
       usage: { input_tokens: totalInputTokens, output_tokens: totalOutputTokens },
     });
+
+    if (traceId) {
+      try {
+        await recorder.endTrace(traceId, 'completed');
+      } catch {
+        // best-effort
+      }
+    }
 
     return {
       response: fullResponse,
@@ -240,6 +340,15 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopRe
       type: 'run_error',
       error: (error as Error).message,
     });
+
+    if (traceId) {
+      try {
+        await recorder.endTrace(traceId, 'failed', (error as Error).message);
+      } catch {
+        // best-effort
+      }
+    }
+
     throw error;
   } finally {
     // Clean up any pending approval requests and session cache for this conversation

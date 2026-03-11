@@ -297,3 +297,36 @@ export type ChannelRoute = {
   enabled: boolean;
   metadata: Record<string, unknown>;
 };
+
+export type CrewAgent = {
+  agent_id: string;
+  role: string;
+  goal: string;
+};
+
+export type Crew = {
+  id: string;
+  creator_id: string;
+  name: string;
+  description: string | null;
+  agents: CrewAgent[];
+  process: 'sequential' | 'parallel' | 'hierarchical';
+  manager_agent_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Trigger = {
+  id: string;
+  agent_id: string;
+  crew_id: string | null;
+  name: string;
+  trigger_type: 'webhook' | 'schedule' | 'event';
+  config: Record<string, unknown>;
+  enabled: boolean;
+  last_fired_at: string | null;
+  fire_count: number;
+  created_at: string;
+  updated_at: string;
+};

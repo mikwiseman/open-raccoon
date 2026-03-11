@@ -60,6 +60,21 @@ public enum APIEndpoint: Sendable {
     case unlikeFeedItem(id: String)
     case forkFeedItem(id: String, idempotencyKey: String)
 
+    // MARK: - Crews
+    case listCrews(cursor: String?, limit: Int?)
+    case createCrew(name: String, steps: [CrewStep], visibility: String?, description: String?, category: String?)
+    case getCrew(id: String)
+    case updateCrew(id: String, params: [String: AnyCodable])
+    case deleteCrew(id: String)
+    case runCrew(id: String, input: String, idempotencyKey: String)
+
+    // MARK: - Triggers
+    case listTriggers(agentID: String)
+    case createTrigger(agentID: String, name: String, triggerType: String, params: [String: AnyCodable]?)
+    case getTrigger(agentID: String, triggerID: String)
+    case updateTrigger(agentID: String, triggerID: String, params: [String: AnyCodable])
+    case deleteTrigger(agentID: String, triggerID: String)
+
     // MARK: - Marketplace
     case marketplace(cursor: String?, limit: Int?)
     case marketplaceCategories
@@ -73,12 +88,14 @@ public enum APIEndpoint: Sendable {
              .addMember, .createAgent, .startAgentConversation, .createPage,
              .deployPage, .forkPage, .connectTelegram, .connectWhatsApp,
              .likeFeedItem, .forkFeedItem, .rateAgent,
-             .requestMagicLink, .verifyMagicLink:
+             .requestMagicLink, .verifyMagicLink,
+             .createCrew, .runCrew, .createTrigger:
             return "POST"
-        case .updateMe, .updateConversation, .updateAgent, .updatePage:
+        case .updateMe, .updateConversation, .updateAgent, .updatePage,
+             .updateCrew, .updateTrigger:
             return "PATCH"
         case .logout, .deleteConversation, .removeMember, .deleteAgent,
-             .disconnectBridge, .unlikeFeedItem:
+             .disconnectBridge, .unlikeFeedItem, .deleteCrew, .deleteTrigger:
             return "DELETE"
         default:
             return "GET"
@@ -125,6 +142,18 @@ public enum APIEndpoint: Sendable {
         case .disconnectBridge(let id): return "/bridges/\(id)"
         case .bridgeStatus(let id): return "/bridges/\(id)/status"
 
+        case .listCrews, .createCrew: return "/crews"
+        case .getCrew(let id), .updateCrew(let id, _), .deleteCrew(let id):
+            return "/crews/\(id)"
+        case .runCrew(let id, _, _): return "/crews/\(id)/run"
+
+        case .listTriggers(let agentID), .createTrigger(let agentID, _, _, _):
+            return "/agents/\(agentID)/triggers"
+        case .getTrigger(let agentID, let triggerID),
+             .updateTrigger(let agentID, let triggerID, _),
+             .deleteTrigger(let agentID, let triggerID):
+            return "/agents/\(agentID)/triggers/\(triggerID)"
+
         case .feed: return "/feed"
         case .trending: return "/feed/trending"
         case .followingFeed: return "/feed/following"
@@ -154,7 +183,8 @@ public enum APIEndpoint: Sendable {
         case .sendMessage(_, _, let key),
              .deployPage(_, let key),
              .forkPage(_, let key),
-             .forkFeedItem(_, let key):
+             .forkFeedItem(_, let key),
+             .runCrew(_, _, let key):
             return key
         default:
             return nil
@@ -164,6 +194,7 @@ public enum APIEndpoint: Sendable {
     public var queryItems: [URLQueryItem]? {
         switch self {
         case .listConversations(let cursor, let limit),
+             .listCrews(let cursor, let limit),
              .feed(let cursor, let limit),
              .trending(let cursor, let limit),
              .followingFeed(let cursor, let limit),
@@ -279,6 +310,33 @@ public enum APIEndpoint: Sendable {
             if let title { body["title"] = title }
             if let description { body["description"] = description }
             return try encoder.encode(body)
+        case .createCrew(let name, let steps, let visibility, let description, let category):
+            struct CreateCrewBody: Encodable {
+                let name: String
+                let steps: [CrewStep]
+                var visibility: String?
+                var description: String?
+                var category: String?
+            }
+            return try encoder.encode(CreateCrewBody(
+                name: name, steps: steps, visibility: visibility,
+                description: description, category: category
+            ))
+        case .updateCrew(_, let params):
+            return try encoder.encode(params)
+        case .runCrew(_, let input, _):
+            return try encoder.encode(["input": input])
+        case .createTrigger(_, let name, let triggerType, let params):
+            var body: [String: AnyCodable] = [
+                "name": AnyCodable(name),
+                "trigger_type": AnyCodable(triggerType),
+            ]
+            if let params {
+                for (key, value) in params { body[key] = value }
+            }
+            return try encoder.encode(body)
+        case .updateTrigger(_, _, let params):
+            return try encoder.encode(params)
         default:
             return nil
         }

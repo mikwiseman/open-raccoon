@@ -130,3 +130,121 @@ public struct ToolResultPayload: Codable, Sendable {
     public let tool: String
     public let result: AnyCodable
 }
+
+// MARK: - Tool Approval Request (agent-events)
+
+/// Payload for the `tool_approval_request` agent event (from `agent-events.ts`).
+public struct ToolApprovalRequestPayload: Codable, Sendable {
+    public let requestID: String
+    public let toolName: String
+    public let argsPreview: String
+    public let scopes: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case requestID = "requestId"
+        case toolName
+        case argsPreview
+        case scopes
+    }
+
+    public init(requestID: String, toolName: String, argsPreview: String, scopes: [String]) {
+        self.requestID = requestID
+        self.toolName = toolName
+        self.argsPreview = argsPreview
+        self.scopes = scopes
+    }
+}
+
+// MARK: - Crew Channel Events
+
+/// Events received from server on `crew:{crewId}` channel.
+public enum CrewServerEvent: String, Sendable {
+    case stepStarted = "crew:step_started"
+    case stepCompleted = "crew:step_completed"
+    case finished = "crew:finished"
+    case error = "crew:error"
+}
+
+/// Payload for the `crew:step_started` event.
+public struct CrewStepStartedPayload: Codable, Sendable {
+    public let crewID: String
+    public let stepIndex: Int
+    public let agentID: String
+    public let role: String
+    public let parallelGroup: String?
+
+    enum CodingKeys: String, CodingKey {
+        case crewID = "crewId"
+        case stepIndex
+        case agentID = "agentId"
+        case role
+        case parallelGroup
+    }
+}
+
+/// Payload for the `crew:step_completed` event.
+public struct CrewStepCompletedPayload: Codable, Sendable {
+    public let crewID: String
+    public let stepIndex: Int
+    public let agentID: String
+    public let role: String
+    public let response: String
+
+    enum CodingKeys: String, CodingKey {
+        case crewID = "crewId"
+        case stepIndex
+        case agentID = "agentId"
+        case role
+        case response
+    }
+}
+
+/// Payload for the `crew:finished` event.
+public struct CrewFinishedPayload: Codable, Sendable {
+    public let crewID: String
+    public let totalSteps: Int
+    public let finalResponse: String
+
+    enum CodingKeys: String, CodingKey {
+        case crewID = "crewId"
+        case totalSteps
+        case finalResponse
+    }
+}
+
+/// Payload for the `crew:error` event.
+public struct CrewErrorPayload: Codable, Sendable {
+    public let crewID: String
+    public let error: String
+    public let stepIndex: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case crewID = "crewId"
+        case error
+        case stepIndex
+    }
+}
+
+// MARK: - Trigger Channel Events
+
+/// Events received from server on `agent:{agentId}` channel for triggers.
+public enum TriggerServerEvent: String, Sendable {
+    case fired = "trigger:fired"
+}
+
+/// Payload for the `trigger:fired` event.
+public struct TriggerFiredPayload: Codable, Sendable {
+    public let triggerID: String
+    public let agentID: String
+    public let triggerType: String
+    public let conversationID: String
+    public let firedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case triggerID = "triggerId"
+        case agentID = "agentId"
+        case triggerType
+        case conversationID = "conversationId"
+        case firedAt
+    }
+}

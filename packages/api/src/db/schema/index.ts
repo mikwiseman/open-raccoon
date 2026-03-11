@@ -6,5 +6,6 @@ export * from './integrations.js';
 export * from './pages.js';
 export * from './pr.js';
 export * from './social.js';
+export * from './traces.js';
 export * from './triggers.js';
 export * from './users.js';
