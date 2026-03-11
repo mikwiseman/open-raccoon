@@ -236,6 +236,17 @@ export function FeedView({ api, currentUser: _currentUser }: FeedViewProps) {
           return merged;
         });
 
+        /* Initialize liked state from server data */
+        setLiked((prev) => {
+          const next = { ...prev };
+          for (const item of response.items) {
+            if (item.liked_by_me != null && !(item.id in next)) {
+              next[item.id] = item.liked_by_me;
+            }
+          }
+          return next;
+        });
+
         setCursor(response.page_info.next_cursor);
         setHasMore(response.page_info.has_more);
       } catch (err) {

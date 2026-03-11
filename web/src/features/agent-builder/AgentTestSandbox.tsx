@@ -26,7 +26,7 @@ export function AgentTestSandbox({ api, agentId }: Props) {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  }, [messages]);
 
   const ensureConversation = useCallback(async (): Promise<string> => {
     if (conversationId) return conversationId;

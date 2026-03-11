@@ -71,6 +71,8 @@ export async function callAnthropic(options: CallAnthropicOptions): Promise<LLMR
   });
 
   const pendingToolUses = new Map<string, { name: string; inputJson: string }>();
+  // Map content block index (number) to content block id (string) for delta lookups
+  const indexToId = new Map<number, string>();
 
   for await (const event of stream) {
     if (abortSignal?.aborted) break;
@@ -81,6 +83,7 @@ export async function callAnthropic(options: CallAnthropicOptions): Promise<LLMR
           name: event.content_block.name,
           inputJson: '',
         });
+        indexToId.set(event.index, event.content_block.id);
       } else if (event.content_block.type === 'thinking' && onThinking) {
         // thinking block start — will be emitted on stop
       }
@@ -88,17 +91,10 @@ export async function callAnthropic(options: CallAnthropicOptions): Promise<LLMR
       if (event.delta.type === 'text_delta') {
         onTextDelta(event.delta.text);
       } else if (event.delta.type === 'input_json_delta') {
-        const pending = pendingToolUses.get(event.index.toString());
+        const blockId = indexToId.get(event.index);
+        const pending = blockId ? pendingToolUses.get(blockId) : undefined;
         if (pending) {
           pending.inputJson += event.delta.partial_json;
-        } else {
-          // Find by index in pending map — Anthropic uses numeric index
-          for (const [id, p] of pendingToolUses) {
-            // The index from the delta matches the content block index
-            void id;
-            p.inputJson += event.delta.partial_json;
-            break;
-          }
         }
       } else if (event.delta.type === 'thinking_delta' && onThinking) {
         onThinking(event.delta.thinking);

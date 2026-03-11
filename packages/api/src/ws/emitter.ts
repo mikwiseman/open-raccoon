@@ -73,5 +73,8 @@ export function forceLeaveRoom(userId: string, conversationId: string): void {
         s.leave(`conversation:${conversationId}`);
         s.leave(`agent:${conversationId}`);
       }
+    })
+    .catch((err) => {
+      console.error(`Failed to force leave room for user ${userId}:`, (err as Error).message);
     });
 }

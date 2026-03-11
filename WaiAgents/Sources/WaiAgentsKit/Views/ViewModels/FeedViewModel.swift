@@ -12,7 +12,7 @@ public final class FeedViewModel {
     private let apiClient: APIClient
 
     private var nextCursor: String?
-    private var hasMore: Bool = true
+    public private(set) var hasMore: Bool = true
     private var currentTab: FeedTab = .forYou
     private var cachedTabItems: [FeedTab: [FeedItem]] = [:]
     private var cachedTabCursors: [FeedTab: String?] = [:]

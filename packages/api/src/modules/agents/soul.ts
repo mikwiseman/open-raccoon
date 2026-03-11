@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../../db/connection.js';
 import { agentCoreMemories } from '../../db/schema/agents.js';
 import { getCompactPerformanceInsight } from './agent.service.js';
+import { recallMemories } from './memory.service.js';
 
 const BLOCK_ORDER = ['identity', 'rules', 'priorities', 'preferences'] as const;
 type BlockLabel = (typeof BLOCK_ORDER)[number];
@@ -49,6 +50,17 @@ export async function assembleSoulPrompt(
   const insight = await getCompactPerformanceInsight(agentId);
   if (insight) {
     sections.push(`[Self-Awareness]\n${insight}`);
+  }
+
+  // Recall agent memories and inject into system prompt
+  try {
+    const recalledMemories = await recallMemories(agentId, userId, undefined, 10);
+    if (recalledMemories.length > 0) {
+      const memoryLines = recalledMemories.map((m) => `- [${m.memory_type}] ${m.content}`);
+      sections.push(`[Memories]\n${memoryLines.join('\n')}`);
+    }
+  } catch {
+    // Memory recall is best-effort; do not block prompt assembly
   }
 
   if (callerContext) {

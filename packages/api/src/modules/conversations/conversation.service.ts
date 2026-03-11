@@ -233,22 +233,24 @@ export async function listMessages(
 
   let rows: Record<string, unknown>[];
   if (cursor) {
-    // Get created_at for cursor message to paginate
+    // Get created_at and id for cursor message to paginate with stable ordering
     const cursorRows = await sql`
-      SELECT created_at FROM messages WHERE id = ${cursor} LIMIT 1
+      SELECT created_at, id FROM messages WHERE id = ${cursor} LIMIT 1
     `;
     if (cursorRows.length === 0) {
       throw Object.assign(new Error('Invalid cursor'), { code: 'BAD_REQUEST' });
     }
-    const cursorAt = (cursorRows[0] as Record<string, unknown>).created_at as Date;
+    const cursorRow = cursorRows[0] as Record<string, unknown>;
+    const cursorAt = cursorRow.created_at as Date;
+    const cursorId = cursorRow.id as string;
 
     rows = await sql`
       SELECT id, conversation_id, sender_id, sender_type, type, content, metadata, edited_at, deleted_at, created_at
       FROM messages
       WHERE conversation_id = ${conversationId}
         AND deleted_at IS NULL
-        AND created_at < ${cursorAt}
-      ORDER BY created_at DESC
+        AND (created_at < ${cursorAt} OR (created_at = ${cursorAt} AND id < ${cursorId}))
+      ORDER BY created_at DESC, id DESC
       LIMIT ${clampedLimit}
     `;
   } else {
@@ -257,7 +259,7 @@ export async function listMessages(
       FROM messages
       WHERE conversation_id = ${conversationId}
         AND deleted_at IS NULL
-      ORDER BY created_at DESC
+      ORDER BY created_at DESC, id DESC
       LIMIT ${clampedLimit}
     `;
   }
@@ -273,18 +275,21 @@ export async function sendMessage(
 ) {
   await assertMember(conversationId, userId);
 
+  // Check idempotency before starting the transaction
+  const existingIdempotent = await sql`
+    SELECT response_body FROM idempotency_keys
+    WHERE key = ${idempotencyKey} AND user_id = ${userId}
+    LIMIT 1
+  `;
+  if (existingIdempotent.length > 0) {
+    // Return cached response without re-emitting events or re-triggering agent loop
+    return (existingIdempotent[0] as Record<string, unknown>).response_body as ReturnType<
+      typeof formatMessage
+    >;
+  }
+
   // @ts-expect-error postgres.js TransactionSql type lacks call signatures but works at runtime
   const message: ReturnType<typeof formatMessage> = await sql.begin(async (tx: typeof sql) => {
-    // Check idempotency
-    const existing = await tx`
-      SELECT response_body FROM idempotency_keys
-      WHERE key = ${idempotencyKey} AND user_id = ${userId}
-      LIMIT 1
-    `;
-    if (existing.length > 0) {
-      return (existing[0] as Record<string, unknown>).response_body;
-    }
-
     const messageId = randomUUID();
     const now = new Date().toISOString();
     const contentJson = JSON.stringify(input.content);

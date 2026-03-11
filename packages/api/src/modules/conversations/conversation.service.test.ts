@@ -12,6 +12,21 @@ vi.mock('../../db/connection.js', () => {
   return { sql: sqlFn, db: {} };
 });
 
+/**
+ * resetSqlMock — clears the sql mock's return value queue and call history,
+ * then re-attaches `begin` and `unsafe` (which vi.mockReset strips).
+ * vi.clearAllMocks does NOT clear mockResolvedValueOnce queues, so leftover
+ * mock values from one test can leak into the next. This helper prevents that.
+ */
+async function resetSqlMock() {
+  const { sql } = await import('../../db/connection.js');
+  const sqlFn = vi.mocked(sql);
+  sqlFn.mockReset();
+  // Re-attach begin and unsafe after mockReset clears them
+  (sqlFn as any).begin = vi.fn(async (cb: (tx: any) => Promise<any>) => cb(sqlFn));
+  (sqlFn as any).unsafe = vi.fn();
+}
+
 // Mock WebSocket emitter
 vi.mock('../../ws/emitter.js', () => ({
   emitMessage: vi.fn(),
@@ -98,8 +113,9 @@ function makeMessageRow(overrides: Record<string, unknown> = {}) {
 // listConversations
 // ---------------------------------------------------------------------------
 describe('conversation.service — listConversations', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetSqlMock();
   });
 
   it('returns formatted conversations with unread_count and last_message', async () => {
@@ -169,8 +185,9 @@ describe('conversation.service — listConversations', () => {
 // createConversation
 // ---------------------------------------------------------------------------
 describe('conversation.service — createConversation', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetSqlMock();
   });
 
   it('creates a DM conversation without extra members', async () => {
@@ -281,8 +298,9 @@ describe('conversation.service — createConversation', () => {
 // getConversation
 // ---------------------------------------------------------------------------
 describe('conversation.service — getConversation', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetSqlMock();
   });
 
   it('returns conversation when user is a member', async () => {
@@ -331,8 +349,9 @@ describe('conversation.service — getConversation', () => {
 // updateConversation
 // ---------------------------------------------------------------------------
 describe('conversation.service — updateConversation', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetSqlMock();
   });
 
   it('updates title when user is owner', async () => {
@@ -424,8 +443,9 @@ describe('conversation.service — updateConversation', () => {
 // deleteConversation
 // ---------------------------------------------------------------------------
 describe('conversation.service — deleteConversation', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetSqlMock();
   });
 
   it('deletes conversation when user is owner', async () => {
@@ -478,8 +498,9 @@ describe('conversation.service — deleteConversation', () => {
 // listMessages
 // ---------------------------------------------------------------------------
 describe('conversation.service — listMessages', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetSqlMock();
   });
 
   it('returns messages without cursor', async () => {
@@ -509,8 +530,10 @@ describe('conversation.service — listMessages', () => {
 
     // assertMember
     sqlMock.mockResolvedValueOnce([{ id: 'member-id' }] as any);
-    // cursor lookup
-    sqlMock.mockResolvedValueOnce([{ created_at: new Date('2026-03-01T11:00:00Z') }] as any);
+    // cursor lookup (now returns both created_at and id for stable pagination)
+    sqlMock.mockResolvedValueOnce([
+      { created_at: new Date('2026-03-01T11:00:00Z'), id: 'some-cursor-id' },
+    ] as any);
     // SELECT messages before cursor
     sqlMock.mockResolvedValueOnce([makeMessageRow({ id: 'older-msg' })] as any);
 
@@ -609,30 +632,31 @@ describe('conversation.service — listMessages', () => {
 // sendMessage
 // ---------------------------------------------------------------------------
 describe('conversation.service — sendMessage', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetSqlMock();
   });
 
   it('sends a message and returns the formatted message', async () => {
     const { sql } = await import('../../db/connection.js');
     const sqlMock = vi.mocked(sql);
 
-    // assertMember
+    // 1. assertMember
     sqlMock.mockResolvedValueOnce([{ id: 'member-id' }] as any);
+    // 2. Check idempotency key (outside transaction) — not found
+    sqlMock.mockResolvedValueOnce([] as any);
 
     // Inside transaction (sql.begin calls sqlFn for each query):
-    // 1. Check idempotency key — not found
+    // 3. Insert message
     sqlMock.mockResolvedValueOnce([] as any);
-    // 2. Insert message
+    // 4. Update conversation last_message_at
     sqlMock.mockResolvedValueOnce([] as any);
-    // 3. Update conversation last_message_at
-    sqlMock.mockResolvedValueOnce([] as any);
-    // 4. SELECT the inserted message
+    // 5. SELECT the inserted message
     sqlMock.mockResolvedValueOnce([makeMessageRow()] as any);
-    // 5. Save idempotency key
+    // 6. Save idempotency key
     sqlMock.mockResolvedValueOnce([] as any);
 
-    // After transaction — check if agent conversation
+    // 7. After transaction — check if agent conversation
     sqlMock.mockResolvedValueOnce([] as any);
 
     const { sendMessage } = await import('./conversation.service.js');
@@ -655,13 +679,11 @@ describe('conversation.service — sendMessage', () => {
     // assertMember
     sqlMock.mockResolvedValueOnce([{ id: 'member-id' }] as any);
 
-    // Inside transaction:
-    // 1. Check idempotency key — found with cached response
+    // Check idempotency key (outside transaction) — found with cached response
     const cachedMessage = makeMessageRow();
     sqlMock.mockResolvedValueOnce([{ response_body: cachedMessage }] as any);
 
-    // After transaction — check if agent conversation
-    sqlMock.mockResolvedValueOnce([] as any);
+    // Early return: no transaction, no WebSocket emit, no agent check
 
     const { sendMessage } = await import('./conversation.service.js');
     const result = await sendMessage(
@@ -695,17 +717,18 @@ describe('conversation.service — sendMessage', () => {
     const sqlMock = vi.mocked(sql);
     const { runAgentLoop } = await import('../agents/loop.js');
 
-    // assertMember
+    // 1. assertMember
     sqlMock.mockResolvedValueOnce([{ id: 'member-id' }] as any);
+    // 2. Idempotency check (outside transaction)
+    sqlMock.mockResolvedValueOnce([] as any);
 
     // Transaction queries
-    sqlMock.mockResolvedValueOnce([] as any); // idempotency check
-    sqlMock.mockResolvedValueOnce([] as any); // insert message
-    sqlMock.mockResolvedValueOnce([] as any); // update conversation
-    sqlMock.mockResolvedValueOnce([makeMessageRow()] as any); // select message
-    sqlMock.mockResolvedValueOnce([] as any); // save idempotency key
+    sqlMock.mockResolvedValueOnce([] as any); // 3. insert message
+    sqlMock.mockResolvedValueOnce([] as any); // 4. update conversation
+    sqlMock.mockResolvedValueOnce([makeMessageRow()] as any); // 5. select message
+    sqlMock.mockResolvedValueOnce([] as any); // 6. save idempotency key
 
-    // Agent conversation check — found
+    // 7. Agent conversation check — found
     sqlMock.mockResolvedValueOnce([{ agent_id: AGENT_ID }] as any);
 
     const { sendMessage } = await import('./conversation.service.js');
@@ -787,8 +810,9 @@ describe('conversation.service — sendMessage', () => {
 // listMembers
 // ---------------------------------------------------------------------------
 describe('conversation.service — listMembers', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetSqlMock();
   });
 
   it('returns formatted members with user info', async () => {
@@ -849,8 +873,9 @@ describe('conversation.service — listMembers', () => {
 // addMember
 // ---------------------------------------------------------------------------
 describe('conversation.service — addMember', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetSqlMock();
   });
 
   it('adds a member with default role when user is owner', async () => {
@@ -971,8 +996,9 @@ describe('conversation.service — addMember', () => {
 // removeMember
 // ---------------------------------------------------------------------------
 describe('conversation.service — removeMember', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetSqlMock();
   });
 
   it('removes a regular member when user is owner', async () => {
@@ -1073,8 +1099,9 @@ describe('conversation.service — removeMember', () => {
 // explicit boundary tests here via the public API.
 // ---------------------------------------------------------------------------
 describe('conversation.service — permission edge cases', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetSqlMock();
   });
 
   it('getConversation error message says "access denied"', async () => {
@@ -1125,8 +1152,9 @@ describe('conversation.service — permission edge cases', () => {
 // Format helpers (tested via public API return values)
 // ---------------------------------------------------------------------------
 describe('conversation.service — formatting', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetSqlMock();
   });
 
   it('formatConversation maps inserted_at to created_at', async () => {

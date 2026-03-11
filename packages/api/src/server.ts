@@ -7,6 +7,7 @@ import { initWorkers } from './jobs/index.js';
 import { agentRoutes } from './modules/agents/agent.routes.js';
 import { crewRoutes } from './modules/agents/crew.routes.js';
 import { runAgentLoop } from './modules/agents/loop.js';
+import { memoryRoutes } from './modules/agents/memory.routes.js';
 import type { CallerContext } from './modules/agents/soul.js';
 import { traceRoutes } from './modules/agents/trace.routes.js';
 import { hookRoutes, triggerRoutes } from './modules/agents/trigger.routes.js';
@@ -43,8 +44,8 @@ app.use(
   cors({
     origin:
       process.env.NODE_ENV === 'production'
-        ? ['https://openraccoon.com']
-        : ['http://localhost:3000', 'https://openraccoon.com'],
+        ? ['https://waiagents.com']
+        : ['http://localhost:3000', 'https://waiagents.com'],
     credentials: true,
   }),
 );
@@ -59,6 +60,7 @@ app.route('/api/v1/conversations', conversationRoutes);
 app.route('/api/v1/agents', agentRoutes);
 app.route('/api/v1/agents', triggerRoutes);
 app.route('/api/v1/agents', traceRoutes);
+app.route('/api/v1/agents', memoryRoutes);
 app.route('/api/v1/crews', crewRoutes);
 app.route('/api/v1/hooks', hookRoutes);
 app.route('/api/v1', socialRoutes);

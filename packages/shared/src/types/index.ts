@@ -1,4 +1,5 @@
 export * from './agent-events.js';
+export * from './agent-memories.js';
 export * from './content-blocks.js';
 export * from './crews.js';
 export * from './models.js';

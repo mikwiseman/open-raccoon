@@ -71,7 +71,13 @@ public final class AppState {
         selectedConversationID = nil
         feedViewModel = nil
         marketplaceViewModel = nil
+        // Always attempt to clear tokens, even if the server revocation fails.
+        // Use separate try? calls to ensure clearTokens runs even if the
+        // server request throws.
         try? await authStore.logout()
+        // Belt-and-suspenders: if logout() threw before clearing tokens,
+        // ensure they are cleared anyway.
+        try? await authStore.clearTokens()
     }
 
     /// Called on app launch. Checks for stored tokens, refreshes if needed,
@@ -89,8 +95,10 @@ public final class AppState {
             try? await authStore.clearTokens()
             currentUser = nil
         } catch {
-            // Transient refresh/profile failures should not wipe the stored session.
-            currentUser = nil
+            // Transient refresh/profile failures (e.g. network timeout) should not
+            // wipe the stored session or clear the user. The user can retry.
+            // currentUser remains nil from init, so the auth screen will show,
+            // but tokens are preserved for the next attempt.
         }
     }
 

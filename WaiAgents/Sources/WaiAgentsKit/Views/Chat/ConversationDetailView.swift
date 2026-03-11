@@ -148,6 +148,8 @@ public struct ConversationDetailView: View {
             }
         }
         .onDisappear {
+            typingResetTask?.cancel()
+            typingResetTask = nil
             viewModel?.unsubscribeFromChannel()
         }
         #if os(iOS)

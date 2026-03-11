@@ -93,7 +93,13 @@ export const articleCollectionWorker = createWorker(QUEUE_NAME, async () => {
     for (const item of items) {
       if (existingUrls.has(item.link)) continue;
 
-      const publishedAt = item.pubDate ? new Date(item.pubDate).toISOString() : null;
+      let publishedAt: string | null = null;
+      if (item.pubDate) {
+        const parsed = new Date(item.pubDate);
+        if (!Number.isNaN(parsed.getTime())) {
+          publishedAt = parsed.toISOString();
+        }
+      }
 
       await sql`
           INSERT INTO agent_articles (

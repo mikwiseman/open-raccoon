@@ -699,9 +699,14 @@ function toQueryString(params: QueryParams): string {
 
 export function createWaiAgentsApi(
   getAccessToken?: () => string | undefined | Promise<string | undefined>,
+  sessionStore?: {
+    getRefreshToken: () => string | undefined;
+    setTokens: (accessToken: string, refreshToken: string) => void;
+    clearSession: () => void;
+  },
 ) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api/v1';
-  const client = new ApiClient({ baseUrl, getAccessToken });
+  const client = new ApiClient({ baseUrl, getAccessToken, sessionStore });
   return new WaiAgentsApi(client);
 }
 

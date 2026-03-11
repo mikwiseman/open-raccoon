@@ -37,7 +37,9 @@ function formatFeedItem(row: Record<string, unknown>) {
 }
 
 function clampLimit(limit?: number): number {
-  return Math.min(Math.max(1, limit ?? 20), 100);
+  const n = limit ?? 20;
+  if (Number.isNaN(n)) return 20;
+  return Math.min(Math.max(1, n), 100);
 }
 
 async function getCursorInsertedAt(cursor: string): Promise<Date> {

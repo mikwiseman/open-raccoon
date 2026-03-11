@@ -24,26 +24,29 @@ export function ExecutionHistory({ api, agentId, onEventsLoaded }: Props) {
       setError(null);
       try {
         const res = await api.listAgentEvents(agentId, {
-          cursor: append ? cursor : undefined,
+          cursor: append ? (cursor ?? undefined) : undefined,
           limit: 20,
         });
-        const next = append ? [...events, ...res.items] : res.items;
-        setEvents(next);
+        setEvents((prev) => {
+          const next = append ? [...prev, ...res.items] : res.items;
+          onEventsLoaded(next);
+          return next;
+        });
         setCursor(res.page_info.next_cursor);
         setHasMore(res.page_info.has_more);
-        onEventsLoaded(next);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load events');
       } finally {
         setLoading(false);
       }
     },
-    [api, agentId, cursor, events, onEventsLoaded],
+    // cursor is read via state inside, not a dep that should retrigger
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [api, agentId, onEventsLoaded],
   );
 
   useEffect(() => {
     void loadEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadEvents]);
 
   function statusColor(status: AgentEvent['status']): string {

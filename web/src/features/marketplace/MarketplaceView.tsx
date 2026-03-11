@@ -236,6 +236,15 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
     }, DEBOUNCE_MS);
   }, []);
 
+  /* --- cleanup debounce timer on unmount --- */
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
   /* --- load marketplace agents --- */
   const loadMarketplace = useCallback(
     async (nextCursor?: string | null) => {

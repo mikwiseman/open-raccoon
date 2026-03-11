@@ -113,8 +113,8 @@ public struct FeedView: View {
             .padding(.horizontal, WaiAgentsSpacing.space4)
             .padding(.top, WaiAgentsSpacing.space3)
 
-            // Infinite scroll trigger
-            if !vm.feedItems.isEmpty {
+            // Infinite scroll trigger — only show when there are more items to load
+            if !vm.feedItems.isEmpty, vm.hasMore {
                 ProgressView()
                     .padding(.vertical, WaiAgentsSpacing.space6)
                     .onAppear {

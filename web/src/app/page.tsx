@@ -74,7 +74,19 @@ const TABS: Array<{ key: Tab; label: string; icon: string }> = [
 ];
 
 export default function HomePage() {
-  const api = useMemo(() => createWaiAgentsApi(() => useSessionStore.getState().accessToken), []);
+  const api = useMemo(
+    () =>
+      createWaiAgentsApi(() => useSessionStore.getState().accessToken, {
+        getRefreshToken: () => useSessionStore.getState().refreshToken,
+        setTokens: (accessToken, refreshToken) => {
+          useSessionStore.getState().setSession({ accessToken, refreshToken });
+        },
+        clearSession: () => {
+          useSessionStore.getState().clearSession();
+        },
+      }),
+    [],
+  );
 
   const { hydrated, isAuthenticated, accessToken, refreshToken, user, setSession, clearSession } =
     useSessionStore((state) => ({
@@ -132,6 +144,10 @@ export default function HomePage() {
   const handleStartAgentConversation = useCallback((conversationId: string) => {
     setFocusConversationId(conversationId);
     setActiveTab('chats');
+  }, []);
+
+  const handleConversationFocused = useCallback(() => {
+    setFocusConversationId((prev) => (prev ? null : prev));
   }, []);
 
   // Loading state
@@ -228,9 +244,7 @@ export default function HomePage() {
               accessToken={accessToken}
               currentUser={user}
               focusConversationId={focusConversationId}
-              onConversationFocused={() => {
-                if (focusConversationId) setFocusConversationId(null);
-              }}
+              onConversationFocused={handleConversationFocused}
             />
           </ErrorBoundary>
         )}

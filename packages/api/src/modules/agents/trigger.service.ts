@@ -193,8 +193,13 @@ export async function fireTrigger(
       .update(JSON.stringify(payload))
       .digest('hex');
 
+    // Strip "sha256=" prefix if present (GitHub webhook format)
+    const rawSignature = hmacSignature.startsWith('sha256=')
+      ? hmacSignature.slice(7)
+      : hmacSignature;
+
     const expectedBuf = Buffer.from(expected, 'hex');
-    const receivedBuf = Buffer.from(hmacSignature, 'hex');
+    const receivedBuf = Buffer.from(rawSignature, 'hex');
 
     if (expectedBuf.length !== receivedBuf.length || !timingSafeEqual(expectedBuf, receivedBuf)) {
       throw Object.assign(new Error('Invalid HMAC signature'), { code: 'UNAUTHORIZED' });

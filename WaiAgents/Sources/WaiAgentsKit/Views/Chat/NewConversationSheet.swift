@@ -1,5 +1,10 @@
 import SwiftUI
 
+private struct IdentifiableString: Identifiable {
+    let id = UUID()
+    var value: String = ""
+}
+
 #if os(macOS)
 public struct NewConversationSheet: View {
     @Environment(AppState.self) private var appState
@@ -11,7 +16,7 @@ public struct NewConversationSheet: View {
     @State private var agentSearchText = ""
     @State private var dmUsername = ""
     @State private var groupTitle = ""
-    @State private var groupMembers: [String] = [""]
+    @State private var groupMembers: [IdentifiableString] = [IdentifiableString()]
     @State private var error: String?
     @State private var isCreating = false
 
@@ -253,7 +258,7 @@ public struct NewConversationSheet: View {
                     Spacer()
 
                     Button {
-                        groupMembers.append("")
+                        groupMembers.append(IdentifiableString())
                     } label: {
                         Image(systemName: "plus.circle")
                             .foregroundStyle(WaiAgentsColors.accentPrimary)
@@ -261,14 +266,14 @@ public struct NewConversationSheet: View {
                     .buttonStyle(.plain)
                 }
 
-                ForEach(groupMembers.indices, id: \.self) { index in
+                ForEach($groupMembers) { $member in
                     HStack {
-                        TextField("Username", text: $groupMembers[index])
+                        TextField("Username", text: $member.value)
                             .textFieldStyle(.roundedBorder)
 
                         if groupMembers.count > 1 {
                             Button {
-                                groupMembers.remove(at: index)
+                                groupMembers.removeAll { $0.id == member.id }
                             } label: {
                                 Image(systemName: "minus.circle")
                                     .foregroundStyle(WaiAgentsColors.Semantic.error)
@@ -308,7 +313,7 @@ public struct NewConversationSheet: View {
     }
 
     private var canCreateGroup: Bool {
-        !groupTitle.isEmpty && groupMembers.contains(where: { !$0.isEmpty })
+        !groupTitle.isEmpty && groupMembers.contains(where: { !$0.value.isEmpty })
     }
 
     // MARK: - Actions
@@ -376,7 +381,7 @@ public struct NewConversationSheet: View {
                     .createConversation(type: "group", title: groupTitle, agentID: nil)
                 )
                 // Add each member by username
-                let validMembers = groupMembers.filter { !$0.isEmpty }
+                let validMembers = groupMembers.map(\.value).filter { !$0.isEmpty }
                 for username in validMembers {
                     let userResponse: UserResponse = try await appState.apiClient.request(
                         .userProfile(username: username)

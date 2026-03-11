@@ -11,6 +11,7 @@ public final class WebSocketClient: @unchecked Sendable {
     private let authManager: AuthManager
 
     /// Lock protecting mutable state accessed from multiple threads.
+    /// Protects: `activeChannels`, `joinedTopics`, `isReconnecting`, and `socket`.
     private let lock = NSLock()
 
     /// Tracks active channels by topic (e.g. "conversation:abc123") so we can push events to them.
@@ -75,29 +76,32 @@ public final class WebSocketClient: @unchecked Sendable {
     public func connect() {
         Task { @MainActor in onConnectionStateChanged?(.connecting) }
 
-        socket.onOpen { @Sendable [weak self] in
+        let currentSocket = lock.withLock { socket }
+
+        currentSocket.onOpen { @Sendable [weak self] in
             Task { @MainActor in
                 self?.onConnectionStateChanged?(.connected)
             }
         }
 
-        socket.onClose { @Sendable [weak self] in
+        currentSocket.onClose { @Sendable [weak self] in
             Task { @MainActor in
                 self?.onConnectionStateChanged?(.disconnected)
             }
         }
 
-        socket.onError { @Sendable [weak self] _ in
+        currentSocket.onError { @Sendable [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
                 self.onConnectionStateChanged?(.disconnected)
             }
         }
-        socket.connect()
+        currentSocket.connect()
     }
 
     public func disconnect() {
-        socket.disconnect()
+        let currentSocket = lock.withLock { socket }
+        currentSocket.disconnect()
         Task { @MainActor in onConnectionStateChanged?(.disconnected) }
     }
 
@@ -112,7 +116,8 @@ public final class WebSocketClient: @unchecked Sendable {
         guard shouldProceed else { return }
         defer { lock.withLock { isReconnecting = false } }
 
-        socket.disconnect()
+        let currentSocket = lock.withLock { socket }
+        currentSocket.disconnect()
 
         do {
             await onConnectionStateChanged?(.connecting)
@@ -121,36 +126,37 @@ public final class WebSocketClient: @unchecked Sendable {
             let wsURL = baseURL
                 .replacingOccurrences(of: "https://", with: "wss://")
                 .replacingOccurrences(of: "http://", with: "ws://")
-            socket = Socket("\(wsURL)/socket", params: ["token": newToken])
+            let newSocket = Socket("\(wsURL)/socket", params: ["token": newToken])
 
             // Re-register socket lifecycle handlers on the new socket
-            socket.onOpen { @Sendable [weak self] in
+            newSocket.onOpen { @Sendable [weak self] in
                 Task { @MainActor in
                     self?.onConnectionStateChanged?(.connected)
                 }
             }
 
-            socket.onClose { @Sendable [weak self] in
+            newSocket.onClose { @Sendable [weak self] in
                 Task { @MainActor in
                     self?.onConnectionStateChanged?(.disconnected)
                 }
             }
 
-            socket.onError { @Sendable [weak self] _ in
+            newSocket.onError { @Sendable [weak self] _ in
                 Task { @MainActor in
                     guard let self else { return }
                     self.onConnectionStateChanged?(.disconnected)
                 }
             }
 
-            // Rejoin all previously active topics
+            // Swap the socket and clear channels under lock
             let topicsToRejoin: Set<String> = lock.withLock {
+                socket = newSocket
                 let topics = joinedTopics
                 activeChannels.removeAll()
                 return topics
             }
 
-            socket.connect()
+            newSocket.connect()
 
             for topic in topicsToRejoin {
                 rejoinTopic(topic)
@@ -180,7 +186,7 @@ public final class WebSocketClient: @unchecked Sendable {
     @discardableResult
     public func joinConversation(id: String) -> Channel {
         let topic = "conversation:\(id)"
-        let channel = socket.channel(topic)
+        let channel = lock.withLock { socket.channel(topic) }
 
         channel.on(ConversationServerEvent.newMessage.rawValue) { @Sendable [weak self] message in
             let payload = message.payload
@@ -247,7 +253,7 @@ public final class WebSocketClient: @unchecked Sendable {
     @discardableResult
     public func joinAgentChannel(conversationID: String) -> Channel {
         let topic = "agent:\(conversationID)"
-        let channel = socket.channel(topic)
+        let channel = lock.withLock { socket.channel(topic) }
 
         channel.on(AgentServerEvent.token.rawValue) { @Sendable [weak self] message in
             let payload = message.payload
@@ -349,7 +355,7 @@ public final class WebSocketClient: @unchecked Sendable {
     @discardableResult
     public func joinUserChannel(userID: String) -> Channel {
         let topic = "user:\(userID)"
-        let channel = socket.channel(topic)
+        let channel = lock.withLock { socket.channel(topic) }
 
         channel.on(UserServerEvent.notification.rawValue) { @Sendable [weak self] message in
             let payload = message.payload

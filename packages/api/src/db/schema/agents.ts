@@ -106,13 +106,15 @@ export const agentMemories = pgTable('agent_memories', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  content: text('content'),
+  memoryType: varchar('memory_type', { length: 20 }).notNull().default('fact'),
+  content: text('content').notNull(),
+  embeddingKey: text('embedding_key'),
   embedding: vector('embedding', { dimensions: 1536 }),
   importance: doublePrecision('importance').default(0.5),
-  memoryType: varchar('memory_type', { length: 20 }).default('observation'),
-  tags: text('tags').array().default([]),
   accessCount: integer('access_count').default(0),
   lastAccessedAt: timestamp('last_accessed_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  tags: text('tags').array().default([]),
   decayFactor: doublePrecision('decay_factor').default(1.0),
   metadata: jsonb('metadata').default({}),
   insertedAt: timestamp('inserted_at', { withTimezone: true }).defaultNow(),

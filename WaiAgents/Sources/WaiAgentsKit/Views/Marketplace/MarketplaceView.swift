@@ -102,6 +102,10 @@ public struct MarketplaceView: View {
                 await vm.loadAgents()
             }
         }
+        .onDisappear {
+            searchTask?.cancel()
+            searchTask = nil
+        }
     }
 
     private var categoryPills: some View {
