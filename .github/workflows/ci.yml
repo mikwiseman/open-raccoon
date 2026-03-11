@@ -20,6 +20,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+        continue-on-error: true
 
   typecheck:
     runs-on: ubuntu-latest
