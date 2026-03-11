@@ -1,3 +1,4 @@
+export * from './agent-collaborations.js';
 export * from './agent-events.js';
 export * from './agent-memories.js';
 export * from './content-blocks.js';
