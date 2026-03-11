@@ -123,11 +123,25 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopRe
       for (const toolCall of llmResponse.toolCalls) {
         // Approval gate: check if this tool requires human approval
         if (approvalRequired.has(toolCall.name)) {
+          // Auto-block if denied too many times (prevents infinite denial loops)
+          if (approvalGate.isDeniedTooManyTimes(conversationId, toolCall.name)) {
+            chatMessages.push({
+              role: 'assistant',
+              content: `[Tool: ${toolCall.name}] ${JSON.stringify(toolCall.input)}`,
+            });
+            chatMessages.push({
+              role: 'user',
+              content: `[Tool Blocked: ${toolCall.name}] This tool has been denied multiple times. It is now blocked for the rest of this conversation. Use a different approach.`,
+            });
+            continue;
+          }
+
           if (!approvalGate.isApproved(conversationId, toolCall.name)) {
             const decision = await approvalGate.requestApproval(
               conversationId,
               toolCall.name,
               toolCall.input,
+              abortSignal,
             );
 
             if (!decision.approved) {
@@ -228,6 +242,9 @@ export async function runAgentLoop(config: AgentLoopConfig): Promise<AgentLoopRe
     });
     throw error;
   } finally {
+    // Clean up any pending approval requests and session cache for this conversation
+    approvalGate.cancelPending(conversationId);
+    approvalGate.clearSession(conversationId);
     await mcpManager.disconnect();
   }
 }

@@ -70,7 +70,10 @@ export function setupAgentHandlers(io: SocketIOServer): void {
       (data: { conversationId: string; requestId: string; decision: string; scope: string }) => {
         if (!checkSocketRate(socket)) return;
         if (!data.requestId || !data.decision) return;
-        if (data.conversationId && !UUID_RE.test(data.conversationId)) return;
+        if (!data.conversationId || !UUID_RE.test(data.conversationId)) return;
+
+        // Authorization: sender must have joined the agent room for this conversation
+        if (!socket.rooms.has(`agent:${data.conversationId}`)) return;
 
         const decision = data.decision === 'approve' ? 'approve' : 'deny';
         const validScopes: ApprovalScope[] = [
