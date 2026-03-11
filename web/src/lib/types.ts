@@ -99,6 +99,13 @@ export type FeedItem = {
   view_count: number;
   created_at: string;
   updated_at: string;
+  creator?: {
+    id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
+  liked_by_me?: boolean;
 };
 
 export type Page = {

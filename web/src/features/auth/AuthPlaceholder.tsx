@@ -4,6 +4,7 @@ import { type FormEvent, useMemo, useState } from 'react';
 import type { WaiAgentsApi } from '@/lib/api';
 import type { SessionUser } from '@/lib/state/session-store';
 import type { SessionTokens } from '@/lib/types';
+import { getErrorMessage, toSessionUser } from '@/lib/utils';
 
 type AuthViewProps = {
   api: WaiAgentsApi;
@@ -390,31 +391,6 @@ export function AuthView({ api, onAuthenticated }: AuthViewProps) {
 }
 
 // ---- Helpers ----
-
-function toSessionUser(user: {
-  id: string;
-  username: string;
-  display_name: string | null;
-  email?: string;
-  avatar_url: string | null;
-  bio: string | null;
-}): SessionUser {
-  return {
-    id: user.id,
-    username: user.username,
-    display_name: user.display_name,
-    email: user.email,
-    avatar_url: user.avatar_url,
-    bio: user.bio,
-  };
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return 'Request failed';
-}
 
 // ---- Styles ----
 

@@ -3,8 +3,8 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, type WaiAgentsApi } from '@/lib/api';
 import type { SessionUser } from '@/lib/state/session-store';
-import type { BridgeConnection, User } from '@/lib/types';
-import { toIsoLocal } from '@/lib/utils';
+import type { BridgeConnection } from '@/lib/types';
+import { getErrorMessage, toIsoLocal, toSessionUser } from '@/lib/utils';
 
 type SettingsViewProps = {
   api: WaiAgentsApi;
@@ -159,6 +159,9 @@ export function SettingsView({ api, user, onUserUpdated, onLogout }: SettingsVie
   };
 
   const disconnectBridge = async (bridge: BridgeConnection) => {
+    if (!window.confirm(`Disconnect ${bridge.platform} bridge? This action cannot be undone.`)) {
+      return;
+    }
     setError(null);
 
     try {
@@ -373,6 +376,7 @@ export function SettingsView({ api, user, onUserUpdated, onLogout }: SettingsVie
                   <div style={{ flex: 1, display: 'grid', gap: 'var(--space-1)' }}>
                     <span style={labelTextStyle}>Telegram Bot Token</span>
                     <input
+                      type="password"
                       value={telegramToken}
                       onChange={(e) => setTelegramToken(e.target.value)}
                       placeholder="123456:ABC-DEF..."
@@ -392,6 +396,7 @@ export function SettingsView({ api, user, onUserUpdated, onLogout }: SettingsVie
                   <div style={{ flex: 1, display: 'grid', gap: 'var(--space-1)' }}>
                     <span style={labelTextStyle}>WhatsApp API Token</span>
                     <input
+                      type="password"
                       value={whatsappToken}
                       onChange={(e) => setWhatsappToken(e.target.value)}
                       placeholder="wa_..."
@@ -444,24 +449,6 @@ function mergeBridge(previous: BridgeConnection[], bridge: BridgeConnection): Br
   const next = [...previous];
   next[existing] = bridge;
   return next;
-}
-
-function toSessionUser(user: User): SessionUser {
-  return {
-    id: user.id,
-    username: user.username,
-    display_name: user.display_name,
-    email: user.email,
-    avatar_url: user.avatar_url,
-    bio: user.bio,
-  };
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return 'Request failed';
 }
 
 function isNotFoundError(error: unknown): boolean {

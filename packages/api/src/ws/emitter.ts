@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@wai-agents/shared';
+import type { AgentEvent, CrewEvent } from '@wai-agents/shared';
 import type { Server as SocketIOServer } from 'socket.io';
 
 let io: SocketIOServer | null = null;
@@ -51,6 +51,11 @@ export function emitA2AEvent(
 ): void {
   if (!io) throw new Error('Socket.IO not initialized');
   io.to(`agent:${conversationId}`).emit('a2a:event', event);
+}
+
+export function emitCrewEvent(conversationId: string, event: CrewEvent): void {
+  if (!io) throw new Error('Socket.IO not initialized');
+  io.to(`agent:${conversationId}`).emit('crew:event', event);
 }
 
 export function emitFeedbackEvent(conversationId: string, event: unknown): void {

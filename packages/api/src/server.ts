@@ -5,6 +5,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { initWorkers } from './jobs/index.js';
 import { agentRoutes } from './modules/agents/agent.routes.js';
+import { crewRoutes } from './modules/agents/crew.routes.js';
 import { runAgentLoop } from './modules/agents/loop.js';
 import type { CallerContext } from './modules/agents/soul.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
@@ -54,6 +55,7 @@ app.route('/api/v1/auth', authRoutes);
 app.route('/api/v1/users', userRoutes);
 app.route('/api/v1/conversations', conversationRoutes);
 app.route('/api/v1/agents', agentRoutes);
+app.route('/api/v1/crews', crewRoutes);
 app.route('/api/v1', socialRoutes);
 app.route('/api/v1', uploadRoutes);
 

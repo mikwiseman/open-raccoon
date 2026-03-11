@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { createWaiAgentsApi } from '@/lib/api';
 import { useSessionStore } from '@/lib/state';
-import type { SessionUser } from '@/lib/state/session-store';
+import { getErrorMessage, toSessionUser } from '@/lib/utils';
 
 type VerifyState = 'verifying' | 'success' | 'error';
 
@@ -62,7 +62,7 @@ export function MagicLinkVerifyClient() {
         }
 
         setState('error');
-        setMessage(getErrorMessage(error));
+        setMessage(getErrorMessage(error, 'Token is invalid or expired'));
       });
 
     return () => {
@@ -99,30 +99,4 @@ export function MagicLinkVerifyClient() {
 
 function sanitizeToken(value: string): string {
   return value.trim().replace(/\s+/g, '');
-}
-
-function toSessionUser(user: {
-  id: string;
-  username: string;
-  display_name: string | null;
-  email?: string;
-  avatar_url: string | null;
-  bio: string | null;
-}): SessionUser {
-  return {
-    id: user.id,
-    username: user.username,
-    display_name: user.display_name,
-    email: user.email,
-    avatar_url: user.avatar_url,
-    bio: user.bio,
-  };
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return 'Token is invalid or expired';
 }

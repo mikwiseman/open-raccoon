@@ -54,6 +54,9 @@ export function AgentBuilderView({ api, accessToken }: Props) {
   }
 
   async function handleDelete(agentId: string) {
+    if (!window.confirm('Delete this agent? This action cannot be undone.')) {
+      return;
+    }
     try {
       await api.deleteAgent(agentId);
       setAgents((prev) => prev.filter((a) => a.id !== agentId));

@@ -1,5 +1,6 @@
 export * from './agents.js';
 export * from './conversations.js';
+export * from './crews.js';
 export * from './custom-types.js';
 export * from './integrations.js';
 export * from './pages.js';

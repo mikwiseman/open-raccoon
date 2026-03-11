@@ -1,5 +1,8 @@
 import SwiftUI
+import os
 import WaiAgentsKit
+
+private let logger = Logger(subsystem: "com.waiagents.app", category: "MagicLink")
 
 @main
 struct WaiAgentsApp: App {
@@ -12,7 +15,11 @@ struct WaiAgentsApp: App {
         else { return }
 
         Task {
-            try await appState.verifyMagicLink(token: token)
+            do {
+                try await appState.verifyMagicLink(token: token)
+            } catch {
+                logger.error("Magic link verification failed: \(error.localizedDescription)")
+            }
         }
     }
 

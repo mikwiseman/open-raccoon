@@ -10,13 +10,19 @@ public final class WebSocketClient: @unchecked Sendable {
     private let baseURL: String
     private let authManager: AuthManager
 
+    /// Lock protecting mutable state accessed from multiple threads.
+    private let lock = NSLock()
+
     /// Tracks active channels by topic (e.g. "conversation:abc123") so we can push events to them.
+    /// Access must be protected by `lock`.
     private var activeChannels: [String: Channel] = [:]
 
     /// Tracks which topics were joined so we can rejoin after reconnect.
+    /// Access must be protected by `lock`.
     private var joinedTopics: Set<String> = []
 
     /// Whether a token-refresh reconnect is in progress.
+    /// Access must be protected by `lock`.
     private var isReconnecting = false
 
     // MARK: - Connection State
@@ -98,9 +104,13 @@ public final class WebSocketClient: @unchecked Sendable {
     /// Attempts to refresh the access token and reconnect the WebSocket.
     /// If the refresh fails, notifies via `onAuthFailure`.
     private func handleAuthFailure() async {
-        guard !isReconnecting else { return }
-        isReconnecting = true
-        defer { isReconnecting = false }
+        let shouldProceed: Bool = lock.withLock {
+            guard !isReconnecting else { return false }
+            isReconnecting = true
+            return true
+        }
+        guard shouldProceed else { return }
+        defer { lock.withLock { isReconnecting = false } }
 
         socket.disconnect()
 
@@ -134,8 +144,11 @@ public final class WebSocketClient: @unchecked Sendable {
             }
 
             // Rejoin all previously active topics
-            let topicsToRejoin = joinedTopics
-            activeChannels.removeAll()
+            let topicsToRejoin: Set<String> = lock.withLock {
+                let topics = joinedTopics
+                activeChannels.removeAll()
+                return topics
+            }
 
             socket.connect()
 
@@ -223,8 +236,10 @@ public final class WebSocketClient: @unchecked Sendable {
         }
 
         channel.join()
-        activeChannels[topic] = channel
-        joinedTopics.insert(topic)
+        lock.withLock {
+            activeChannels[topic] = channel
+            joinedTopics.insert(topic)
+        }
         return channel
     }
 
@@ -323,8 +338,10 @@ public final class WebSocketClient: @unchecked Sendable {
         }
 
         channel.join()
-        activeChannels[topic] = channel
-        joinedTopics.insert(topic)
+        lock.withLock {
+            activeChannels[topic] = channel
+            joinedTopics.insert(topic)
+        }
         return channel
     }
 
@@ -368,8 +385,10 @@ public final class WebSocketClient: @unchecked Sendable {
         }
 
         channel.join()
-        activeChannels[topic] = channel
-        joinedTopics.insert(topic)
+        lock.withLock {
+            activeChannels[topic] = channel
+            joinedTopics.insert(topic)
+        }
         return channel
     }
 
@@ -379,7 +398,7 @@ public final class WebSocketClient: @unchecked Sendable {
     @discardableResult
     public func sendMessage(conversationID: String, content: String, type: String = "text") -> Push? {
         let topic = "conversation:\(conversationID)"
-        guard let channel = activeChannels[topic] else { return nil }
+        guard let channel = lock.withLock({ activeChannels[topic] }) else { return nil }
         return channel.push(
             ConversationClientEvent.newMessage.rawValue,
             payload: ["content": content, "type": type]
@@ -390,7 +409,7 @@ public final class WebSocketClient: @unchecked Sendable {
     @discardableResult
     public func sendTyping(conversationID: String, isTyping: Bool) -> Push? {
         let topic = "conversation:\(conversationID)"
-        guard let channel = activeChannels[topic] else { return nil }
+        guard let channel = lock.withLock({ activeChannels[topic] }) else { return nil }
         return channel.push(
             ConversationClientEvent.typing.rawValue,
             payload: ["is_typing": isTyping]
@@ -401,7 +420,7 @@ public final class WebSocketClient: @unchecked Sendable {
     @discardableResult
     public func sendRead(conversationID: String, messageID: String) -> Push? {
         let topic = "conversation:\(conversationID)"
-        guard let channel = activeChannels[topic] else { return nil }
+        guard let channel = lock.withLock({ activeChannels[topic] }) else { return nil }
         return channel.push(
             ConversationClientEvent.read.rawValue,
             payload: ["message_id": messageID]
@@ -412,7 +431,7 @@ public final class WebSocketClient: @unchecked Sendable {
     @discardableResult
     public func sendReaction(conversationID: String, messageID: String, emoji: String) -> Push? {
         let topic = "conversation:\(conversationID)"
-        guard let channel = activeChannels[topic] else { return nil }
+        guard let channel = lock.withLock({ activeChannels[topic] }) else { return nil }
         return channel.push(
             ConversationClientEvent.react.rawValue,
             payload: ["message_id": messageID, "emoji": emoji]
@@ -428,7 +447,7 @@ public final class WebSocketClient: @unchecked Sendable {
         scope: String
     ) -> Push? {
         let topic = "agent:\(conversationID)"
-        guard let channel = activeChannels[topic] else { return nil }
+        guard let channel = lock.withLock({ activeChannels[topic] }) else { return nil }
         return channel.push(
             AgentClientEvent.approvalDecision.rawValue,
             payload: ["request_id": requestID, "decision": decision, "scope": scope]
@@ -440,27 +459,31 @@ public final class WebSocketClient: @unchecked Sendable {
     /// Leave a conversation channel and remove it from tracked channels.
     public func leaveConversation(id: String) {
         let topic = "conversation:\(id)"
-        joinedTopics.remove(topic)
-        if let channel = activeChannels.removeValue(forKey: topic) {
-            channel.leave()
+        let channel: Channel? = lock.withLock {
+            joinedTopics.remove(topic)
+            return activeChannels.removeValue(forKey: topic)
         }
+        channel?.leave()
     }
 
     /// Leave an agent channel and remove it from tracked channels.
     public func leaveAgentChannel(conversationID: String) {
         let topic = "agent:\(conversationID)"
-        joinedTopics.remove(topic)
-        if let channel = activeChannels.removeValue(forKey: topic) {
-            channel.leave()
+        let channel: Channel? = lock.withLock {
+            joinedTopics.remove(topic)
+            return activeChannels.removeValue(forKey: topic)
         }
+        channel?.leave()
     }
 
     /// Leave a channel.
     public func leave(_ channel: Channel) {
-        // Remove from tracked channels if present
-        if let topic = activeChannels.first(where: { $0.value === channel })?.key {
-            activeChannels.removeValue(forKey: topic)
-            joinedTopics.remove(topic)
+        lock.withLock {
+            // Remove from tracked channels if present
+            if let topic = activeChannels.first(where: { $0.value === channel })?.key {
+                activeChannels.removeValue(forKey: topic)
+                joinedTopics.remove(topic)
+            }
         }
         channel.leave()
     }

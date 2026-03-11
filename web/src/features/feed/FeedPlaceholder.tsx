@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { WaiAgentsApi } from '@/lib/api';
 import type { FeedItem } from '@/lib/types';
-import { toIsoLocal } from '@/lib/utils';
+import { getErrorMessage, toIsoLocal } from '@/lib/utils';
 
 type FeedKind = 'for_you' | 'trending' | 'following' | 'new';
 
@@ -197,12 +197,4 @@ export function FeedView({ api }: FeedViewProps) {
 
 export function FeedPlaceholder() {
   return <section aria-label="feed-placeholder">Feed module placeholder</section>;
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return 'Request failed';
 }

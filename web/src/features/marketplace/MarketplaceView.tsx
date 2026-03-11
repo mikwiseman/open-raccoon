@@ -9,7 +9,7 @@ import type {
   MarketplaceAgentProfileResponse,
   MarketplaceCategory,
 } from '@/lib/types';
-import { toIsoLocal } from '@/lib/utils';
+import { getErrorMessage, toIsoLocal } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -40,13 +40,6 @@ const FALLBACK_CATEGORIES = [
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return 'Request failed';
-}
 
 function getInitials(name: string): string {
   return name
@@ -383,7 +376,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
     if (!detail) return;
     setForking(true);
     try {
-      await api.forkFeedItem(detail.id);
+      await api.forkAgent(detail.id);
       setInfo(`Forked "${detail.name}" to your agents`);
     } catch (err) {
       setError(getErrorMessage(err));

@@ -11,12 +11,10 @@ interface McpToolWithServer extends McpTool {
 }
 
 export class McpManager {
-  private servers: McpServerConfig[] = [];
   private tools: McpToolWithServer[] = [];
   private apiKey: string | undefined = process.env.MCP_API_KEY;
 
   async connect(servers: McpServerConfig[]): Promise<void> {
-    this.servers = servers;
     this.tools = [];
 
     await Promise.all(
@@ -124,6 +122,5 @@ export class McpManager {
   async disconnect(): Promise<void> {
     // HTTP-based MCP servers are stateless; nothing to close
     this.tools = [];
-    this.servers = [];
   }
 }

@@ -4,7 +4,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import { ApiError, type WaiAgentsApi } from '@/lib/api';
 import type { SessionUser } from '@/lib/state/session-store';
 import type { Page, PageVersion } from '@/lib/types';
-import { toIsoLocal } from '@/lib/utils';
+import { getErrorMessage, toIsoLocal } from '@/lib/utils';
 
 interface PagesViewProps {
   api: WaiAgentsApi;
@@ -532,14 +532,6 @@ function normalizeSlug(value: string): string {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return 'Request failed';
 }
 
 function isNotFoundError(error: unknown): boolean {

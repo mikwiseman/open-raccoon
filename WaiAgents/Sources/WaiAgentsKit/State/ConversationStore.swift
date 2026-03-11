@@ -14,11 +14,11 @@ public final class ConversationStore {
 
     public func loadConversations(apiClient: APIClient) async throws {
         isLoading = true
+        defer { isLoading = false }
         let response: PaginatedResponse<Conversation> = try await apiClient.request(
             .listConversations(cursor: nil, limit: 50)
         )
         conversations = response.items
-        isLoading = false
     }
 
     public func upsert(_ conversation: Conversation) {

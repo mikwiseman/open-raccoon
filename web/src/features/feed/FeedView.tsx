@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { WaiAgentsApi } from '@/lib/api';
 import type { SessionUser } from '@/lib/state/session-store';
 import type { FeedItem } from '@/lib/types';
+import { getErrorMessage } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -137,23 +138,25 @@ function SkeletonCard() {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function getInitials(user: SessionUser): string {
-  if (user.display_name) {
-    return user.display_name
-      .split(' ')
-      .map((w) => w[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase();
-  }
-  return user.username.slice(0, 2).toUpperCase();
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 }
 
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return 'Request failed';
+function getCreatorInitials(item: FeedItem): string {
+  if (item.creator?.display_name) return getInitials(item.creator.display_name);
+  if (item.creator?.username) return getInitials(item.creator.username);
+  return '??';
+}
+
+function getCreatorName(item: FeedItem): string {
+  if (item.creator?.display_name) return item.creator.display_name;
+  if (item.creator?.username) return item.creator.username;
+  return 'Unknown';
 }
 
 function timeAgo(dateIso: string): string {
@@ -294,7 +297,7 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
   const onFork = async (item: FeedItem) => {
     setError(null);
     try {
-      await api.forkFeedItem(item.id);
+      await api.forkAgent(item.reference_id);
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, fork_count: i.fork_count + 1 } : i)),
       );
@@ -386,10 +389,8 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
 
                       {/* Author row */}
                       <div className="feed-card-author">
-                        <span className="avatar-circle avatar-sm">{getInitials(currentUser)}</span>
-                        <span className="feed-card-author-name">
-                          {currentUser.display_name || currentUser.username}
-                        </span>
+                        <span className="avatar-circle avatar-sm">{getCreatorInitials(item)}</span>
+                        <span className="feed-card-author-name">{getCreatorName(item)}</span>
                       </div>
 
                       {/* Stats row */}
@@ -458,11 +459,9 @@ export function FeedView({ api, currentUser }: FeedViewProps) {
 
               {/* Author */}
               <div className="feed-detail-author">
-                <span className="avatar-circle avatar-md">{getInitials(currentUser)}</span>
+                <span className="avatar-circle avatar-md">{getCreatorInitials(selected)}</span>
                 <div>
-                  <div className="feed-detail-author-name">
-                    {currentUser.display_name || currentUser.username}
-                  </div>
+                  <div className="feed-detail-author-name">{getCreatorName(selected)}</div>
                   <div className="feed-detail-author-role">Creator</div>
                 </div>
               </div>

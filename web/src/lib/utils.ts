@@ -1,3 +1,33 @@
+import type { SessionUser } from './state/session-store';
+
+export function toSessionUser(user: {
+  id: string;
+  username: string;
+  display_name: string | null;
+  email?: string;
+  avatar_url: string | null;
+  bio: string | null;
+}): SessionUser {
+  return {
+    id: user.id,
+    username: user.username,
+    display_name: user.display_name,
+    email: user.email,
+    avatar_url: user.avatar_url,
+    bio: user.bio,
+  };
+}
+
+export function getErrorMessage(error: unknown, fallback = 'Request failed'): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (error && typeof error === 'object' && 'reason' in error) {
+    return String((error as { reason: unknown }).reason);
+  }
+  return fallback;
+}
+
 export function createIdempotencyKey(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();

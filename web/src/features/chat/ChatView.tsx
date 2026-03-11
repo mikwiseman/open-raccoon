@@ -28,7 +28,7 @@ import type {
   Message,
   ToolApprovalRequest,
 } from '@/lib/types';
-import { asTextContent } from '@/lib/utils';
+import { asTextContent, getErrorMessage } from '@/lib/utils';
 import type { AgentStreamEvent } from '@/lib/ws/socket-client';
 import { SocketClient } from '@/lib/ws/socket-client';
 import { ContentBlockRenderer, parseContentBlocks } from './content-blocks';
@@ -1392,13 +1392,6 @@ function aggregateReactions(reactions: Array<{ emoji: string }>): Array<[string,
   const counts = new Map<string, number>();
   reactions.forEach((r) => counts.set(r.emoji, (counts.get(r.emoji) || 0) + 1));
   return [...counts.entries()];
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) return error.message;
-  if (error && typeof error === 'object' && 'reason' in error)
-    return String((error as { reason: unknown }).reason);
-  return 'Request failed';
 }
 
 function extractMessageFromEvent(payload: unknown): Message | null {

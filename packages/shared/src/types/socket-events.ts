@@ -1,4 +1,5 @@
 import type { AgentEvent } from './agent-events.js';
+import type { CrewEvent } from './crews.js';
 
 export interface ServerToClientEvents {
   'message:new': (message: unknown) => void;
@@ -9,6 +10,7 @@ export interface ServerToClientEvents {
   'conversation:updated': (conversation: unknown) => void;
   'agent:event': (event: AgentEvent) => void;
   'a2a:event': (event: unknown) => void;
+  'crew:event': (event: CrewEvent) => void;
   'presence:update': (data: { userId: string; status: 'online' | 'offline' }) => void;
   'presence:snapshot': (data: Record<string, 'online' | 'offline'>) => void;
 }

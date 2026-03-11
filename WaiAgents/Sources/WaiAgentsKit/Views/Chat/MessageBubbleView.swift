@@ -143,9 +143,13 @@ public struct MessageBubbleView: View {
         WaiAgentsColors.AgentAccent.default
     }
 
-    private var formattedTime: String {
+    private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
-        return formatter.string(from: message.createdAt)
+        return formatter
+    }()
+
+    private var formattedTime: String {
+        Self.timeFormatter.string(from: message.createdAt)
     }
 }

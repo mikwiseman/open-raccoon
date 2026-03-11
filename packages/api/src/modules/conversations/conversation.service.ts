@@ -274,7 +274,7 @@ export async function sendMessage(
   await assertMember(conversationId, userId);
 
   // @ts-expect-error postgres.js TransactionSql type lacks call signatures but works at runtime
-  const message = await sql.begin(async (tx: typeof sql) => {
+  const message: ReturnType<typeof formatMessage> = await sql.begin(async (tx: typeof sql) => {
     // Check idempotency
     const existing = await tx`
       SELECT response_body FROM idempotency_keys

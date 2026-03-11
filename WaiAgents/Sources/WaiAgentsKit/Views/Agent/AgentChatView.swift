@@ -71,11 +71,9 @@ public struct AgentChatView: View {
                                 }
 
                                 ForEach(group.messages) { message in
-                                    MessageBubbleView(
+                                    messageBubble(
                                         message: message,
-                                        isFirstInGroup: message.id == group.messages.first?.id,
-                                        isLastInGroup: message.id == group.messages.last?.id,
-                                        currentUserID: appState.currentUserID!
+                                        group: group
                                     )
                                     .id(message.id)
                                 }
@@ -255,6 +253,21 @@ public struct AgentChatView: View {
             }
         }
         #endif
+    }
+
+    @ViewBuilder
+    private func messageBubble(
+        message: Message,
+        group: ConversationDetailViewModel.MessageGroup
+    ) -> some View {
+        if let currentUserID = appState.currentUserID {
+            MessageBubbleView(
+                message: message,
+                isFirstInGroup: message.id == group.messages.first?.id,
+                isLastInGroup: message.id == group.messages.last?.id,
+                currentUserID: currentUserID
+            )
+        }
     }
 
     private func cleanupAgentChannel() {

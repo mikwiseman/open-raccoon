@@ -6,7 +6,7 @@ import { AuthView } from '@/features/auth';
 import { SettingsView } from '@/features/settings';
 import { createWaiAgentsApi } from '@/lib/api';
 import { useSessionStore } from '@/lib/state';
-import type { SessionUser } from '@/lib/state/session-store';
+import { toSessionUser } from '@/lib/utils';
 
 const ChatView = dynamic(() => import('@/features/chat').then((m) => ({ default: m.ChatView })), {
   loading: () => <div className="view-loading">Loading...</div>,
@@ -289,24 +289,6 @@ export default function HomePage() {
       )}
     </div>
   );
-}
-
-function toSessionUser(user: {
-  id: string;
-  username: string;
-  display_name: string | null;
-  email?: string;
-  avatar_url: string | null;
-  bio: string | null;
-}): SessionUser {
-  return {
-    id: user.id,
-    username: user.username,
-    display_name: user.display_name,
-    email: user.email,
-    avatar_url: user.avatar_url,
-    bio: user.bio,
-  };
 }
 
 function getInitials(name: string): string {

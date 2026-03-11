@@ -245,6 +245,16 @@ export class WaiAgentsApi {
     });
   }
 
+  forkAgent(agentId: string) {
+    return this.client.request<{ agent: Agent }>(`/feed/${agentId}/fork`, {
+      method: 'POST',
+      headers: {
+        'Idempotency-Key': createIdempotencyKey(),
+      },
+      body: JSON.stringify({}),
+    });
+  }
+
   listPages(params: CursorParams = {}) {
     return this.client
       .request<unknown>(`/pages${toQueryString(params)}`)
@@ -597,9 +607,6 @@ export function createWaiAgentsApi(
   const client = new ApiClient({ baseUrl, getAccessToken });
   return new WaiAgentsApi(client);
 }
-
-/** @deprecated Use createWaiAgentsApi instead */
-export const createRaccoonApi = createWaiAgentsApi;
 
 function normalizeCreateConversationPayload(payload: {
   type: 'dm' | 'group' | 'agent' | 'bridge';
