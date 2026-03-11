@@ -949,6 +949,7 @@ export function ChatView({
                         )}
                         <pre className="cv-approval-args">
                           <code
+                            // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify
                             dangerouslySetInnerHTML={{
                               __html: DOMPurify.sanitize(highlightedArgs),
                             }}
@@ -1250,6 +1251,7 @@ function MessageContent({ text, content }: { text: string; content: Record<strin
                 </button>
               </div>
               <pre>
+                {/* biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify */}
                 <code dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(highlighted) }} />
               </pre>
             </div>

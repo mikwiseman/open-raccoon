@@ -162,7 +162,7 @@ describe('POST /uploads/presign', () => {
     const authHeaders = await getTokenHeader();
     const { status, body } = await request(app, 'POST', '/uploads/presign', {
       headers: authHeaders,
-      body: { filename: 'a'.repeat(256) + '.png', content_type: 'image/png' },
+      body: { filename: `${'a'.repeat(256)}.png`, content_type: 'image/png' },
     });
 
     expect(status).toBe(422);

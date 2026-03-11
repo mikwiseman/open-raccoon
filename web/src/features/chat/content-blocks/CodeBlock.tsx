@@ -41,6 +41,7 @@ export function CodeBlock({ block }: { block: CodeBlockData }) {
         </button>
       </div>
       <pre className="cb-code-block-pre">
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify */}
         <code dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(highlighted) }} />
       </pre>
       {block.output && (

@@ -79,6 +79,7 @@ export function TextBlock({ block }: { block: TextBlockData }) {
                 </button>
               </div>
               <pre className="cb-code-fence-pre">
+                {/* biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify */}
                 <code dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(highlighted) }} />
               </pre>
             </div>
@@ -91,6 +92,7 @@ export function TextBlock({ block }: { block: TextBlockData }) {
           <span
             key={i}
             className="cb-text-content"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify
             dangerouslySetInnerHTML={{
               __html: DOMPurify.sanitize(renderInlineMarkdown(part), PURIFY_CONFIG),
             }}
