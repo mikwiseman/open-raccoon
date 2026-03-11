@@ -5,12 +5,14 @@ import { CreateMemorySchema, MemoryTypeEnum, UpdateMemorySchema } from './memory
  * MemoryTypeEnum
  * ================================================================ */
 describe('MemoryTypeEnum', () => {
-  it.each(['fact', 'preference', 'context', 'relationship'] as const)(
-    'accepts valid type "%s"',
-    (type) => {
-      expect(MemoryTypeEnum.parse(type)).toBe(type);
-    },
-  );
+  it.each([
+    'fact',
+    'preference',
+    'context',
+    'relationship',
+  ] as const)('accepts valid type "%s"', (type) => {
+    expect(MemoryTypeEnum.parse(type)).toBe(type);
+  });
 
   it('rejects invalid memory type', () => {
     expect(MemoryTypeEnum.safeParse('observation').success).toBe(false);

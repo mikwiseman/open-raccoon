@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentMemory, AgentMemoryType, CreateMemoryInput, UpdateMemoryInput } from '../types/agent-memories.js';
+import type {
+  AgentMemory,
+  AgentMemoryType,
+  CreateMemoryInput,
+  UpdateMemoryInput,
+} from '../types/agent-memories.js';
 
 /* ================================================================
  * AgentMemoryType exhaustiveness

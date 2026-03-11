@@ -509,10 +509,7 @@ describe('forkAgent slug collision handling', () => {
       },
     ] as any);
     // 2. Check slug uniqueness — existing slugs found
-    sqlMock.mockResolvedValueOnce([
-      { slug: 'agent-fork' },
-      { slug: 'agent-fork-2' },
-    ] as any);
+    sqlMock.mockResolvedValueOnce([{ slug: 'agent-fork' }, { slug: 'agent-fork-2' }] as any);
     // 3. Insert new agent
     sqlMock.mockResolvedValueOnce([] as any);
     // 4. Increment fork_count

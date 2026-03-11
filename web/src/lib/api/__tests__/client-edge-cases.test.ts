@@ -174,10 +174,7 @@ describe('ApiClient edge cases', () => {
     });
 
     // Fire two requests simultaneously — both hit 401 and try to refresh
-    const results = await Promise.allSettled([
-      client.request('/a'),
-      client.request('/b'),
-    ]);
+    const results = await Promise.allSettled([client.request('/a'), client.request('/b')]);
 
     // Both will still fail because the retry also returns 401,
     // but the refresh should only be called once due to deduplication

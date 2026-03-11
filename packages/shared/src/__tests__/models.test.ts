@@ -89,12 +89,7 @@ describe('MemberRole', () => {
 
 describe('AutonomyLevel', () => {
   it('covers all valid values', () => {
-    const values: AutonomyLevel[] = [
-      'ask_always',
-      'ask_first_time',
-      'ask_if_unsure',
-      'autonomous',
-    ];
+    const values: AutonomyLevel[] = ['ask_always', 'ask_first_time', 'ask_if_unsure', 'autonomous'];
     expect(values).toHaveLength(4);
   });
 });
