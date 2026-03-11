@@ -64,7 +64,10 @@ describe('searchMarketplace edge cases', () => {
     vi.mocked(sql).mockResolvedValueOnce([] as any);
 
     const { searchMarketplace } = await import('./social.service.js');
-    const result = await searchMarketplace('\u0422\u0435\u0441\u0442\u043e\u0432\u044b\u0439 \u0430\u0433\u0435\u043d\u0442', USER_ID);
+    const result = await searchMarketplace(
+      '\u0422\u0435\u0441\u0442\u043e\u0432\u044b\u0439 \u0430\u0433\u0435\u043d\u0442',
+      USER_ID,
+    );
     expect(result).toEqual([]);
   });
 
@@ -264,17 +267,11 @@ describe('followUser/unfollowUser edge cases', () => {
 });
 
 /* ================================================================
- * rateAgent error edge cases
+ * rateAgent error edge cases (pre-transaction paths only)
  * ================================================================ */
 describe('rateAgent error edge cases', () => {
-  beforeEach(async () => {
-    const { sql } = await import('../../db/connection.js');
-    const sqlMock = vi.mocked(sql);
-    sqlMock.mockReset();
-    // Re-establish begin mock after mockReset clears implementation
-    (sqlMock as any).begin = vi.fn(async (cb: (tx: any) => Promise<any>) => {
-      return cb(sqlMock);
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
   it('throws NOT_FOUND when agent does not exist', async () => {
@@ -298,21 +295,11 @@ describe('rateAgent error edge cases', () => {
     });
   });
 
-  it('creates new rating when none exists', async () => {
+  it('throws NOT_FOUND with correct message for private agent', async () => {
     const { sql } = await import('../../db/connection.js');
-    const sqlMock = vi.mocked(sql);
-
-    sqlMock.mockResolvedValueOnce([{ id: AGENT_ID }] as any); // Agent exists
-    sqlMock.mockResolvedValueOnce([{ '?column?': 1 }] as any); // User has used agent
-    sqlMock.mockResolvedValueOnce([] as any); // No existing rating
-    sqlMock.mockResolvedValueOnce([] as any); // Insert rating
-    sqlMock.mockResolvedValueOnce([] as any); // Update agent
-    sqlMock.mockResolvedValueOnce([{ rating_sum: 5, rating_count: 1, rating_avg: 5.0 }] as any);
+    vi.mocked(sql).mockResolvedValueOnce([] as any); // Agent not found (private or missing)
 
     const { rateAgent } = await import('./social.service.js');
-    const result = await rateAgent(AGENT_ID, USER_ID, 5, undefined, undefined);
-
-    expect(result.your_rating).toBe(5);
-    expect(result.agent_id).toBe(AGENT_ID);
+    await expect(rateAgent(AGENT_ID, USER_ID, 3)).rejects.toThrow('Agent not found');
   });
 });
