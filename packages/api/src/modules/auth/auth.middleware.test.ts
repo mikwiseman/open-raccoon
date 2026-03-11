@@ -11,8 +11,10 @@ vi.mock('../../db/connection.js', () => ({
 import { authMiddleware } from './auth.middleware.js';
 import { generateTokens } from './auth.service.js';
 
+type AppEnv = { Variables: { userId: string; userRole: string } };
+
 function buildApp() {
-  const app = new Hono();
+  const app = new Hono<AppEnv>();
   app.use('/protected/*', authMiddleware);
   app.get('/protected/resource', (c) => {
     const userId = c.get('userId');
