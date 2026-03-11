@@ -367,6 +367,7 @@ export function ChatView({
   }, [messages, selectedConversationId, wsClient]);
 
   /* -- Auto-scroll ----------------------------------------------- */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: messages.length triggers scroll on new messages
   useEffect(() => {
     const el = messageListRef.current;
     if (!el) return;
@@ -374,7 +375,7 @@ export function ChatView({
     if (isNearBottom) {
       messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, []);
+  }, [messages.length]);
 
   /* -- Scroll detection ------------------------------------------ */
   useEffect(() => {

@@ -295,3 +295,107 @@ describe('trigger-condition — edge cases', () => {
     expect(evaluateCondition({ any: 'data' }, { all: undefined, any: undefined })).toBe(true);
   });
 });
+
+/* -------------------------------------------------------------------------- */
+/*  eq/neq with undefined and null values (BUG FIX verification)              */
+/* -------------------------------------------------------------------------- */
+
+describe('trigger-condition — eq/neq with missing and null values', () => {
+  it('eq does NOT match missing field against literal string "undefined"', () => {
+    // Before the fix, String(undefined) === "undefined" would return true
+    expect(
+      evaluateCondition({}, { all: [{ field: 'missing', op: 'eq', value: 'undefined' }] }),
+    ).toBe(false);
+  });
+
+  it('eq does NOT match null field against literal string "null"', () => {
+    // Before the fix, String(null) === "null" would return true
+    expect(evaluateCondition({ x: null }, { all: [{ field: 'x', op: 'eq', value: 'null' }] })).toBe(
+      false,
+    );
+  });
+
+  it('eq returns false for undefined field regardless of comparison value', () => {
+    expect(evaluateCondition({}, { all: [{ field: 'x', op: 'eq', value: 'anything' }] })).toBe(
+      false,
+    );
+  });
+
+  it('eq returns false for null field regardless of comparison value', () => {
+    expect(
+      evaluateCondition({ x: null }, { all: [{ field: 'x', op: 'eq', value: 'anything' }] }),
+    ).toBe(false);
+  });
+
+  it('neq returns true for missing field (missing is not equal to anything)', () => {
+    expect(evaluateCondition({}, { all: [{ field: 'missing', op: 'neq', value: 'active' }] })).toBe(
+      true,
+    );
+  });
+
+  it('neq returns true for null field', () => {
+    expect(
+      evaluateCondition({ x: null }, { all: [{ field: 'x', op: 'neq', value: 'active' }] }),
+    ).toBe(true);
+  });
+
+  it('neq returns true for missing field compared to "undefined"', () => {
+    // A missing field is not equal to anything, even the string "undefined"
+    expect(evaluateCondition({}, { all: [{ field: 'x', op: 'neq', value: 'undefined' }] })).toBe(
+      true,
+    );
+  });
+
+  it('eq handles boolean false correctly (coerces to "false")', () => {
+    expect(
+      evaluateCondition(
+        { active: false },
+        { all: [{ field: 'active', op: 'eq', value: 'false' }] },
+      ),
+    ).toBe(true);
+  });
+
+  it('eq handles numeric zero correctly (coerces to "0")', () => {
+    expect(
+      evaluateCondition({ count: 0 }, { all: [{ field: 'count', op: 'eq', value: '0' }] }),
+    ).toBe(true);
+  });
+
+  it('eq handles empty string correctly', () => {
+    expect(evaluateCondition({ name: '' }, { all: [{ field: 'name', op: 'eq', value: '' }] })).toBe(
+      true,
+    );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/*  Prototype pollution prevention                                            */
+/* -------------------------------------------------------------------------- */
+
+describe('trigger-condition — prototype pollution prevention', () => {
+  it('blocks __proto__ traversal', () => {
+    const payload = { __proto__: { polluted: 'yes' } };
+    expect(
+      evaluateCondition(payload, {
+        all: [{ field: '__proto__.polluted', op: 'eq', value: 'yes' }],
+      }),
+    ).toBe(false);
+  });
+
+  it('blocks constructor traversal', () => {
+    expect(evaluateCondition({}, { all: [{ field: 'constructor.name', op: 'exists' }] })).toBe(
+      false,
+    );
+  });
+
+  it('blocks prototype traversal', () => {
+    expect(evaluateCondition({}, { all: [{ field: 'prototype', op: 'exists' }] })).toBe(false);
+  });
+
+  it('blocks __proto__ in nested path', () => {
+    const payload = { a: { b: { c: 'value' } } };
+    expect(evaluateCondition(payload, { all: [{ field: 'a.__proto__', op: 'exists' }] })).toBe(
+      false,
+    );
+  });
+});

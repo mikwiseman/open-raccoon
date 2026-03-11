@@ -1,12 +1,19 @@
 import type { TriggerCondition, TriggerConditionGroup } from '@wai-agents/shared';
 
+/** Keys that must never be traversed to prevent prototype pollution reads. */
+const BLOCKED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 /**
  * Resolve a dot-notation path against a nested object.
  * e.g. getNestedValue({ a: { b: 'c' } }, 'a.b') => 'c'
+ *
+ * Returns `undefined` when the path cannot be fully resolved.
+ * Blocks prototype-chain keys to prevent information-leak traversal.
  */
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
   let current: unknown = obj;
   for (const key of path.split('.')) {
+    if (BLOCKED_KEYS.has(key)) return undefined;
     if (current === null || current === undefined || typeof current !== 'object') {
       return undefined;
     }
@@ -17,6 +24,11 @@ function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
 
 /**
  * Evaluate a single condition against a payload.
+ *
+ * IMPORTANT: `eq` and `neq` treat missing/null values as non-matchable rather
+ * than coercing them to the strings "undefined" / "null". This prevents a
+ * condition `{ field: 'x', op: 'eq', value: 'undefined' }` from accidentally
+ * matching when the field is absent.
  */
 function evalSingle(payload: Record<string, unknown>, condition: TriggerCondition): boolean {
   const value = getNestedValue(payload, condition.field);
@@ -26,9 +38,13 @@ function evalSingle(payload: Record<string, unknown>, condition: TriggerConditio
       return value !== undefined && value !== null;
 
     case 'eq':
+      // Missing or null values never equal any string
+      if (value === undefined || value === null) return false;
       return String(value) === condition.value;
 
     case 'neq':
+      // Missing or null values are considered "not equal" to any string
+      if (value === undefined || value === null) return true;
       return String(value) !== condition.value;
 
     case 'contains': {

@@ -26,7 +26,8 @@ export interface AgentTrigger {
   name: string;
   trigger_type: 'webhook' | 'schedule' | 'condition';
   token: string;
-  hmac_secret: string | null;
+  /** True when an HMAC secret is configured. The raw secret is never returned by the API. */
+  hmac_configured: boolean;
   condition_filter: TriggerConditionGroup | null;
   message_template: string | null;
   cron_expression: string | null;

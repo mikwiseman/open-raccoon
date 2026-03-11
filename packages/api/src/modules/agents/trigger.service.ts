@@ -6,6 +6,7 @@ import type { CreateTriggerInput, UpdateTriggerInput } from './trigger.schema.js
 import { evaluateCondition } from './trigger-condition.js';
 
 function formatTrigger(row: Record<string, unknown>) {
+  const secret = row.hmac_secret as string | null;
   return {
     id: row.id,
     agent_id: row.agent_id,
@@ -13,7 +14,7 @@ function formatTrigger(row: Record<string, unknown>) {
     name: row.name,
     trigger_type: row.trigger_type,
     token: row.token,
-    hmac_secret: row.hmac_secret,
+    hmac_configured: secret !== null && secret !== undefined,
     condition_filter: row.condition_filter,
     message_template: row.message_template,
     cron_expression: row.cron_expression,

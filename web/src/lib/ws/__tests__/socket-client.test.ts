@@ -53,7 +53,7 @@ describe('SocketClient', () => {
     it('registers connect, disconnect, and connect_error handlers', () => {
       client.connect('tok');
 
-      const registeredEvents = (mockSocket.on as Mock).mock.calls.map(([event]: [string]) => event);
+      const registeredEvents = (mockSocket.on as Mock).mock.calls.map((call: any[]) => call[0]);
       expect(registeredEvents).toContain('connect');
       expect(registeredEvents).toContain('disconnect');
       expect(registeredEvents).toContain('connect_error');
@@ -65,7 +65,7 @@ describe('SocketClient', () => {
       client.connect('tok');
 
       // The listener should be registered on the socket
-      const registeredEvents = (mockSocket.on as Mock).mock.calls.map(([event]: [string]) => event);
+      const registeredEvents = (mockSocket.on as Mock).mock.calls.map((call: any[]) => call[0]);
       expect(registeredEvents).toContain('message:new');
     });
   });
@@ -141,7 +141,7 @@ describe('SocketClient', () => {
       const cb = vi.fn();
       client.onMessage(cb);
 
-      const registeredEvents = (mockSocket.on as Mock).mock.calls.map(([event]: [string]) => event);
+      const registeredEvents = (mockSocket.on as Mock).mock.calls.map((call: any[]) => call[0]);
       expect(registeredEvents).toContain('message:new');
     });
 
@@ -149,7 +149,7 @@ describe('SocketClient', () => {
       const cb = vi.fn();
       client.onMessageUpdated(cb);
 
-      const registeredEvents = (mockSocket.on as Mock).mock.calls.map(([event]: [string]) => event);
+      const registeredEvents = (mockSocket.on as Mock).mock.calls.map((call: any[]) => call[0]);
       expect(registeredEvents).toContain('message:updated');
     });
 
@@ -157,7 +157,7 @@ describe('SocketClient', () => {
       const cb = vi.fn();
       client.onMessageDeleted(cb);
 
-      const registeredEvents = (mockSocket.on as Mock).mock.calls.map(([event]: [string]) => event);
+      const registeredEvents = (mockSocket.on as Mock).mock.calls.map((call: any[]) => call[0]);
       expect(registeredEvents).toContain('message:deleted');
     });
 
@@ -165,7 +165,7 @@ describe('SocketClient', () => {
       const cb = vi.fn();
       client.onAgentEvent(cb);
 
-      const registeredEvents = (mockSocket.on as Mock).mock.calls.map(([event]: [string]) => event);
+      const registeredEvents = (mockSocket.on as Mock).mock.calls.map((call: any[]) => call[0]);
       expect(registeredEvents).toContain('agent:event');
     });
 
@@ -173,7 +173,7 @@ describe('SocketClient', () => {
       const cb = vi.fn();
       client.onTyping(cb);
 
-      const registeredEvents = (mockSocket.on as Mock).mock.calls.map(([event]: [string]) => event);
+      const registeredEvents = (mockSocket.on as Mock).mock.calls.map((call: any[]) => call[0]);
       expect(registeredEvents).toContain('typing');
       expect(registeredEvents).toContain('typing:start');
       expect(registeredEvents).toContain('typing:stop');
@@ -183,7 +183,7 @@ describe('SocketClient', () => {
       const cb = vi.fn();
       client.onPresence(cb);
 
-      const registeredEvents = (mockSocket.on as Mock).mock.calls.map(([event]: [string]) => event);
+      const registeredEvents = (mockSocket.on as Mock).mock.calls.map((call: any[]) => call[0]);
       expect(registeredEvents).toContain('presence:update');
       expect(registeredEvents).toContain('presence:snapshot');
     });
@@ -203,7 +203,7 @@ describe('SocketClient', () => {
 
       unsubscribe();
 
-      const offEvents = (mockSocket.off as Mock).mock.calls.map(([event]: [string]) => event);
+      const offEvents = (mockSocket.off as Mock).mock.calls.map((call: any[]) => call[0]);
       expect(offEvents).toContain('typing');
       expect(offEvents).toContain('typing:start');
       expect(offEvents).toContain('typing:stop');
@@ -219,7 +219,7 @@ describe('SocketClient', () => {
 
       freshClient.connect('tok');
 
-      const registeredEvents = (mockSocket.on as Mock).mock.calls.map(([event]: [string]) => event);
+      const registeredEvents = (mockSocket.on as Mock).mock.calls.map((call: any[]) => call[0]);
       expect(registeredEvents).toContain('message:new');
     });
   });
@@ -285,7 +285,7 @@ describe('SocketClient', () => {
 
       // Find the 'connect' handler
       const connectCall = (mockSocket.on as Mock).mock.calls.find(
-        ([event]: [string]) => event === 'connect',
+        (call: any[]) => call[0] === 'connect',
       );
       expect(connectCall).toBeDefined();
 
@@ -293,7 +293,7 @@ describe('SocketClient', () => {
       mockSocket.emit.mockClear();
 
       // Simulate reconnect
-      const connectHandler = connectCall[1];
+      const connectHandler = connectCall![1];
       connectHandler();
 
       expect(mockSocket.emit).toHaveBeenCalledWith('join:conversation', 'c1');
@@ -305,11 +305,11 @@ describe('SocketClient', () => {
       client.joinAgent('a1');
 
       const connectCall = (mockSocket.on as Mock).mock.calls.find(
-        ([event]: [string]) => event === 'connect',
+        (call: any[]) => call[0] === 'connect',
       );
 
       mockSocket.emit.mockClear();
-      connectCall[1]();
+      connectCall![1]();
 
       expect(mockSocket.emit).toHaveBeenCalledWith('join:agent', 'a1');
     });

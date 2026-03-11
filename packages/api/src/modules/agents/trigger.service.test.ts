@@ -161,8 +161,46 @@ describe('trigger.service — createTrigger', () => {
     });
 
     expect(result.trigger_type).toBe('schedule');
-    expect(result.hmac_secret).toBe('secret123');
+    expect(result.hmac_configured).toBe(true);
     expect(result.cron_expression).toBe('0 * * * *');
+  });
+
+  it('does not expose hmac_secret in response (returns hmac_configured instead)', async () => {
+    const { sql } = await import('../../db/connection.js');
+    const sqlMock = vi.mocked(sql);
+
+    sqlMock.mockResolvedValueOnce([{ id: AGENT_ID }] as any);
+    sqlMock.mockResolvedValueOnce([] as any);
+    vi.mocked(sqlMock.unsafe).mockResolvedValueOnce([
+      makeTriggerRow({ hmac_secret: 'super-secret-key' }),
+    ] as any);
+
+    const { createTrigger } = await import('./trigger.service.js');
+    const result = await createTrigger(AGENT_ID, USER_ID, {
+      name: 'Masked Trigger',
+      trigger_type: 'webhook',
+      hmac_secret: 'super-secret-key',
+    });
+
+    expect(result.hmac_configured).toBe(true);
+    expect((result as any).hmac_secret).toBeUndefined();
+  });
+
+  it('returns hmac_configured false when no secret is set', async () => {
+    const { sql } = await import('../../db/connection.js');
+    const sqlMock = vi.mocked(sql);
+
+    sqlMock.mockResolvedValueOnce([{ id: AGENT_ID }] as any);
+    sqlMock.mockResolvedValueOnce([] as any);
+    vi.mocked(sqlMock.unsafe).mockResolvedValueOnce([makeTriggerRow()] as any);
+
+    const { createTrigger } = await import('./trigger.service.js');
+    const result = await createTrigger(AGENT_ID, USER_ID, {
+      name: 'No HMAC',
+      trigger_type: 'webhook',
+    });
+
+    expect(result.hmac_configured).toBe(false);
   });
 
   it('throws NOT_FOUND when user does not own the agent', async () => {
@@ -390,14 +428,28 @@ describe('trigger.service — fireTrigger', () => {
     });
   });
 
-  it('throws UNAUTHORIZED when HMAC signature is invalid', async () => {
+  it('throws UNAUTHORIZED when HMAC signature is wrong but valid hex', async () => {
+    const { sql } = await import('../../db/connection.js');
+    vi.mocked(sql.unsafe).mockResolvedValueOnce([makeTriggerRow({ hmac_secret: 'secret' })] as any);
+
+    // 64-char hex string (correct length for sha256) but wrong value
+    const wrongSig = 'a'.repeat(64);
+
+    const { fireTrigger } = await import('./trigger.service.js');
+    await expect(fireTrigger('abc123token', { event: 'push' }, wrongSig)).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+  });
+
+  it('rejects HMAC signature with non-hex characters', async () => {
     const { sql } = await import('../../db/connection.js');
     vi.mocked(sql.unsafe).mockResolvedValueOnce([makeTriggerRow({ hmac_secret: 'secret' })] as any);
 
     const { fireTrigger } = await import('./trigger.service.js');
+    // Non-hex chars produce a shorter buffer, caught by length check
     await expect(
-      fireTrigger('abc123token', { event: 'push' }, 'invalid-hex-signature'),
-    ).rejects.toThrow();
+      fireTrigger('abc123token', { event: 'push' }, 'not-valid-hex-at-all'),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
   });
 
   it('does not fire when condition filter does not match', async () => {

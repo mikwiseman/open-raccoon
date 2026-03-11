@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../auth/auth.middleware.js';
+import { createRateLimiter } from '../auth/rate-limiter.js';
 import { CreateTriggerSchema, UpdateTriggerSchema } from './trigger.schema.js';
 import {
   createTrigger,
@@ -99,6 +100,11 @@ triggerRoutes.delete('/:agentId/triggers/:id', authMiddleware, async (c) => {
 // ---------- Public Webhook Endpoint ----------
 
 export const hookRoutes = new Hono();
+
+// Rate limit webhook fires: 30 per minute per IP to prevent cost-amplification attacks.
+// Each fire creates a conversation and runs an LLM call, so this is a hard limit.
+const webhookRateLimiter = createRateLimiter(30, 60_000);
+hookRoutes.use('*', webhookRateLimiter);
 
 // POST /hooks/:token — fire trigger via webhook (NO auth)
 hookRoutes.post('/:token', async (c) => {
