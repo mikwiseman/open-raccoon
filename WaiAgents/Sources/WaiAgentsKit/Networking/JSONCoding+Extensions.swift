@@ -40,6 +40,7 @@ enum WaiAgentsResponseDecoding {
     private static let intStringKeys: Set<String> = [
         "count",
         "expires_in",
+        "fire_count",
         "fork_count",
         "interval_seconds",
         "like_count",
@@ -48,6 +49,8 @@ enum WaiAgentsResponseDecoding {
         "rating_count",
         "rating_sum",
         "run_count",
+        "step_index",
+        "total_steps",
         "unread_count",
         "usage_count",
         "view_count"
@@ -71,7 +74,9 @@ enum WaiAgentsResponseDecoding {
         "feed_items",
         "feed",
         "bridges",
+        "crews",
         "members",
+        "triggers",
         "versions"
     ]
 
