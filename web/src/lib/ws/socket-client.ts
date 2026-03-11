@@ -1,6 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 
-type AnyCallback = (...args: unknown[]) => void;
+// biome-ignore lint/suspicious/noExplicitAny: Socket.IO callbacks require any[] for compatibility
+type AnyCallback = (...args: any[]) => void;
 
 type ListenerEntry = {
   event: string;
