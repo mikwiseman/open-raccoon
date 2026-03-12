@@ -26,8 +26,15 @@ export function createRateLimiter(maxRequests: number, windowMs: number): Middle
   return async (c, next) => {
     // Use the rightmost x-forwarded-for IP (set by the most trusted proxy)
     // to prevent IP spoofing via the leftmost client-controlled value.
+    // Reject empty/malformed segments to avoid bucket collisions.
     const forwardedFor = c.req.header('x-forwarded-for');
-    const forwardedIp = forwardedFor ? forwardedFor.split(',').at(-1)?.trim() : undefined;
+    const forwardedIp = forwardedFor
+      ? forwardedFor
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+          .at(-1)
+      : undefined;
     const ip = forwardedIp || c.req.header('x-real-ip') || 'unknown';
 
     const now = Date.now();

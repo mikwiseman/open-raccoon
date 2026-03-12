@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import * as argon2 from 'argon2';
 import { SignJWT } from 'jose';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -445,9 +444,9 @@ describe('auth.service — updateProfile edge cases', () => {
     vi.mocked(sql).mockResolvedValueOnce([] as any);
 
     const { updateProfile } = await import('./auth.service.js');
-    await expect(
-      updateProfile('nonexistent', { display_name: 'New Name' }),
-    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(updateProfile('nonexistent', { display_name: 'New Name' })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
   });
 
   it('updates only provided fields', async () => {

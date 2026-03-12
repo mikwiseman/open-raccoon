@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock DB connection
@@ -277,17 +277,13 @@ describe('trigger.service — fireTrigger webhook validation', () => {
     ] as any);
 
     const { fireTrigger } = await import('./trigger.service.js');
-    await expect(
-      fireTrigger('abc', { key: 'value' }, 'invalid-hmac-signature'),
-    ).rejects.toThrow();
+    await expect(fireTrigger('abc', { key: 'value' }, 'invalid-hmac-signature')).rejects.toThrow();
   });
 
   it('accepts valid HMAC signature', async () => {
     const secret = 'test-hmac-secret';
     const payload = { action: 'push', branch: 'main' };
-    const expectedHmac = createHmac('sha256', secret)
-      .update(JSON.stringify(payload))
-      .digest('hex');
+    const expectedHmac = createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
 
     const { sql } = await import('../../db/connection.js');
     const sqlMock = vi.mocked(sql);
@@ -309,9 +305,7 @@ describe('trigger.service — fireTrigger webhook validation', () => {
   it('accepts HMAC with sha256= prefix (GitHub webhook format)', async () => {
     const secret = 'github-secret';
     const payload = { action: 'opened' };
-    const expectedHmac = createHmac('sha256', secret)
-      .update(JSON.stringify(payload))
-      .digest('hex');
+    const expectedHmac = createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');
 
     const { sql } = await import('../../db/connection.js');
     const sqlMock = vi.mocked(sql);
@@ -436,9 +430,7 @@ describe('trigger.service — fireTrigger message template', () => {
     const { sql } = await import('../../db/connection.js');
     const sqlMock = vi.mocked(sql);
 
-    vi.mocked(sqlMock.unsafe).mockResolvedValueOnce([
-      makeTriggerRow({ token: 'no-tmpl' }),
-    ] as any);
+    vi.mocked(sqlMock.unsafe).mockResolvedValueOnce([makeTriggerRow({ token: 'no-tmpl' })] as any);
     sqlMock.mockResolvedValueOnce([] as any);
     sqlMock.mockResolvedValueOnce([] as any);
     sqlMock.mockResolvedValueOnce([] as any);
@@ -536,10 +528,7 @@ describe('trigger-condition — evaluateCondition', () => {
 
   it('exists returns true for present field', async () => {
     const { evaluateCondition } = await import('./trigger-condition.js');
-    const result = evaluateCondition(
-      { name: 'test' },
-      { all: [{ field: 'name', op: 'exists' }] },
-    );
+    const result = evaluateCondition({ name: 'test' }, { all: [{ field: 'name', op: 'exists' }] });
     expect(result).toBe(true);
   });
 

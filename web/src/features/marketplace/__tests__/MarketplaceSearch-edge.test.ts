@@ -236,9 +236,7 @@ describe('Marketplace — empty results', () => {
     expect(showEmpty).toBe(true);
 
     const message =
-      activeCategory !== 'All'
-        ? `No agents found in "${activeCategory}"`
-        : 'No agents found';
+      activeCategory !== 'All' ? `No agents found in "${activeCategory}"` : 'No agents found';
     expect(message).not.toContain('in "');
   });
 
@@ -251,9 +249,7 @@ describe('Marketplace — empty results', () => {
     expect(showEmpty).toBe(true);
 
     const message =
-      activeCategory !== 'All'
-        ? `No agents found in "${activeCategory}"`
-        : 'No agents found';
+      activeCategory !== 'All' ? `No agents found in "${activeCategory}"` : 'No agents found';
     expect(message).toContain('Coding & Development');
   });
 

@@ -35,7 +35,22 @@ public actor APIClient {
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
-            if httpResponse.statusCode == 401 {
+            if httpResponse.statusCode == 401 && endpoint.requiresAuth {
+                // Attempt one token refresh before giving up.
+                // Only clear tokens if the refresh itself fails.
+                do {
+                    let freshToken = try await authManager.validAccessToken()
+                    var retryReq = try endpoint.urlRequest(baseURL: baseURL)
+                    retryReq.setValue("Bearer \(freshToken)", forHTTPHeaderField: "Authorization")
+                    if let key = endpoint.idempotencyKey {
+                        retryReq.setValue(key, forHTTPHeaderField: "Idempotency-Key")
+                    }
+                    let (retryData, retryResp) = try await session.data(for: retryReq)
+                    if let retryHttp = retryResp as? HTTPURLResponse,
+                       (200...299).contains(retryHttp.statusCode) {
+                        return try JSONDecoder.waiagents.decode(T.self, from: retryData)
+                    }
+                } catch { /* refresh failed — fall through to clear tokens */ }
                 try? await authManager.clearTokens()
                 throw APIError.unauthorized
             }
@@ -75,7 +90,20 @@ public actor APIClient {
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
-            if httpResponse.statusCode == 401 {
+            if httpResponse.statusCode == 401 && endpoint.requiresAuth {
+                do {
+                    let freshToken = try await authManager.validAccessToken()
+                    var retryReq = try endpoint.urlRequest(baseURL: baseURL)
+                    retryReq.setValue("Bearer \(freshToken)", forHTTPHeaderField: "Authorization")
+                    if let key = endpoint.idempotencyKey {
+                        retryReq.setValue(key, forHTTPHeaderField: "Idempotency-Key")
+                    }
+                    let (_, retryResp) = try await session.data(for: retryReq)
+                    if let retryHttp = retryResp as? HTTPURLResponse,
+                       (200...299).contains(retryHttp.statusCode) {
+                        return
+                    }
+                } catch { /* refresh failed */ }
                 try? await authManager.clearTokens()
                 throw APIError.unauthorized
             }

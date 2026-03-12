@@ -117,7 +117,7 @@ export async function listNodes(agentId: string, userId: string, options?: ListN
     FROM knowledge_nodes
     WHERE agent_id = ${agentId} AND user_id = ${userId}
       AND (${label} IS NULL OR label = ${label})
-      AND (${search} IS NULL OR name ILIKE '%' || ${search} || '%')
+      AND (${search} IS NULL OR name ILIKE '%' || ${search ? search.replace(/[%_\\]/g, '\\$&') : search} || '%')
     ORDER BY created_at DESC
     LIMIT ${limit} OFFSET ${offset}
   `;

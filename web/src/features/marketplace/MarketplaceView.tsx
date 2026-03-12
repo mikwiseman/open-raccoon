@@ -37,8 +37,7 @@ const FALLBACK_CATEGORIES = [
   'Other',
 ];
 
-/** Counter to prevent stale profile fetches from overwriting state on rapid selection changes */
-let profileFetchGeneration = 0;
+/* profileFetchGenRef.current moved into component as useRef to avoid sharing across instances */
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -224,6 +223,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
   const [forking, setForking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const profileFetchGenRef = useRef(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const detail = useMemo(() => profile?.agent ?? selected, [profile?.agent, selected]);
@@ -313,21 +313,21 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
       setRatings([]);
       return;
     }
-    const generation = ++profileFetchGeneration;
+    const generation = ++profileFetchGenRef.current;
     setLoadingProfile(true);
     void api
       .marketplaceAgent(selected.slug)
       .then((res) => {
-        if (generation !== profileFetchGeneration) return; // stale response, discard
+        if (generation !== profileFetchGenRef.current) return; // stale response, discard
         setProfile(res);
         setRatings(res.ratings);
       })
       .catch((err) => {
-        if (generation !== profileFetchGeneration) return;
+        if (generation !== profileFetchGenRef.current) return;
         setError(getErrorMessage(err));
       })
       .finally(() => {
-        if (generation !== profileFetchGeneration) return;
+        if (generation !== profileFetchGenRef.current) return;
         setLoadingProfile(false);
       });
   }, [api, selected]);

@@ -13,7 +13,11 @@ import {
   CrewStepSchema,
   CrewStepStartedEventSchema,
 } from '../types/crews.js';
-import { TriggerConditionGroupSchema, TriggerConditionSchema, TriggerFiredEventSchema } from '../types/triggers.js';
+import {
+  TriggerConditionGroupSchema,
+  TriggerConditionSchema,
+  TriggerFiredEventSchema,
+} from '../types/triggers.js';
 import {
   WorkflowRunCompletedEventSchema,
   WorkflowRunFailedEventSchema,
@@ -264,12 +268,16 @@ describe('WorkflowRunFailedEventSchema', () => {
  * CollaborationEvent Schemas
  * ================================================================ */
 describe('CollaborationStatusSchema', () => {
-  it.each(['pending', 'accepted', 'in_progress', 'completed', 'failed', 'rejected'] as const)(
-    'accepts status "%s"',
-    (status) => {
-      expect(CollaborationStatusSchema.parse(status)).toBe(status);
-    },
-  );
+  it.each([
+    'pending',
+    'accepted',
+    'in_progress',
+    'completed',
+    'failed',
+    'rejected',
+  ] as const)('accepts status "%s"', (status) => {
+    expect(CollaborationStatusSchema.parse(status)).toBe(status);
+  });
 
   it('rejects invalid status', () => {
     const result = CollaborationStatusSchema.safeParse('cancelled');

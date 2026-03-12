@@ -3,6 +3,7 @@ export * from './agent-events.js';
 export * from './agent-memories.js';
 export * from './content-blocks.js';
 export * from './crews.js';
+export * from './evaluations.js';
 export * from './knowledge-graph.js';
 export * from './models.js';
 export * from './socket-events.js';

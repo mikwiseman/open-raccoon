@@ -586,31 +586,33 @@ export async function executeWorkflow(
     throw Object.assign(new Error('Workflow must be active to run'), { code: 'BAD_REQUEST' });
   }
 
-  // Check concurrent run limit
+  // Atomic concurrent run check + insert to prevent race conditions.
+  // Uses a CTE that only inserts when the active run count is below the limit.
   const maxRuns = (workflow.max_concurrent_runs as number) ?? 1;
-  const activeRuns = await sql`
-    SELECT COUNT(*)::int AS count FROM workflow_runs
-    WHERE workflow_id = ${workflowId} AND status IN ('pending', 'running')
-  `;
-  const activeCount = (activeRuns[0] as Record<string, unknown>).count as number;
-  if (activeCount >= maxRuns) {
-    throw Object.assign(new Error('Maximum concurrent runs reached'), { code: 'BAD_REQUEST' });
-  }
-
   const runId = randomUUID();
   const now = new Date().toISOString();
   const inputJson = input.input ? JSON.stringify(input.input) : '{}';
 
-  await sql`
+  const inserted = await sql`
+    WITH active_count AS (
+      SELECT COUNT(*)::int AS cnt FROM workflow_runs
+      WHERE workflow_id = ${workflowId} AND status IN ('pending', 'running')
+    )
     INSERT INTO workflow_runs (
       id, workflow_id, agent_id, user_id, conversation_id,
       status, input, started_at, inserted_at
-    ) VALUES (
+    )
+    SELECT
       ${runId}, ${workflowId}, ${agentId}, ${userId},
       ${input.conversation_id ?? null},
-      'pending', ${inputJson}::jsonb, ${now}, ${now}
-    )
+      'pending', ${inputJson}::jsonb, ${now}::timestamptz, ${now}::timestamptz
+    FROM active_count
+    WHERE active_count.cnt < ${maxRuns}
+    RETURNING id
   `;
+  if (inserted.length === 0) {
+    throw Object.assign(new Error('Maximum concurrent runs reached'), { code: 'BAD_REQUEST' });
+  }
 
   const rows = await sql.unsafe(`SELECT ${RUN_COLS} FROM workflow_runs WHERE id = $1`, [runId]);
 

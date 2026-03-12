@@ -199,12 +199,7 @@ describe('workflow.service — complex DAG topologies', () => {
     const { sql } = await import('../../db/connection.js');
     const sqlMock = vi.mocked(sql);
 
-    sqlMock.mockResolvedValueOnce([
-      { id: 'A' },
-      { id: 'B' },
-      { id: 'C' },
-      { id: 'D' },
-    ] as any);
+    sqlMock.mockResolvedValueOnce([{ id: 'A' }, { id: 'B' }, { id: 'C' }, { id: 'D' }] as any);
     sqlMock.mockResolvedValueOnce([
       { source_step_id: 'A', target_step_id: 'B' },
       { source_step_id: 'C', target_step_id: 'D' },
@@ -343,9 +338,7 @@ describe('workflow.service — state transitions', () => {
     sqlMock.mockResolvedValueOnce([] as any); // no steps
 
     const { updateWorkflow } = await import('./workflow.service.js');
-    await expect(
-      updateWorkflow(WORKFLOW_ID, USER_ID, { status: 'active' }),
-    ).rejects.toMatchObject({
+    await expect(updateWorkflow(WORKFLOW_ID, USER_ID, { status: 'active' })).rejects.toMatchObject({
       code: 'BAD_REQUEST',
       message: 'Workflow must have at least one step to activate',
     });
@@ -384,9 +377,9 @@ describe('workflow.service — state transitions', () => {
     ] as any);
 
     const { updateWorkflow } = await import('./workflow.service.js');
-    await expect(
-      updateWorkflow(WORKFLOW_ID, USER_ID, { status: 'active' }),
-    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await expect(updateWorkflow(WORKFLOW_ID, USER_ID, { status: 'active' })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
   });
 });
 
@@ -666,9 +659,7 @@ describe('workflow.service — metadata and optional fields', () => {
     const sqlMock = vi.mocked(sql);
 
     sqlMock.mockResolvedValueOnce([{ id: WORKFLOW_ID }] as any);
-    sqlMock.mockResolvedValueOnce([
-      makeWorkflowRow({ description: 'Updated description' }),
-    ] as any);
+    sqlMock.mockResolvedValueOnce([makeWorkflowRow({ description: 'Updated description' })] as any);
 
     const { updateWorkflow } = await import('./workflow.service.js');
     const result = await updateWorkflow(WORKFLOW_ID, USER_ID, {

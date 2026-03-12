@@ -364,9 +364,24 @@ describe('StreamProcessor — multiple concurrent tool calls', () => {
     processor.processEvent({ type: 'tool_call_start', toolName: 'c', toolCallId: 'tc3' });
 
     // Complete in reverse order
-    processor.processEvent({ type: 'tool_call_end', toolName: 'c', toolCallId: 'tc3', toolResult: 'c-done' });
-    processor.processEvent({ type: 'tool_call_end', toolName: 'a', toolCallId: 'tc1', toolResult: 'a-done' });
-    processor.processEvent({ type: 'tool_call_end', toolName: 'b', toolCallId: 'tc2', toolResult: 'b-done' });
+    processor.processEvent({
+      type: 'tool_call_end',
+      toolName: 'c',
+      toolCallId: 'tc3',
+      toolResult: 'c-done',
+    });
+    processor.processEvent({
+      type: 'tool_call_end',
+      toolName: 'a',
+      toolCallId: 'tc1',
+      toolResult: 'a-done',
+    });
+    processor.processEvent({
+      type: 'tool_call_end',
+      toolName: 'b',
+      toolCallId: 'tc2',
+      toolResult: 'b-done',
+    });
 
     const blocks = blocksOf(processor);
     // 3 tool_calls + 3 tool_results = 6 blocks

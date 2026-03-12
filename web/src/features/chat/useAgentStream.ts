@@ -29,8 +29,9 @@ export function useAgentStream(socketClient: SocketClient, conversationId: strin
     }
 
     const unsub = socketClient.onAgentEvent((event: AgentStreamEvent) => {
-      // Only process events for the current conversation
-      if (event.conversationId && event.conversationId !== conversationId) {
+      // Only process events for the current conversation.
+      // Require explicit match — missing conversationId must not fall through.
+      if (!event.conversationId || event.conversationId !== conversationId) {
         return;
       }
 

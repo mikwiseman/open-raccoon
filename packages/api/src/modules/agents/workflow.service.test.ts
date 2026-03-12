@@ -652,10 +652,8 @@ describe('workflow.service — executeWorkflow', () => {
     sqlMock.mockResolvedValueOnce([{ id: WORKFLOW_ID }] as any);
     // get workflow status
     sqlMock.mockResolvedValueOnce([{ status: 'active', max_concurrent_runs: 1 }] as any);
-    // check active runs count
-    sqlMock.mockResolvedValueOnce([{ count: 0 }] as any);
-    // INSERT
-    sqlMock.mockResolvedValueOnce([] as any);
+    // atomic CTE: count + INSERT (returns inserted row id when under limit)
+    sqlMock.mockResolvedValueOnce([{ id: 'run-1' }] as any);
     // SELECT (via sql.unsafe)
     vi.mocked(sqlMock.unsafe).mockResolvedValueOnce([makeRunRow()] as any);
 
@@ -685,7 +683,8 @@ describe('workflow.service — executeWorkflow', () => {
 
     sqlMock.mockResolvedValueOnce([{ id: WORKFLOW_ID }] as any);
     sqlMock.mockResolvedValueOnce([{ status: 'active', max_concurrent_runs: 1 }] as any);
-    sqlMock.mockResolvedValueOnce([{ count: 1 }] as any);
+    // atomic CTE returns empty array when at limit
+    sqlMock.mockResolvedValueOnce([] as any);
 
     const { executeWorkflow } = await import('./workflow.service.js');
     await expect(executeWorkflow(WORKFLOW_ID, AGENT_ID, USER_ID, {})).rejects.toMatchObject({
@@ -699,8 +698,8 @@ describe('workflow.service — executeWorkflow', () => {
 
     sqlMock.mockResolvedValueOnce([{ id: WORKFLOW_ID }] as any);
     sqlMock.mockResolvedValueOnce([{ status: 'active', max_concurrent_runs: 5 }] as any);
-    sqlMock.mockResolvedValueOnce([{ count: 0 }] as any);
-    sqlMock.mockResolvedValueOnce([] as any);
+    // atomic CTE: count + INSERT
+    sqlMock.mockResolvedValueOnce([{ id: 'run-1' }] as any);
     vi.mocked(sqlMock.unsafe).mockResolvedValueOnce([makeRunRow()] as any);
 
     const { executeWorkflow } = await import('./workflow.service.js');

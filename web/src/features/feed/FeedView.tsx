@@ -198,6 +198,7 @@ export function FeedView({ api, currentUser: _currentUser }: FeedViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [likeAnimating, setLikeAnimating] = useState<string | null>(null);
+  const likeAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cacheRef = useRef<Partial<Record<FeedKind, TabCache>>>({});
   // Counter to discard stale feed responses when tabs are switched rapidly
@@ -282,6 +283,13 @@ export function FeedView({ api, currentUser: _currentUser }: FeedViewProps) {
     void load(kind);
   }, [kind, load]);
 
+  /* ---- Cleanup timers on unmount ---- */
+  useEffect(() => {
+    return () => {
+      if (likeAnimTimerRef.current) clearTimeout(likeAnimTimerRef.current);
+    };
+  }, []);
+
   /* ---- Like toggle (optimistic) ---- */
 
   const onLikeToggle = async (item: FeedItem) => {
@@ -292,9 +300,10 @@ export function FeedView({ api, currentUser: _currentUser }: FeedViewProps) {
     setLiked((prev) => ({ ...prev, [item.id]: !wasLiked }));
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, like_count: newCount } : i)));
 
-    /* animate */
+    /* animate — clear previous timer to avoid stale state updates on unmount */
+    if (likeAnimTimerRef.current) clearTimeout(likeAnimTimerRef.current);
     setLikeAnimating(item.id);
-    setTimeout(() => setLikeAnimating(null), 300);
+    likeAnimTimerRef.current = setTimeout(() => setLikeAnimating(null), 300);
 
     try {
       if (wasLiked) {
