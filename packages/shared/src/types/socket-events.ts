@@ -6,14 +6,25 @@ import type { EvalEvent } from './evaluations.js';
 import type { WorkflowEvent } from './workflows.js';
 
 export interface ServerToClientEvents {
-  'message:new': (message: unknown) => void;
-  'message:updated': (message: unknown) => void;
+  'message:new': (message: {
+    id: string;
+    conversation_id: string;
+    content: unknown;
+    user_id: string;
+    role: string;
+    created_at: string;
+  }) => void;
+  'message:updated': (message: { id: string; conversation_id: string; content: unknown }) => void;
   'message:deleted': (data: { messageId: string; conversationId: string }) => void;
   'typing:start': (data: { userId: string; conversationId: string }) => void;
   'typing:stop': (data: { userId: string; conversationId: string }) => void;
-  'conversation:updated': (conversation: unknown) => void;
+  'conversation:updated': (conversation: {
+    id: string;
+    title?: string;
+    updated_at?: string;
+  }) => void;
   'agent:event': (event: AgentEvent) => void;
-  'a2a:event': (event: unknown) => void;
+  'a2a:event': (event: CollaborationEvent) => void;
   'crew:event': (event: CrewEvent) => void;
   'collaboration:event': (event: CollaborationEvent) => void;
   'eval:event': (event: EvalEvent) => void;

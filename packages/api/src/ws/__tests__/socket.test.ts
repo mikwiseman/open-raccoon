@@ -6,9 +6,11 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 // ---- Mocks ----
 
-// Mock DB connection so conversation membership queries can be controlled
+// Mock DB connection so conversation membership queries can be controlled.
+// Default returns [] so presence queries (emitPresenceToRelatedUsers) get
+// an empty array instead of undefined, which would crash the for-of loop.
 vi.mock('../../db/connection.js', () => ({
-  sql: Object.assign(vi.fn(), { unsafe: vi.fn() }),
+  sql: Object.assign(vi.fn().mockResolvedValue([]), { unsafe: vi.fn() }),
   db: {},
 }));
 
@@ -182,8 +184,15 @@ describe('user room auto-join', () => {
 
 describe('presence integration', () => {
   it('broadcasts presence:update online when user connects', async () => {
-    // Connect A first, then listen for presence updates when B connects
+    // Connect A first
     const clientA = await tracked(USER_A_ID);
+    // Wait for async presence queries from A's connection to settle
+    await new Promise((r) => setTimeout(r, 150));
+
+    // Set up sql mock so emitPresenceToRelatedUsers returns user A as a
+    // related user when B connects
+    const { sql } = await import('../../db/connection.js');
+    vi.mocked(sql).mockResolvedValueOnce([{ user_id: USER_A_ID }] as any);
 
     const presencePromise = waitForEvent<{ userId: string; online: boolean }>(
       clientA,
@@ -200,6 +209,17 @@ describe('presence integration', () => {
   it('user can request a presence snapshot', async () => {
     await tracked(USER_A_ID);
     const clientB = await tracked(USER_B_ID);
+    // Wait for async presence queries to settle
+    await new Promise((r) => setTimeout(r, 150));
+
+    // Override the default mock to return both users as related so that
+    // getRelatedOnlineUsers (triggered by presence:request) finds them.
+    // Use mockResolvedValue (persistent) to avoid race with straggling queries.
+    const { sql } = await import('../../db/connection.js');
+    vi.mocked(sql).mockResolvedValue([
+      { user_id: USER_A_ID },
+      { user_id: USER_B_ID },
+    ] as any);
 
     const snapshotPromise = waitForEvent<{ onlineUsers: string[] }>(clientB, 'presence:snapshot');
     clientB.emit('presence:request');
@@ -207,20 +227,28 @@ describe('presence integration', () => {
 
     expect(snapshot.onlineUsers).toContain(USER_A_ID);
     expect(snapshot.onlineUsers).toContain(USER_B_ID);
+
+    // Restore default empty mock for subsequent tests
+    vi.mocked(sql).mockResolvedValue([] as any);
   });
 });
 
 describe('conversation channel', () => {
   beforeEach(async () => {
     const { sql } = await import('../../db/connection.js');
+    // Reset but keep default return value of [] for presence queries
     vi.mocked(sql).mockReset();
+    vi.mocked(sql).mockResolvedValue([] as any);
   });
 
   it('join:conversation succeeds when user is a member', async () => {
+    const client = await tracked(USER_A_ID);
+    // Wait for async presence queries to settle before setting mocks
+    await new Promise((r) => setTimeout(r, 150));
+
+    // Set up mock AFTER connection (so presence queries don't consume it)
     const { sql } = await import('../../db/connection.js');
     vi.mocked(sql).mockResolvedValueOnce([{ '?column?': 1 }] as any);
-
-    const client = await tracked(USER_A_ID);
 
     const ok = await new Promise<boolean>((resolve) => {
       client.emit('join:conversation', VALID_CONV_ID, resolve);
@@ -230,10 +258,9 @@ describe('conversation channel', () => {
   });
 
   it('join:conversation fails when user is not a member', async () => {
-    const { sql } = await import('../../db/connection.js');
-    vi.mocked(sql).mockResolvedValueOnce([] as any);
-
     const client = await tracked(USER_A_ID);
+
+    // sql default already returns [], so membership check will fail
 
     const ok = await new Promise<boolean>((resolve) => {
       client.emit('join:conversation', VALID_CONV_ID, resolve);
@@ -264,14 +291,16 @@ describe('conversation channel', () => {
   });
 
   it('typing events are broadcast to other members in the room', async () => {
+    const clientA = await tracked(USER_A_ID);
+    const clientB = await tracked(USER_B_ID);
+    // Wait for async presence queries to settle
+    await new Promise((r) => setTimeout(r, 150));
+
+    // Set up mock AFTER connections for the join queries
     const { sql } = await import('../../db/connection.js');
-    // Both users join the conversation
     vi.mocked(sql)
       .mockResolvedValueOnce([{ '?column?': 1 }] as any) // user A membership check
       .mockResolvedValueOnce([{ '?column?': 1 }] as any); // user B membership check
-
-    const clientA = await tracked(USER_A_ID);
-    const clientB = await tracked(USER_B_ID);
 
     // Both join the conversation room
     await new Promise<boolean>((resolve) => {
@@ -318,14 +347,19 @@ describe('conversation channel', () => {
 describe('agent channel', () => {
   beforeEach(async () => {
     const { sql } = await import('../../db/connection.js');
+    // Reset but keep default return value of [] for presence queries
     vi.mocked(sql).mockReset();
+    vi.mocked(sql).mockResolvedValue([] as any);
   });
 
   it('join:agent succeeds when user is a member of the conversation', async () => {
+    const client = await tracked(USER_A_ID);
+    // Wait for async presence queries to settle
+    await new Promise((r) => setTimeout(r, 150));
+
+    // Set up mock AFTER connection (so presence queries don't consume it)
     const { sql } = await import('../../db/connection.js');
     vi.mocked(sql).mockResolvedValueOnce([{ '?column?': 1 }] as any);
-
-    const client = await tracked(USER_A_ID);
 
     const ok = await new Promise<boolean>((resolve) => {
       client.emit('join:agent', VALID_CONV_ID, resolve);
@@ -335,10 +369,9 @@ describe('agent channel', () => {
   });
 
   it('join:agent fails when user is not a member', async () => {
-    const { sql } = await import('../../db/connection.js');
-    vi.mocked(sql).mockResolvedValueOnce([] as any);
-
     const client = await tracked(USER_A_ID);
+
+    // sql default already returns [], so membership check will fail
 
     const ok = await new Promise<boolean>((resolve) => {
       client.emit('join:agent', VALID_CONV_ID, resolve);
@@ -358,13 +391,16 @@ describe('agent channel', () => {
   });
 
   it('agent:stop broadcasts run_error to agent room', async () => {
+    const clientA = await tracked(USER_A_ID);
+    const clientB = await tracked(USER_B_ID);
+    // Wait for async presence queries to settle
+    await new Promise((r) => setTimeout(r, 150));
+
+    // Set up mock AFTER connections for the join queries
     const { sql } = await import('../../db/connection.js');
     vi.mocked(sql)
       .mockResolvedValueOnce([{ '?column?': 1 }] as any) // A join
       .mockResolvedValueOnce([{ '?column?': 1 }] as any); // B join
-
-    const clientA = await tracked(USER_A_ID);
-    const clientB = await tracked(USER_B_ID);
 
     // Both join the agent room
     await new Promise<boolean>((resolve) => {
@@ -448,9 +484,14 @@ describe('emitter integration through real io', () => {
   it('emitMessage reaches clients in conversation room', async () => {
     const { sql } = await import('../../db/connection.js');
     vi.mocked(sql).mockReset();
-    vi.mocked(sql).mockResolvedValueOnce([{ '?column?': 1 }] as any);
+    vi.mocked(sql).mockResolvedValue([] as any);
 
     const client = await tracked(USER_A_ID);
+    // Wait for async presence queries to settle
+    await new Promise((r) => setTimeout(r, 150));
+
+    // Set up mock AFTER connection for the join membership query
+    vi.mocked(sql).mockResolvedValueOnce([{ '?column?': 1 }] as any);
 
     await new Promise<boolean>((resolve) => {
       client.emit('join:conversation', VALID_CONV_ID, resolve);
@@ -467,9 +508,14 @@ describe('emitter integration through real io', () => {
   it('emitAgentEvent reaches clients in agent room', async () => {
     const { sql } = await import('../../db/connection.js');
     vi.mocked(sql).mockReset();
-    vi.mocked(sql).mockResolvedValueOnce([{ '?column?': 1 }] as any);
+    vi.mocked(sql).mockResolvedValue([] as any);
 
     const client = await tracked(USER_A_ID);
+    // Wait for async presence queries to settle
+    await new Promise((r) => setTimeout(r, 150));
+
+    // Set up mock AFTER connection for the join membership query
+    vi.mocked(sql).mockResolvedValueOnce([{ '?column?': 1 }] as any);
 
     await new Promise<boolean>((resolve) => {
       client.emit('join:agent', VALID_CONV_ID, resolve);

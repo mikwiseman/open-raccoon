@@ -109,7 +109,10 @@ public actor AuthManager {
 
     /// Coalesces concurrent token refresh requests into a single network call.
     /// If a refresh is already in flight, subsequent callers await the same task.
+    /// Because `AuthManager` is an actor, the check-then-set of `activeRefreshTask`
+    /// is atomic (no suspension point between the `nil` check and the assignment).
     private func coalescedRefresh() async throws -> String {
+        // Return the in-flight task if one already exists (actor reentrancy safe).
         if let existing = activeRefreshTask {
             return try await existing.value
         }
@@ -120,14 +123,9 @@ public actor AuthManager {
         }
         activeRefreshTask = task
 
-        do {
-            let token = try await task.value
-            activeRefreshTask = nil
-            return token
-        } catch {
-            activeRefreshTask = nil
-            throw error
-        }
+        // Use defer to guarantee cleanup even if the task throws.
+        defer { activeRefreshTask = nil }
+        return try await task.value
     }
 
     /// Refreshes the access token using the stored refresh token.
@@ -193,6 +191,15 @@ public actor AuthManager {
         if let expiry = tokenExpiry {
             try tokenStorage.set(String(expiry.timeIntervalSince1970), key: "token_expiry")
         }
+    }
+
+    /// Invalidates only the cached access token, forcing the next call to
+    /// `validAccessToken()` to refresh via the refresh token.
+    public func invalidateAccessToken() throws {
+        self.accessToken = nil
+        self.tokenExpiry = nil
+        try tokenStorage.remove("access_token")
+        try tokenStorage.remove("token_expiry")
     }
 
     public func clearTokens() throws {

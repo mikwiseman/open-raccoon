@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -381,7 +381,7 @@ describe('FeedView edge cases', () => {
     });
 
     // Switch back to For You - should use cache, not re-fetch
-    const callCountBefore = (api.listFeed as ReturnType<typeof vi.fn>).mock.calls.length;
+    const _callCountBefore = (api.listFeed as ReturnType<typeof vi.fn>).mock.calls.length;
     await user.click(screen.getByRole('tab', { name: 'For You' }));
 
     // The listFeed call count should NOT increase for for_you since it's cached
@@ -669,7 +669,7 @@ describe('FeedView edge cases', () => {
       // Share is the 3rd action button
       const shareBtn = document.querySelector('.feed-detail-actions .feed-action-btn:nth-child(3)');
       expect(shareBtn).not.toBeNull();
-      expect(shareBtn!.textContent).toContain('Share');
+      expect(shareBtn?.textContent).toContain('Share');
     });
   });
 
@@ -707,7 +707,7 @@ describe('FeedView edge cases', () => {
       // Fallback: `${item.type} · ${item.id.slice(0, 8)}` = "agent · feed-no-"
       const titleEl = document.querySelector('.feed-card-title');
       expect(titleEl).not.toBeNull();
-      expect(titleEl!.textContent).toContain('feed-no-');
+      expect(titleEl?.textContent).toContain('feed-no-');
     });
   });
 
@@ -764,8 +764,8 @@ describe('FeedView edge cases', () => {
       // Like is the 1st action button in detail panel
       const likeBtn = document.querySelector('.feed-detail-actions .feed-action-btn:nth-child(1)');
       expect(likeBtn).not.toBeNull();
-      expect(likeBtn!.textContent).toContain('Like');
-      expect(likeBtn!.textContent).not.toContain('Liked');
+      expect(likeBtn?.textContent).toContain('Like');
+      expect(likeBtn?.textContent).not.toContain('Liked');
     });
   });
 
@@ -788,7 +788,7 @@ describe('FeedView edge cases', () => {
       // Like is the 1st action button in detail panel
       const likeBtn = document.querySelector('.feed-detail-actions .feed-action-btn:nth-child(1)');
       expect(likeBtn).not.toBeNull();
-      expect(likeBtn!.textContent).toContain('Liked');
+      expect(likeBtn?.textContent).toContain('Liked');
     });
   });
 

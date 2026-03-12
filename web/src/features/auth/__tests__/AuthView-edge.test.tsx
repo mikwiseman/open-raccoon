@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WaiAgentsApi } from '@/lib/api/services';
-import type { SessionUser } from '@/lib/state/session-store';
 import { AuthView } from '../AuthPlaceholder';
 
 /* ------------------------------------------------------------------ */

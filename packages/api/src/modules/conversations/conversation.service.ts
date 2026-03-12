@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { sql } from '../../db/connection.js';
 import { formatConversation, toISO } from '../../lib/utils.js';
 import { emitMessage } from '../../ws/emitter.js';
+import { finishAgentRun, startAgentRun } from '../agents/agent-runner.js';
 import { runAgentLoop } from '../agents/loop.js';
 import type {
   AddMemberInput,
@@ -315,6 +316,10 @@ export async function sendMessage(
       FROM messages WHERE id = ${messageId}
     `;
 
+      if (rows.length === 0) {
+        throw new Error(`Failed to insert message ${messageId}`);
+      }
+
       const msg = formatMessage(rows[0] as Record<string, unknown>);
 
       // Save idempotency key
@@ -352,15 +357,23 @@ export async function sendMessage(
       ? (input.content as Array<{ type: string; text?: string }>).map((b) => b.text ?? '').join('')
       : String(input.content);
 
+    // Register the run and get an AbortSignal for cancellation support
+    const abortSignal = startAgentRun(conversationId);
+
     // Run agent loop asynchronously — don't block the response
     runAgentLoop({
       agentId,
       conversationId,
       userId,
       message: messageText,
-    }).catch((err) => {
-      console.error(`Agent loop error for ${agentId}:`, (err as Error).message);
-    });
+      abortSignal,
+    })
+      .catch((err) => {
+        console.error(`Agent loop error for ${agentId}:`, (err as Error).message);
+      })
+      .finally(() => {
+        finishAgentRun(conversationId);
+      });
   }
 
   return message;

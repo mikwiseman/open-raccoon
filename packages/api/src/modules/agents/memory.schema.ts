@@ -1,18 +1,11 @@
+import { ConsolidationTypeSchema, MemoryTypeSchema } from '@wai-agents/shared';
 import { z } from 'zod';
 
 const stripHtml = (v: string) => v.replace(/<[^>]*>/g, '');
 
-export const MemoryTypeEnum = z.enum([
-  'fact',
-  'preference',
-  'context',
-  'relationship',
-  'episodic',
-  'semantic',
-  'procedural',
-]);
+export const MemoryTypeEnum = MemoryTypeSchema;
 
-export const ConsolidationTypeEnum = z.enum(['merge', 'abstract', 'reinforce']);
+export const ConsolidationTypeEnum = ConsolidationTypeSchema;
 
 export const CreateMemorySchema = z.object({
   memory_type: MemoryTypeEnum,

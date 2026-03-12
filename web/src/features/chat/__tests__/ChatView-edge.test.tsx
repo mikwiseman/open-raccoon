@@ -323,7 +323,9 @@ describe('ChatView edge cases', () => {
       expect(screen.getAllByText('Test Chat').length).toBeGreaterThanOrEqual(1);
     });
     // Composer should still be visible even with no messages
-    expect(screen.getByPlaceholderText('Type a message...')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Type a message...')).toBeInTheDocument();
+    });
   });
 
   it('shows empty state when no conversation is selected', async () => {

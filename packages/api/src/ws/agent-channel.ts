@@ -1,5 +1,6 @@
 import type { Socket, Server as SocketIOServer } from 'socket.io';
 import { sql } from '../db/connection.js';
+import { stopAgentRun } from '../modules/agents/agent-runner.js';
 import { type ApprovalScope, approvalGate } from '../modules/agents/approval-gate.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -58,6 +59,13 @@ export function setupAgentHandlers(io: SocketIOServer): void {
       if (!checkSocketRate(socket)) return;
       if (!conversationId || !UUID_RE.test(conversationId)) return;
       if (!socket.rooms.has(`agent:${conversationId}`)) return;
+
+      // Actually cancel the running agent loop via its AbortController
+      const stopped = stopAgentRun(conversationId);
+      if (stopped) {
+        // Also cancel any pending approval requests
+        approvalGate.cancelPending(conversationId);
+      }
 
       io.to(`agent:${conversationId}`).emit('agent:event', {
         type: 'run_error',

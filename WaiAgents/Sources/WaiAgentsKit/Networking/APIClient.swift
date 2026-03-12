@@ -11,7 +11,10 @@ public actor APIClient {
         self.session = NetworkSession.makeURLSession()
     }
 
-    public func request<T: Decodable & Sendable>(_ endpoint: APIEndpoint) async throws -> T {
+    public func request<T: Decodable & Sendable>(
+        _ endpoint: APIEndpoint,
+        hasRetried: Bool = false
+    ) async throws -> T {
         var request = try endpoint.urlRequest(baseURL: baseURL)
 
         if endpoint.requiresAuth {
@@ -35,10 +38,12 @@ public actor APIClient {
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
-            if httpResponse.statusCode == 401 && endpoint.requiresAuth {
+            if httpResponse.statusCode == 401 && endpoint.requiresAuth && !hasRetried {
                 // Attempt one token refresh before giving up.
-                // Only clear tokens if the refresh itself fails.
+                // Invalidate the cached access token so validAccessToken()
+                // is forced to perform a real refresh using the refresh token.
                 do {
+                    try await authManager.invalidateAccessToken()
                     let freshToken = try await authManager.validAccessToken()
                     var retryReq = try endpoint.urlRequest(baseURL: baseURL)
                     retryReq.setValue("Bearer \(freshToken)", forHTTPHeaderField: "Authorization")
@@ -50,7 +55,7 @@ public actor APIClient {
                        (200...299).contains(retryHttp.statusCode) {
                         return try JSONDecoder.waiagents.decode(T.self, from: retryData)
                     }
-                } catch { /* refresh failed — fall through to clear tokens */ }
+                } catch { /* refresh failed -- fall through to clear tokens */ }
                 try? await authManager.clearTokens()
                 throw APIError.unauthorized
             }
@@ -66,7 +71,7 @@ public actor APIClient {
     }
 
     /// Perform a request that returns no response body (e.g., DELETE endpoints).
-    public func requestVoid(_ endpoint: APIEndpoint) async throws {
+    public func requestVoid(_ endpoint: APIEndpoint, hasRetried: Bool = false) async throws {
         var request = try endpoint.urlRequest(baseURL: baseURL)
 
         if endpoint.requiresAuth {
@@ -90,8 +95,9 @@ public actor APIClient {
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
-            if httpResponse.statusCode == 401 && endpoint.requiresAuth {
+            if httpResponse.statusCode == 401 && endpoint.requiresAuth && !hasRetried {
                 do {
+                    try await authManager.invalidateAccessToken()
                     let freshToken = try await authManager.validAccessToken()
                     var retryReq = try endpoint.urlRequest(baseURL: baseURL)
                     retryReq.setValue("Bearer \(freshToken)", forHTTPHeaderField: "Authorization")

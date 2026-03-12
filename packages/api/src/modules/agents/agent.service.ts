@@ -98,72 +98,75 @@ export async function createAgent(userId: string, input: CreateAgentInput) {
   }
 
   const baseSlug = slugify(input.name);
-  let slug = baseSlug;
-
-  // Escape SQL LIKE wildcards to prevent user-controlled pattern matching
-  const escapedSlug = baseSlug.replace(/[%_\\]/g, '\\$&');
-
-  // Ensure slug uniqueness (cap at 10000 to prevent unbounded loops)
-  const existing =
-    await sql`SELECT slug FROM agents WHERE slug LIKE ${`${escapedSlug}%`} ORDER BY slug`;
-  if (existing.length > 0) {
-    const existingSlugs = new Set(
-      (existing as Array<Record<string, unknown>>).map((r) => r.slug as string),
-    );
-    if (existingSlugs.has(slug)) {
-      let counter = 2;
-      while (existingSlugs.has(`${baseSlug}-${counter}`) && counter < 10000) {
-        counter++;
-      }
-      slug = `${baseSlug}-${counter}`;
-    }
-  }
-
   const agentId = randomUUID();
   const now = new Date().toISOString();
   const toolsJson = JSON.stringify(tools);
   const mcpServersJson = JSON.stringify(mcpServers);
 
-  await sql`
-    INSERT INTO agents (
-      id, creator_id, name, slug, description, system_prompt, model,
-      tools, mcp_servers, visibility, category, metadata, inserted_at, updated_at
-    ) VALUES (
-      ${agentId}, ${userId}, ${input.name}, ${slug},
-      ${input.description ?? null}, ${systemPrompt}, ${model},
-      ${toolsJson}::jsonb, ${mcpServersJson}::jsonb,
-      ${input.visibility ?? 'private'}, ${input.category ?? null},
-      '{}', ${now}, ${now}
-    )
-  `;
+  // Wrap slug generation + INSERT in a transaction to prevent TOCTOU race
+  // @ts-expect-error postgres.js TransactionSql type lacks call signatures but works at runtime
+  return await sql.begin(async (tx: typeof sql) => {
+    // Escape SQL LIKE wildcards to prevent user-controlled pattern matching
+    const escapedSlug = baseSlug.replace(/[%_\\]/g, '\\$&');
 
-  // Create default SOUL core memories
-  for (const memory of coreMemories) {
-    await sql`
-      INSERT INTO agent_core_memories (id, agent_id, block_label, content, inserted_at, updated_at)
-      VALUES (${randomUUID()}, ${agentId}, ${memory.blockLabel}, ${memory.content}, ${now}, ${now})
+    // Ensure slug uniqueness inside the transaction (cap at 10000 to prevent unbounded loops)
+    let slug = baseSlug;
+    const existing =
+      await tx`SELECT slug FROM agents WHERE slug LIKE ${`${escapedSlug}%`} ORDER BY slug`;
+    if (existing.length > 0) {
+      const existingSlugs = new Set(
+        (existing as Array<Record<string, unknown>>).map((r) => r.slug as string),
+      );
+      if (existingSlugs.has(slug)) {
+        let counter = 2;
+        while (existingSlugs.has(`${baseSlug}-${counter}`) && counter < 10000) {
+          counter++;
+        }
+        slug = `${baseSlug}-${counter}`;
+      }
+    }
+
+    await tx`
+      INSERT INTO agents (
+        id, creator_id, name, slug, description, system_prompt, model,
+        tools, mcp_servers, visibility, category, metadata, inserted_at, updated_at
+      ) VALUES (
+        ${agentId}, ${userId}, ${input.name}, ${slug},
+        ${input.description ?? null}, ${systemPrompt}, ${model},
+        ${toolsJson}::jsonb, ${mcpServersJson}::jsonb,
+        ${input.visibility ?? 'private'}, ${input.category ?? null},
+        '{}', ${now}, ${now}
+      )
     `;
-  }
 
-  const rows = await sql`
-    SELECT id, creator_id, name, slug, description, avatar_url, system_prompt, model,
-           temperature, max_tokens, tools, mcp_servers, visibility, category,
-           usage_count, rating_sum, rating_count, execution_mode, metadata, inserted_at, updated_at
-    FROM agents WHERE id = ${agentId}
-  `;
+    // Create default SOUL core memories
+    for (const memory of coreMemories) {
+      await tx`
+        INSERT INTO agent_core_memories (id, agent_id, block_label, content, inserted_at, updated_at)
+        VALUES (${randomUUID()}, ${agentId}, ${memory.blockLabel}, ${memory.content}, ${now}, ${now})
+      `;
+    }
 
-  const agent = formatAgent(rows[0] as Record<string, unknown>);
+    const rows = await tx`
+      SELECT id, creator_id, name, slug, description, avatar_url, system_prompt, model,
+             temperature, max_tokens, tools, mcp_servers, visibility, category,
+             usage_count, rating_sum, rating_count, execution_mode, metadata, inserted_at, updated_at
+      FROM agents WHERE id = ${agentId}
+    `;
 
-  const memRows = await sql`
-    SELECT id, agent_id, block_label, content, inserted_at, updated_at
-    FROM agent_core_memories WHERE agent_id = ${agentId}
-    ORDER BY inserted_at ASC
-  `;
+    const agent = formatAgent(rows[0] as Record<string, unknown>);
 
-  return {
-    ...agent,
-    core_memories: memRows.map((r) => formatCoreMemory(r as Record<string, unknown>)),
-  };
+    const memRows = await tx`
+      SELECT id, agent_id, block_label, content, inserted_at, updated_at
+      FROM agent_core_memories WHERE agent_id = ${agentId}
+      ORDER BY inserted_at ASC
+    `;
+
+    return {
+      ...agent,
+      core_memories: memRows.map((r) => formatCoreMemory(r as Record<string, unknown>)),
+    };
+  });
 }
 
 export async function getAgent(agentId: string, userId: string) {
@@ -247,8 +250,15 @@ export async function updateAgent(agentId: string, userId: string, updates: Upda
 
 export async function deleteAgent(agentId: string, userId: string) {
   await assertCreator(agentId, userId);
-  await sql`UPDATE conversations SET agent_id = NULL WHERE agent_id = ${agentId}`;
-  await sql`DELETE FROM agents WHERE id = ${agentId}`;
+  await sql.begin(async (tx) => {
+    const q = tx as unknown as typeof sql;
+    // Detach agent from conversations before deleting (FK is SET NULL,
+    // but we do it explicitly so both operations are atomic)
+    await q`UPDATE conversations SET agent_id = NULL WHERE agent_id = ${agentId}`;
+    // CASCADE FKs on the agents table handle child rows
+    // (core_memories, ratings, events, usage_logs, feedback, etc.)
+    await q`DELETE FROM agents WHERE id = ${agentId}`;
+  });
 }
 
 export async function startConversation(agentId: string, userId: string) {

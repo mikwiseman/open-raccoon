@@ -224,21 +224,28 @@ describe('social.service — Likes', () => {
     await expect(likeFeedItem('nonexistent', USER_ID)).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
-  it('unlikeFeedItem deletes like and updates count', async () => {
+  it('unlikeFeedItem deletes like and returns updated item', async () => {
     const { sql } = await import('../../db/connection.js');
     const sqlMock = vi.mocked(sql);
 
-    // 1. Check feed item exists
+    // 1. Check feed item exists (outside tx)
     sqlMock.mockResolvedValueOnce([{ id: FEED_ITEM_ID }] as any);
-    // 2. Delete like
+    // 2. Delete like (inside tx)
     sqlMock.mockResolvedValueOnce([] as any);
-    // 3. Update count
-    sqlMock.mockResolvedValueOnce([] as any);
+    // 3. Update like_count + RETURNING feed item (inside tx)
+    sqlMock.mockResolvedValueOnce([makeFeedItemRow({ like_count: 0 })] as any);
+    // 4. Creator lookup (inside tx)
+    sqlMock.mockResolvedValueOnce([
+      { username: 'testuser', display_name: 'Test User', avatar_url: null },
+    ] as any);
 
     const { unlikeFeedItem } = await import('./social.service.js');
-    await unlikeFeedItem(FEED_ITEM_ID, USER_ID);
+    const result = await unlikeFeedItem(FEED_ITEM_ID, USER_ID);
 
-    expect(sqlMock).toHaveBeenCalledTimes(3);
+    expect(result.id).toBe(FEED_ITEM_ID);
+    expect(result.like_count).toBe(0);
+    expect(result.liked_by_me).toBe(false);
+    expect(sqlMock).toHaveBeenCalledTimes(4);
   });
 
   it('unlikeFeedItem throws NOT_FOUND for missing feed item', async () => {

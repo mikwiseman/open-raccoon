@@ -280,19 +280,37 @@ export async function unlikeFeedItem(feedItemId: string, userId: string) {
   }
 
   // @ts-expect-error postgres.js TransactionSql type lacks call signatures but works at runtime
-  await sql.begin(async (tx: typeof sql) => {
+  return await sql.begin(async (tx: typeof sql) => {
     // Delete like
     await tx`
       DELETE FROM feed_likes WHERE feed_item_id = ${feedItemId} AND user_id = ${userId}
     `;
 
-    // Update like_count
-    await tx`
+    // Update like_count and return full feed item with creator info
+    const rows = await tx`
       UPDATE feed_items
       SET like_count = (SELECT COUNT(*)::int FROM feed_likes WHERE feed_item_id = ${feedItemId}),
           updated_at = NOW()
       WHERE id = ${feedItemId}
+      RETURNING id, creator_id, type, reference_id, reference_type, title, description,
+                thumbnail_url, quality_score, trending_score, like_count, fork_count,
+                view_count, inserted_at, updated_at
     `;
+
+    const fi = rows[0] as Record<string, unknown>;
+    const creatorId = fi.creator_id as string;
+    const creatorRows = await tx`
+      SELECT username, display_name, avatar_url FROM users WHERE id = ${creatorId} LIMIT 1
+    `;
+    const creator = creatorRows[0] as Record<string, unknown> | undefined;
+
+    return formatFeedItem({
+      ...fi,
+      username: creator?.username ?? null,
+      display_name: creator?.display_name ?? null,
+      avatar_url: creator?.avatar_url ?? null,
+      liked_by_me: false,
+    });
   });
 }
 

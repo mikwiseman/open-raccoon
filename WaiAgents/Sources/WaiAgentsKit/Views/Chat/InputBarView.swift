@@ -10,6 +10,7 @@ import SwiftUI
 public struct InputBarView: View {
     public let onSend: (String) -> Void
     public var onTyping: (() -> Void)?
+    public var onStop: (() -> Void)?
     public var isAgentGenerating: Bool
 
     @State private var text = ""
@@ -20,10 +21,12 @@ public struct InputBarView: View {
     public init(
         onSend: @escaping (String) -> Void,
         onTyping: (() -> Void)? = nil,
+        onStop: (() -> Void)? = nil,
         isAgentGenerating: Bool = false
     ) {
         self.onSend = onSend
         self.onTyping = onTyping
+        self.onStop = onStop
         self.isAgentGenerating = isAgentGenerating
     }
 
@@ -94,7 +97,7 @@ public struct InputBarView: View {
 
     private var stopButton: some View {
         Button {
-            // Stop generation placeholder
+            onStop?()
         } label: {
             Image(systemName: "stop.fill")
                 .font(.system(size: 12, weight: .semibold))

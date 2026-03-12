@@ -202,12 +202,38 @@ describe('DELETE /feed/:id/like', () => {
     const { sql } = await import('../../db/connection.js');
     const sqlMock = vi.mocked(sql);
 
-    // 1. Check feed item exists
+    // 1. Check feed item exists (outside tx)
     sqlMock.mockResolvedValueOnce([{ id: FEED_ITEM_ID }] as any);
-    // 2. Delete like (inside transaction)
+    // 2. Delete like (inside tx)
     sqlMock.mockResolvedValueOnce([] as any);
-    // 3. Update like_count
-    sqlMock.mockResolvedValueOnce([] as any);
+    // 3. Update like_count + RETURNING feed item (inside tx)
+    sqlMock.mockResolvedValueOnce([
+      {
+        id: FEED_ITEM_ID,
+        creator_id: OTHER_USER_ID,
+        type: 'agent',
+        reference_id: AGENT_ID,
+        reference_type: 'agent',
+        title: 'Test',
+        description: 'Desc',
+        thumbnail_url: null,
+        quality_score: 0,
+        trending_score: 5.0,
+        like_count: 2,
+        fork_count: 1,
+        view_count: 100,
+        inserted_at: new Date('2026-01-01'),
+        updated_at: new Date('2026-01-01'),
+      },
+    ] as any);
+    // 4. Creator lookup (inside tx)
+    sqlMock.mockResolvedValueOnce([
+      {
+        username: 'testuser',
+        display_name: 'Test User',
+        avatar_url: null,
+      },
+    ] as any);
 
     const { status, body } = await request(app, 'DELETE', `/feed/${FEED_ITEM_ID}/like`);
     expect(status).toBe(200);

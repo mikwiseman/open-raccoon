@@ -31,7 +31,7 @@ export function emitMessageUpdated(conversationId: string, message: unknown): vo
 
 export function emitMessageDeleted(conversationId: string, messageId: string): void {
   if (!io) throw new Error('Socket.IO not initialized');
-  io.to(`conversation:${conversationId}`).emit('message:deleted', { id: messageId });
+  io.to(`conversation:${conversationId}`).emit('message:deleted', { messageId, conversationId });
 }
 
 export function emitNotification(userId: string, notification: unknown): void {

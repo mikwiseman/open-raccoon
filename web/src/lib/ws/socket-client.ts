@@ -33,6 +33,11 @@ export class SocketClient {
       return;
     }
 
+    // Remove all listeners from previous socket before creating a new one
+    if (this.socket) {
+      this.socket.removeAllListeners();
+    }
+
     const url = resolveSocketUrl();
     this.socket = io(url, {
       auth: { token },

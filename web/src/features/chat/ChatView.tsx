@@ -270,9 +270,11 @@ export function ChatView({
     const unsubMessage = wsClient.onMessage((payload: Record<string, unknown>) => {
       const msg = extractMessageFromEvent(payload);
       if (!msg) return;
-      if (seenMessageIds.current.has(msg.id)) return;
-      seenMessageIds.current.add(msg.id);
-      setMessages((prev) => mergeMessages(prev, [msg]));
+      setMessages((prev) => {
+        if (seenMessageIds.current.has(msg.id)) return prev;
+        seenMessageIds.current.add(msg.id);
+        return mergeMessages(prev, [msg]);
+      });
       setConversations((prev) => bumpConversation(prev, msg.conversation_id));
     });
 
@@ -1051,6 +1053,7 @@ export function ChatView({
                     type="button"
                     className="cv-btn-send cv-btn-stop"
                     title="Stop generating"
+                    aria-label="Stop generating"
                     onClick={() => {
                       if (selectedConversation?.type === 'agent') {
                         wsClient.emitStopAgent(selectedConversation.id);
@@ -1066,6 +1069,7 @@ export function ChatView({
                       className="cv-btn-send"
                       disabled={pendingSend}
                       title="Send message"
+                      aria-label="Send message"
                     >
                       <span className="cv-send-arrow">&uarr;</span>
                     </button>
@@ -1432,7 +1436,7 @@ function formatMessageTime(iso: string): string {
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  if (parts.length >= 2) return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
   return name.slice(0, 2).toUpperCase();
 }
 

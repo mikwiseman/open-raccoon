@@ -144,11 +144,14 @@ describe('emitter', () => {
       expect(emitFn).toHaveBeenCalledWith('message:updated', msg);
     });
 
-    it('emitMessageDeleted emits message:deleted with id', () => {
+    it('emitMessageDeleted emits message:deleted with messageId and conversationId', () => {
       emitMessageDeleted('conv-1', 'msg-99');
 
       expect(toFn).toHaveBeenCalledWith('conversation:conv-1');
-      expect(emitFn).toHaveBeenCalledWith('message:deleted', { id: 'msg-99' });
+      expect(emitFn).toHaveBeenCalledWith('message:deleted', {
+        messageId: 'msg-99',
+        conversationId: 'conv-1',
+      });
     });
 
     it('emitNotification emits to user:<userId>', () => {

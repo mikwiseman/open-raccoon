@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock DB connection (transitive import guard)
-vi.mock('../../db/connection.js', () => ({
-  sql: Object.assign(vi.fn(), { unsafe: vi.fn() }),
-  db: {},
-}));
+// Mock DB connection — emitPresenceToRelatedUsers queries for related users
+vi.mock('../../db/connection.js', () => {
+  const sqlFn = Object.assign(vi.fn().mockResolvedValue([{ user_id: 'related-user' }]), {
+    unsafe: vi.fn(),
+  });
+  return { sql: sqlFn, db: {} };
+});
 
 describe('presence', () => {
   let addToPresence: typeof import('../../ws/presence.js').addToPresence;
@@ -12,7 +14,8 @@ describe('presence', () => {
   let getOnlineUsers: typeof import('../../ws/presence.js').getOnlineUsers;
   let isUserOnline: typeof import('../../ws/presence.js').isUserOnline;
 
-  let ioEmit: ReturnType<typeof vi.fn>;
+  let roomEmit: ReturnType<typeof vi.fn>;
+  let ioTo: ReturnType<typeof vi.fn>;
   let io: any;
 
   beforeEach(async () => {
@@ -25,8 +28,9 @@ describe('presence', () => {
     getOnlineUsers = mod.getOnlineUsers;
     isUserOnline = mod.isUserOnline;
 
-    ioEmit = vi.fn();
-    io = { emit: ioEmit };
+    roomEmit = vi.fn();
+    ioTo = vi.fn().mockReturnValue({ emit: roomEmit });
+    io = { to: ioTo };
   });
 
   afterEach(() => {
@@ -36,31 +40,42 @@ describe('presence', () => {
   // ---------- addToPresence ----------
 
   describe('addToPresence', () => {
-    it('marks a user online and broadcasts presence:update', () => {
+    it('marks a user online and broadcasts presence:update', async () => {
       addToPresence(io, 'user-1', 'sock-a');
 
       expect(isUserOnline('user-1')).toBe(true);
       expect(getOnlineUsers()).toContain('user-1');
-      expect(ioEmit).toHaveBeenCalledWith('presence:update', {
+
+      // emitPresenceToRelatedUsers is async — flush microtasks
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Presence now emits to specific user rooms via io.to().emit()
+      expect(ioTo).toHaveBeenCalledWith('user:related-user');
+      expect(ioTo).toHaveBeenCalledWith('user:user-1');
+      expect(roomEmit).toHaveBeenCalledWith('presence:update', {
         userId: 'user-1',
         online: true,
       });
     });
 
-    it('does not broadcast again for a second socket from the same user', () => {
+    it('does not broadcast again for a second socket from the same user', async () => {
       addToPresence(io, 'user-1', 'sock-a');
-      ioEmit.mockClear();
+      await vi.advanceTimersByTimeAsync(0);
+      roomEmit.mockClear();
+      ioTo.mockClear();
 
       addToPresence(io, 'user-1', 'sock-b');
+      await vi.advanceTimersByTimeAsync(0);
 
       // User was already online; no duplicate broadcast
-      expect(ioEmit).not.toHaveBeenCalled();
+      expect(roomEmit).not.toHaveBeenCalled();
       expect(isUserOnline('user-1')).toBe(true);
     });
 
-    it('tracks multiple distinct users independently', () => {
+    it('tracks multiple distinct users independently', async () => {
       addToPresence(io, 'user-1', 'sock-a');
       addToPresence(io, 'user-2', 'sock-b');
+      await vi.advanceTimersByTimeAsync(0);
 
       const online = getOnlineUsers();
       expect(online).toContain('user-1');
@@ -72,86 +87,95 @@ describe('presence', () => {
   // ---------- removeFromPresence ----------
 
   describe('removeFromPresence', () => {
-    it('does not mark user offline immediately (grace period)', () => {
+    it('does not mark user offline immediately (grace period)', async () => {
       addToPresence(io, 'user-1', 'sock-a');
-      ioEmit.mockClear();
+      await vi.advanceTimersByTimeAsync(0);
+      roomEmit.mockClear();
 
       removeFromPresence(io, 'user-1', 'sock-a');
 
       // Still considered online during grace period
       // The user has 0 sockets but the timer hasn't fired yet
-      // getOnlineUsers is based on presenceMap which still has the entry
-      expect(ioEmit).not.toHaveBeenCalledWith('presence:update', {
+      expect(roomEmit).not.toHaveBeenCalledWith('presence:update', {
         userId: 'user-1',
         online: false,
       });
     });
 
-    it('marks user offline after 30s grace period', () => {
+    it('marks user offline after 30s grace period', async () => {
       addToPresence(io, 'user-1', 'sock-a');
-      ioEmit.mockClear();
+      await vi.advanceTimersByTimeAsync(0);
+      roomEmit.mockClear();
+      ioTo.mockClear();
 
       removeFromPresence(io, 'user-1', 'sock-a');
-      vi.advanceTimersByTime(30_000);
+      await vi.advanceTimersByTimeAsync(30_000);
 
       expect(isUserOnline('user-1')).toBe(false);
       expect(getOnlineUsers()).not.toContain('user-1');
-      expect(ioEmit).toHaveBeenCalledWith('presence:update', {
+      expect(ioTo).toHaveBeenCalledWith('user:related-user');
+      expect(roomEmit).toHaveBeenCalledWith('presence:update', {
         userId: 'user-1',
         online: false,
       });
     });
 
-    it('does not go offline if user reconnects within grace period', () => {
+    it('does not go offline if user reconnects within grace period', async () => {
       addToPresence(io, 'user-1', 'sock-a');
-      ioEmit.mockClear();
+      await vi.advanceTimersByTimeAsync(0);
+      roomEmit.mockClear();
 
       removeFromPresence(io, 'user-1', 'sock-a');
 
       // Reconnect before timer fires
-      vi.advanceTimersByTime(15_000);
+      await vi.advanceTimersByTimeAsync(15_000);
       addToPresence(io, 'user-1', 'sock-b');
-      ioEmit.mockClear();
+      await vi.advanceTimersByTimeAsync(0);
+      roomEmit.mockClear();
 
       // Advance past original grace period
-      vi.advanceTimersByTime(20_000);
+      await vi.advanceTimersByTimeAsync(20_000);
 
       // Should NOT have emitted offline
-      expect(ioEmit).not.toHaveBeenCalledWith('presence:update', {
+      expect(roomEmit).not.toHaveBeenCalledWith('presence:update', {
         userId: 'user-1',
         online: false,
       });
       expect(isUserOnline('user-1')).toBe(true);
     });
 
-    it('stays online when one of two sockets disconnects', () => {
+    it('stays online when one of two sockets disconnects', async () => {
       addToPresence(io, 'user-1', 'sock-a');
       addToPresence(io, 'user-1', 'sock-b');
-      ioEmit.mockClear();
+      await vi.advanceTimersByTimeAsync(0);
+      roomEmit.mockClear();
 
       removeFromPresence(io, 'user-1', 'sock-a');
 
       // No timer should fire; user still has sock-b
-      vi.advanceTimersByTime(60_000);
+      await vi.advanceTimersByTimeAsync(60_000);
       expect(isUserOnline('user-1')).toBe(true);
-      expect(ioEmit).not.toHaveBeenCalledWith('presence:update', {
+      expect(roomEmit).not.toHaveBeenCalledWith('presence:update', {
         userId: 'user-1',
         online: false,
       });
     });
 
-    it('goes offline after last socket disconnects and grace period', () => {
+    it('goes offline after last socket disconnects and grace period', async () => {
       addToPresence(io, 'user-1', 'sock-a');
       addToPresence(io, 'user-1', 'sock-b');
-      ioEmit.mockClear();
+      await vi.advanceTimersByTimeAsync(0);
+      roomEmit.mockClear();
+      ioTo.mockClear();
 
       removeFromPresence(io, 'user-1', 'sock-a');
       removeFromPresence(io, 'user-1', 'sock-b');
 
-      vi.advanceTimersByTime(30_000);
+      await vi.advanceTimersByTimeAsync(30_000);
 
       expect(isUserOnline('user-1')).toBe(false);
-      expect(ioEmit).toHaveBeenCalledWith('presence:update', {
+      expect(ioTo).toHaveBeenCalledWith('user:related-user');
+      expect(roomEmit).toHaveBeenCalledWith('presence:update', {
         userId: 'user-1',
         online: false,
       });
@@ -165,10 +189,11 @@ describe('presence', () => {
       expect(getOnlineUsers()).toEqual([]);
     });
 
-    it('returns all online user ids', () => {
+    it('returns all online user ids', async () => {
       addToPresence(io, 'user-1', 'sock-a');
       addToPresence(io, 'user-2', 'sock-b');
       addToPresence(io, 'user-3', 'sock-c');
+      await vi.advanceTimersByTimeAsync(0);
 
       const online = getOnlineUsers();
       expect(online).toHaveLength(3);
@@ -200,32 +225,33 @@ describe('presence', () => {
       expect(() => removeFromPresence(io, 'ghost', 'sock-x')).not.toThrow();
     });
 
-    it('rapid connect/disconnect/reconnect settles correctly', () => {
+    it('rapid connect/disconnect/reconnect settles correctly', async () => {
       addToPresence(io, 'user-1', 'sock-a');
       removeFromPresence(io, 'user-1', 'sock-a');
       addToPresence(io, 'user-1', 'sock-b');
       removeFromPresence(io, 'user-1', 'sock-b');
       addToPresence(io, 'user-1', 'sock-c');
 
-      vi.advanceTimersByTime(60_000);
+      await vi.advanceTimersByTimeAsync(60_000);
 
       // Should be online with sock-c
       expect(isUserOnline('user-1')).toBe(true);
     });
 
-    it('concurrent users going offline independently', () => {
+    it('concurrent users going offline independently', async () => {
       addToPresence(io, 'user-1', 'sock-a');
       addToPresence(io, 'user-2', 'sock-b');
-      ioEmit.mockClear();
+      await vi.advanceTimersByTimeAsync(0);
+      roomEmit.mockClear();
 
       removeFromPresence(io, 'user-1', 'sock-a');
-      vi.advanceTimersByTime(30_000);
+      await vi.advanceTimersByTimeAsync(30_000);
 
       expect(isUserOnline('user-1')).toBe(false);
       expect(isUserOnline('user-2')).toBe(true);
 
       removeFromPresence(io, 'user-2', 'sock-b');
-      vi.advanceTimersByTime(30_000);
+      await vi.advanceTimersByTimeAsync(30_000);
 
       expect(isUserOnline('user-2')).toBe(false);
     });

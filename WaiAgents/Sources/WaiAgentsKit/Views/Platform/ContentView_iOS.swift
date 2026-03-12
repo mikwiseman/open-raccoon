@@ -90,9 +90,15 @@ public struct ContentView_iOS: View {
                 onNavigateToRegister: {
                     showRegister = true
                 },
-                onOAuthGoogle: {},
-                onOAuthApple: {},
-                onOAuthGitHub: {}
+                onOAuthGoogle: {
+                    appState.authStore.loginError = "Google sign-in is not implemented yet."
+                },
+                onOAuthApple: {
+                    appState.authStore.loginError = "Apple sign-in is not implemented yet."
+                },
+                onOAuthGitHub: {
+                    appState.authStore.loginError = "GitHub sign-in is not implemented yet."
+                }
             )
         }
     }

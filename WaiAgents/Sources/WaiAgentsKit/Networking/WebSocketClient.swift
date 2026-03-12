@@ -197,6 +197,10 @@ public final class WebSocketClient: @unchecked Sendable {
 
     /// Attempts to refresh the access token and reconnect the WebSocket.
     /// If the refresh fails, notifies via `onAuthFailure`.
+    ///
+    /// Lock discipline: all lock acquisitions are short-lived (read/write state only).
+    /// Long-running operations (disconnect, connect, token refresh) happen outside the lock
+    /// to avoid deadlocks with socket callbacks that read handler properties via the lock.
     private func handleAuthFailure() async {
         let shouldProceed: Bool = lock.withLock {
             guard !isReconnecting else { return false }
@@ -206,19 +210,28 @@ public final class WebSocketClient: @unchecked Sendable {
         guard shouldProceed else { return }
         defer { lock.withLock { isReconnecting = false } }
 
+        // Read current socket under lock, then disconnect outside lock.
+        // disconnect() may synchronously fire onClose, which dispatches
+        // to MainActor asynchronously — no nested lock acquisition.
         let currentSocket = lock.withLock { socket }
         currentSocket.disconnect()
 
         do {
-            await MainActor.run { onConnectionStateChanged?(.connecting) }
+            // Read the auth-failure handler under lock before the await,
+            // so we don't access the lock from within MainActor.run below.
+            let stateHandler: (@MainActor (_ state: ConnectionState) -> Void)? = lock.withLock { _onConnectionStateChanged }
+            await MainActor.run { stateHandler?(.connecting) }
 
             let newToken = try await authManager.validAccessToken()
             let wsURL = baseURL
                 .replacingOccurrences(of: "https://", with: "wss://")
                 .replacingOccurrences(of: "http://", with: "ws://")
+
+            // Create new socket outside lock — Socket init may perform work.
             let newSocket = Socket("\(wsURL)/socket", params: ["token": newToken])
 
-            // Re-register socket lifecycle handlers on the new socket
+            // Re-register socket lifecycle handlers on the new socket.
+            // These closures read handler properties via computed getters (short lock scopes).
             newSocket.onOpen { @Sendable [weak self] in
                 Task { @MainActor in
                     self?.onConnectionStateChanged?(.connected)
@@ -238,7 +251,7 @@ public final class WebSocketClient: @unchecked Sendable {
                 }
             }
 
-            // Swap the socket and clear channels under lock
+            // Swap the socket and clear channels under lock (short scope).
             let topicsToRejoin: Set<String> = lock.withLock {
                 socket = newSocket
                 let topics = joinedTopics
@@ -246,15 +259,18 @@ public final class WebSocketClient: @unchecked Sendable {
                 return topics
             }
 
+            // Connect and rejoin outside lock.
             newSocket.connect()
 
             for topic in topicsToRejoin {
                 rejoinTopic(topic)
             }
         } catch APIError.unauthorized {
-            await MainActor.run { onAuthFailure?() }
+            let authFailureHandler: (@MainActor () -> Void)? = lock.withLock { _onAuthFailure }
+            await MainActor.run { authFailureHandler?() }
         } catch {
-            await MainActor.run { onConnectionStateChanged?(.disconnected) }
+            let stateHandler: (@MainActor (_ state: ConnectionState) -> Void)? = lock.withLock { _onConnectionStateChanged }
+            await MainActor.run { stateHandler?(.disconnected) }
         }
     }
 

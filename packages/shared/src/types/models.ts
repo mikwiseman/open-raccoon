@@ -10,7 +10,16 @@ export type AutonomyLevel = 'ask_always' | 'ask_first_time' | 'ask_if_unsure' | 
 export type ExecutionMode = 'raw' | 'claude_sdk' | 'openai_sdk';
 
 export type SoulBlockLabel = 'identity' | 'rules' | 'priorities' | 'preferences';
-export type MemoryType = 'observation' | 'reflection' | 'fact' | 'preference';
+export type MemoryType =
+  | 'observation'
+  | 'reflection'
+  | 'fact'
+  | 'preference'
+  | 'context'
+  | 'relationship'
+  | 'episodic'
+  | 'semantic'
+  | 'procedural';
 export type ScheduleType = 'cron' | 'interval' | 'once';
 export type AgentEventStatus = 'running' | 'completed' | 'failed' | 'timeout';
 export type ToolApprovalScope = 'allow_once' | 'allow_for_session' | 'always_for_agent_tool';

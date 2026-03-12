@@ -53,6 +53,9 @@ authRoutes.post('/login', async (c) => {
     return c.json(result, 200);
   } catch (err) {
     const e = err as Error & { code?: string };
+    if (e.code === 'TOO_MANY_REQUESTS') {
+      return c.json({ error: 'Too Many Requests', message: e.message }, 429);
+    }
     if (e.code === 'UNAUTHORIZED') {
       return c.json({ error: 'Unauthorized', message: e.message }, 401);
     }

@@ -2,6 +2,7 @@ import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypt
 import type { TriggerConditionGroup } from '@wai-agents/shared';
 import { sql } from '../../db/connection.js';
 import { toISO } from '../../lib/utils.js';
+import { finishAgentRun, startAgentRun } from './agent-runner.js';
 import type { CreateTriggerInput, UpdateTriggerInput } from './trigger.schema.js';
 import { evaluateCondition } from './trigger-condition.js';
 
@@ -262,6 +263,9 @@ export async function fireTrigger(
     VALUES (${messageId}, ${conversationId}, ${creatorId}, 'human', 'text', ${contentJson}::jsonb, '{}', ${now})
   `;
 
+  // Register the run and get an AbortSignal for cancellation support
+  const abortSignal = startAgentRun(conversationId);
+
   // Run agent loop asynchronously (fire-and-forget)
   const { runAgentLoop } = await import('./loop.js');
   runAgentLoop({
@@ -269,9 +273,14 @@ export async function fireTrigger(
     conversationId,
     userId: creatorId,
     message,
-  }).catch((err) => {
-    console.error(`Trigger ${triggerId} agent loop failed:`, (err as Error).message);
-  });
+    abortSignal,
+  })
+    .catch((err) => {
+      console.error(`Trigger ${triggerId} agent loop failed:`, (err as Error).message);
+    })
+    .finally(() => {
+      finishAgentRun(conversationId);
+    });
 
   // 5. Update lastFiredAt and fireCount
   await sql`

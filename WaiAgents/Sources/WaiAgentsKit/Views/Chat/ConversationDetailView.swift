@@ -146,7 +146,11 @@ public struct ConversationDetailView: View {
                     webSocketClient: appState.webSocketClient
                 )
                 viewModel = vm
+                // Load messages first, then subscribe to real-time channel.
+                // Subscribing before messages are loaded causes real-time events
+                // to arrive before the initial message list is populated.
                 await vm.loadMessages()
+                guard !Task.isCancelled else { return }
                 vm.subscribeToChannel()
             }
         }

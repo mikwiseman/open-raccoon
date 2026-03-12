@@ -1,6 +1,6 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { WaiAgentsApi } from '@/lib/api/services';
 import type { Agent, AgentEvent, AgentMemory } from '@/lib/types';
@@ -63,13 +63,19 @@ function makeMemory(overrides: Partial<AgentMemory> = {}): AgentMemory {
   return {
     id: 'mem-1',
     agent_id: 'agent-1',
+    user_id: 'user-1',
     content: 'User prefers concise responses',
     importance: 0.8,
     memory_type: 'preference',
-    tags: ['communication', 'style'],
+    embedding_key: null,
     access_count: 5,
     last_accessed_at: '2026-03-10T09:00:00Z',
+    source_conversation_id: null,
+    source_message_id: null,
+    expires_at: null,
+    metadata: {},
     created_at: '2026-03-05T00:00:00Z',
+    updated_at: null,
     ...overrides,
   };
 }
@@ -403,10 +409,10 @@ describe('MemoryViewer', () => {
   });
 
   it('renders memory type badge', async () => {
-    const api = createMockApi({ memories: [makeMemory({ memory_type: 'observation' })] });
+    const api = createMockApi({ memories: [makeMemory({ memory_type: 'context' })] });
     render(<MemoryViewer api={api} agentId="agent-1" />);
     await waitFor(() => {
-      expect(screen.getByText('observation')).toBeInTheDocument();
+      expect(screen.getByText('context')).toBeInTheDocument();
     });
   });
 
@@ -426,17 +432,8 @@ describe('MemoryViewer', () => {
     });
   });
 
-  it('renders memory tags', async () => {
-    const api = createMockApi({ memories: [makeMemory({ tags: ['important', 'work'] })] });
-    render(<MemoryViewer api={api} agentId="agent-1" />);
-    await waitFor(() => {
-      expect(screen.getByText('important')).toBeInTheDocument();
-      expect(screen.getByText('work')).toBeInTheDocument();
-    });
-  });
-
-  it('does not render tags section when tags array is empty', async () => {
-    const api = createMockApi({ memories: [makeMemory({ tags: [] })] });
+  it('renders memory content without tags section', async () => {
+    const api = createMockApi({ memories: [makeMemory()] });
     render(<MemoryViewer api={api} agentId="agent-1" />);
     await waitFor(() => {
       expect(screen.getByText('User prefers concise responses')).toBeInTheDocument();
@@ -486,7 +483,7 @@ describe('MemoryViewer', () => {
       memories: [
         makeMemory({ id: 'mem-1', content: 'First memory' }),
         makeMemory({ id: 'mem-2', content: 'Second memory', memory_type: 'fact' }),
-        makeMemory({ id: 'mem-3', content: 'Third memory', memory_type: 'reflection' }),
+        makeMemory({ id: 'mem-3', content: 'Third memory', memory_type: 'episodic' }),
       ],
     });
     render(<MemoryViewer api={api} agentId="agent-1" />);

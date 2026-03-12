@@ -23,6 +23,12 @@ vi.mock('../agents/loop.js', () => ({
   runAgentLoop: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock agent runner
+vi.mock('../agents/agent-runner.js', () => ({
+  startAgentRun: vi.fn().mockReturnValue(new AbortController().signal),
+  finishAgentRun: vi.fn(),
+}));
+
 const USER_ID = '550e8400-e29b-41d4-a716-446655440000';
 const CONV_ID = '660e8400-e29b-41d4-a716-446655440001';
 const MSG_ID = '770e8400-e29b-41d4-a716-446655440002';
@@ -328,6 +334,7 @@ describe('conversation.service — agent conversation trigger', () => {
       conversationId: CONV_ID,
       userId: USER_ID,
       message: 'Hello agent',
+      abortSignal: expect.any(AbortSignal),
     });
   });
 

@@ -40,6 +40,12 @@ vi.mock('../agents/loop.js', () => ({
   runAgentLoop: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock agent runner
+vi.mock('../agents/agent-runner.js', () => ({
+  startAgentRun: vi.fn().mockReturnValue(new AbortController().signal),
+  finishAgentRun: vi.fn(),
+}));
+
 const USER_ID = '550e8400-e29b-41d4-a716-446655440000';
 const OTHER_USER_ID = '660e8400-e29b-41d4-a716-446655440001';
 const THIRD_USER_ID = '770e8400-e29b-41d4-a716-446655440002';
@@ -744,6 +750,7 @@ describe('conversation.service — sendMessage', () => {
       conversationId: CONVERSATION_ID,
       userId: USER_ID,
       message: 'Tell me a joke',
+      abortSignal: expect.any(AbortSignal),
     });
   });
 
@@ -801,7 +808,7 @@ describe('conversation.service — sendMessage', () => {
     );
 
     expect(runAgentLoop).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Part 1 Part 2' }),
+      expect.objectContaining({ message: 'Part 1 Part 2', abortSignal: expect.any(AbortSignal) }),
     );
   });
 });

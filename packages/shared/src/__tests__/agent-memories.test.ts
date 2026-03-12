@@ -11,8 +11,16 @@ import type {
  * ================================================================ */
 describe('AgentMemoryType', () => {
   it('allows all valid memory types', () => {
-    const validTypes: AgentMemoryType[] = ['fact', 'preference', 'context', 'relationship'];
-    expect(validTypes).toHaveLength(4);
+    const validTypes: AgentMemoryType[] = [
+      'fact',
+      'preference',
+      'context',
+      'relationship',
+      'episodic',
+      'semantic',
+      'procedural',
+    ];
+    expect(validTypes).toHaveLength(7);
   });
 
   it('type assertion compiles for each valid type', () => {
@@ -20,7 +28,12 @@ describe('AgentMemoryType', () => {
     const preference: AgentMemoryType = 'preference';
     const context: AgentMemoryType = 'context';
     const relationship: AgentMemoryType = 'relationship';
-    expect([fact, preference, context, relationship]).toHaveLength(4);
+    const episodic: AgentMemoryType = 'episodic';
+    const semantic: AgentMemoryType = 'semantic';
+    const procedural: AgentMemoryType = 'procedural';
+    expect([fact, preference, context, relationship, episodic, semantic, procedural]).toHaveLength(
+      7,
+    );
   });
 });
 

@@ -110,8 +110,18 @@ describe('SoulBlockLabel', () => {
 
 describe('MemoryType', () => {
   it('covers all valid values', () => {
-    const values: MemoryType[] = ['observation', 'reflection', 'fact', 'preference'];
-    expect(values).toHaveLength(4);
+    const values: MemoryType[] = [
+      'observation',
+      'reflection',
+      'fact',
+      'preference',
+      'context',
+      'relationship',
+      'episodic',
+      'semantic',
+      'procedural',
+    ];
+    expect(values).toHaveLength(9);
   });
 });
 

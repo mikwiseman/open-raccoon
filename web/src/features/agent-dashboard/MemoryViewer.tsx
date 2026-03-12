@@ -70,15 +70,6 @@ export function MemoryViewer({ api, agentId }: Props) {
             </div>
             <p className="ad-memory-content">{memory.content}</p>
             <div className="ad-memory-footer">
-              {memory.tags.length > 0 && (
-                <div className="ad-memory-tags">
-                  {memory.tags.map((tag) => (
-                    <span key={tag} className="ad-memory-tag">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
               <button
                 type="button"
                 className="ab-btn ab-btn-ghost ab-btn-danger ab-btn-small"

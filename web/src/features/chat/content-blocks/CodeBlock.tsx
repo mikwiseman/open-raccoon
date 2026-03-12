@@ -1,7 +1,15 @@
 'use client';
 
-import DOMPurify from 'dompurify';
 import hljs from 'highlight.js/lib/core';
+
+// Lazy-initialize DOMPurify to avoid SSR crash (dompurify needs window.document)
+let _purify: typeof import('dompurify').default | null = null;
+function getPurify() {
+  if (!_purify && typeof window !== 'undefined') {
+    _purify = require('dompurify') as typeof import('dompurify').default; // eslint-disable-line
+  }
+  return _purify;
+}
 
 export type CodeBlockData = {
   type: 'code';
@@ -41,8 +49,10 @@ export function CodeBlock({ block }: { block: CodeBlockData }) {
         </button>
       </div>
       <pre className="cb-code-block-pre">
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify */}
-        <code dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(highlighted) }} />
+        <code
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized via DOMPurify
+          dangerouslySetInnerHTML={{ __html: (getPurify()?.sanitize ?? escapeHtml)(highlighted) }}
+        />
       </pre>
       {block.output && (
         <div className="cb-code-block-output">

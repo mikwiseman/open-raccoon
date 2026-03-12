@@ -44,6 +44,85 @@ export async function verifyPassword(password: string, storedHash: string): Prom
 
 const ACCESS_TOKEN_EXPIRY_SECONDS = 900; // 15 minutes
 
+/* -------------------------------------------------------------------------- */
+/*  Login Attempt Tracking — Account Lockout                                  */
+/* -------------------------------------------------------------------------- */
+
+interface LoginAttemptRecord {
+  attempts: number;
+  firstAttemptAt: number; // epoch ms
+  lockedUntil: number | null; // epoch ms, or null if not locked
+}
+
+const MAX_FAILED_ATTEMPTS = 5;
+const ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const PRUNE_INTERVAL_MS = 60_000;
+
+// email → attempt record
+const loginAttempts = new Map<string, LoginAttemptRecord>();
+
+let attemptPruneTimer: ReturnType<typeof setInterval> | null = null;
+
+function startAttemptPruneTimer() {
+  if (attemptPruneTimer) return;
+  attemptPruneTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [email, record] of loginAttempts) {
+      // Remove records whose window has expired and are not currently locked
+      const windowExpired = now - record.firstAttemptAt > ATTEMPT_WINDOW_MS;
+      const lockExpired = record.lockedUntil === null || now > record.lockedUntil;
+      if (windowExpired && lockExpired) {
+        loginAttempts.delete(email);
+      }
+    }
+  }, PRUNE_INTERVAL_MS);
+  if (attemptPruneTimer && typeof attemptPruneTimer === 'object' && 'unref' in attemptPruneTimer) {
+    attemptPruneTimer.unref();
+  }
+}
+
+function checkAccountLocked(email: string): void {
+  const record = loginAttempts.get(email);
+  if (!record?.lockedUntil) return;
+  if (Date.now() < record.lockedUntil) {
+    const remainingSec = Math.ceil((record.lockedUntil - Date.now()) / 1000);
+    throw Object.assign(
+      new Error(`Account temporarily locked. Try again in ${remainingSec} seconds.`),
+      { code: 'TOO_MANY_REQUESTS' },
+    );
+  }
+  // Lock has expired — reset the record
+  loginAttempts.delete(email);
+}
+
+function recordFailedAttempt(email: string): void {
+  const now = Date.now();
+  const record = loginAttempts.get(email);
+
+  if (!record || now - record.firstAttemptAt > ATTEMPT_WINDOW_MS) {
+    // Start a new window
+    loginAttempts.set(email, { attempts: 1, firstAttemptAt: now, lockedUntil: null });
+    startAttemptPruneTimer();
+    return;
+  }
+
+  record.attempts++;
+  if (record.attempts >= MAX_FAILED_ATTEMPTS) {
+    record.lockedUntil = now + LOCKOUT_DURATION_MS;
+  }
+  startAttemptPruneTimer();
+}
+
+function clearFailedAttempts(email: string): void {
+  loginAttempts.delete(email);
+}
+
+/** Clear all login attempt records. For testing only. */
+export function clearLoginAttempts(): void {
+  loginAttempts.clear();
+}
+
 export async function generateTokens(
   userId: string,
   role: string,
@@ -149,6 +228,9 @@ export async function login(input: LoginInput): Promise<{
 }> {
   const { email, password } = input;
 
+  // Check if account is locked before proceeding
+  checkAccountLocked(email);
+
   const rows = await sql`
     SELECT id, username, display_name, email, password_hash, avatar_url, bio, status, role, settings, plan, inserted_at, updated_at
     FROM users
@@ -157,6 +239,7 @@ export async function login(input: LoginInput): Promise<{
   `;
 
   if (rows.length === 0) {
+    recordFailedAttempt(email);
     throw Object.assign(new Error('Invalid email or password'), { code: 'UNAUTHORIZED' });
   }
 
@@ -164,8 +247,12 @@ export async function login(input: LoginInput): Promise<{
   const storedHash = row.password_hash as string;
 
   if (!storedHash || !(await verifyPassword(password, storedHash))) {
+    recordFailedAttempt(email);
     throw Object.assign(new Error('Invalid email or password'), { code: 'UNAUTHORIZED' });
   }
+
+  // Successful login — clear any failed attempt tracking
+  clearFailedAttempts(email);
 
   const user = formatUser(row);
   const tokens = await generateTokens(user.id as string, user.role as string);

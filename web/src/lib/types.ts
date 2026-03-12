@@ -255,13 +255,26 @@ export type AgentSchedule = {
 export type AgentMemory = {
   id: string;
   agent_id: string;
+  user_id: string;
   content: string;
   importance: number;
-  memory_type: 'observation' | 'reflection' | 'fact' | 'preference';
-  tags: string[];
+  memory_type:
+    | 'fact'
+    | 'preference'
+    | 'context'
+    | 'relationship'
+    | 'episodic'
+    | 'semantic'
+    | 'procedural';
+  embedding_key: string | null;
   access_count: number;
   last_accessed_at: string | null;
+  source_conversation_id: string | null;
+  source_message_id: string | null;
+  expires_at: string | null;
+  metadata: Record<string, unknown>;
   created_at: string;
+  updated_at: string | null;
 };
 
 export type AgentEvent = {

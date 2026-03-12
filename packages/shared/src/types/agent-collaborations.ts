@@ -85,6 +85,7 @@ export interface AgentCapability {
 
 export interface CreateCollaborationPayload {
   responder_agent_id: string;
+  conversation_id: string;
   task_description: string;
   context?: Record<string, unknown>;
   priority?: CollaborationPriority;
