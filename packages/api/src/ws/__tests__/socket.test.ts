@@ -216,10 +216,7 @@ describe('presence integration', () => {
     // getRelatedOnlineUsers (triggered by presence:request) finds them.
     // Use mockResolvedValue (persistent) to avoid race with straggling queries.
     const { sql } = await import('../../db/connection.js');
-    vi.mocked(sql).mockResolvedValue([
-      { user_id: USER_A_ID },
-      { user_id: USER_B_ID },
-    ] as any);
+    vi.mocked(sql).mockResolvedValue([{ user_id: USER_A_ID }, { user_id: USER_B_ID }] as any);
 
     const snapshotPromise = waitForEvent<{ onlineUsers: string[] }>(clientB, 'presence:snapshot');
     clientB.emit('presence:request');
