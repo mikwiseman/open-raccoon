@@ -219,19 +219,13 @@ describe('AgentDashboardView edge cases', () => {
     return {
       id: 'mem-1',
       agent_id: 'agent-1',
-      user_id: 'user-1',
       content: 'The user prefers TypeScript',
       importance: 0.8,
       memory_type: 'fact',
-      embedding_key: null,
+      tags: ['preference', 'language'],
       access_count: 5,
       last_accessed_at: '2026-03-10T12:00:00Z',
-      source_conversation_id: null,
-      source_message_id: null,
-      expires_at: null,
-      metadata: {},
       created_at: '2026-03-10T11:00:00Z',
-      updated_at: null,
       ...overrides,
     };
   }
