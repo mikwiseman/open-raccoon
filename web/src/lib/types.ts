@@ -147,8 +147,9 @@ export type MarketplaceAgent = {
   category: string | null;
   visibility: 'public' | 'unlisted' | 'private';
   usage_count: number;
+  rating_sum: number;
   rating_count: number;
-  average_rating: number;
+  rating_avg: number;
   created_at: string;
   updated_at: string;
 };
@@ -267,6 +268,7 @@ export type AgentMemory = {
     | 'semantic'
     | 'procedural';
   embedding_key: string | null;
+  embedding_text: string | null;
   access_count: number;
   last_accessed_at: string | null;
   source_conversation_id: string | null;

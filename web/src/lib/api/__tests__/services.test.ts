@@ -325,7 +325,7 @@ describe('WaiAgentsApi', () => {
       });
     });
 
-    it('normalizeMarketplaceAgent computes average_rating from sum/count', async () => {
+    it('normalizeMarketplaceAgent computes rating_avg from sum/count', async () => {
       fetchMock.mockResolvedValue(
         jsonResponse({
           agents: [
@@ -342,19 +342,19 @@ describe('WaiAgentsApi', () => {
 
       const result = await api.listMarketplace();
 
-      expect(result.items[0].average_rating).toBe(4.5);
+      expect(result.items[0].rating_avg).toBe(4.5);
       expect(result.items[0].rating_count).toBe(10);
       expect(result.items[0].usage_count).toBe(100);
     });
 
-    it('normalizeMarketplaceAgent prefers average_rating when present', async () => {
+    it('normalizeMarketplaceAgent prefers rating_avg when present', async () => {
       fetchMock.mockResolvedValue(
         jsonResponse({
           agents: [
             {
               id: 'a1',
               name: 'Bot',
-              average_rating: 3.8,
+              rating_avg: 3.8,
               rating_sum: 0,
               rating_count: 0,
             },
@@ -364,7 +364,7 @@ describe('WaiAgentsApi', () => {
 
       const result = await api.listMarketplace();
 
-      expect(result.items[0].average_rating).toBe(3.8);
+      expect(result.items[0].rating_avg).toBe(3.8);
     });
   });
 

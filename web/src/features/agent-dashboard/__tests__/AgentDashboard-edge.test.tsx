@@ -68,6 +68,7 @@ function makeMemory(overrides: Partial<AgentMemory> = {}): AgentMemory {
     importance: 0.8,
     memory_type: 'preference',
     embedding_key: null,
+    embedding_text: null,
     access_count: 5,
     last_accessed_at: '2026-03-10T09:00:00Z',
     source_conversation_id: null,

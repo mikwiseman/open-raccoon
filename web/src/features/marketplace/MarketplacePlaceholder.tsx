@@ -439,7 +439,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
                 </div>
                 <p className="mp-agent-desc">{agent.description || 'No description available.'}</p>
                 <div className="mp-agent-card-footer">
-                  <StarDisplay rating={agent.average_rating} count={agent.rating_count} />
+                  <StarDisplay rating={agent.rating_avg} count={agent.rating_count} />
                   <span className="mp-usage">
                     <ChatBubbleIcon /> {agent.usage_count}
                   </span>
@@ -503,7 +503,7 @@ export function MarketplaceView({ api, currentUser, onOpenConversation }: Market
 
               <div className="mp-profile-meta-row">
                 <span className="mp-category-badge">{detail.category || 'Other'}</span>
-                <StarDisplay rating={detail.average_rating} count={detail.rating_count} />
+                <StarDisplay rating={detail.rating_avg} count={detail.rating_count} />
               </div>
 
               {/* Start Conversation button */}

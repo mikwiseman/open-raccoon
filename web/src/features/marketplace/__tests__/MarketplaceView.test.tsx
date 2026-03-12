@@ -23,8 +23,9 @@ function makeMarketplaceAgent(overrides: Partial<MarketplaceAgent> = {}): Market
     category: 'Coding',
     visibility: 'public',
     usage_count: 150,
+    rating_sum: 45,
     rating_count: 10,
-    average_rating: 4.5,
+    rating_avg: 4.5,
     created_at: '2026-03-01T12:00:00Z',
     updated_at: '2026-03-10T12:00:00Z',
     ...overrides,
@@ -68,7 +69,7 @@ function createMockApi(overrides: Partial<WaiAgentsApi> = {}): WaiAgentsApi {
     description: 'Helps you write content',
     category: 'Writing',
     usage_count: 80,
-    average_rating: 4.0,
+    rating_avg: 4.0,
     rating_count: 5,
   });
   return {

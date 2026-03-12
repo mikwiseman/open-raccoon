@@ -112,6 +112,7 @@ export const agentMemories = pgTable(
     memoryType: varchar('memory_type', { length: 20 }).notNull().default('fact'),
     content: text('content').notNull(),
     embeddingKey: text('embedding_key'),
+    embeddingText: text('embedding_text'),
     embedding: vector('embedding', { dimensions: 1536 }),
     importance: doublePrecision('importance').default(0.5),
     accessCount: integer('access_count').default(0),

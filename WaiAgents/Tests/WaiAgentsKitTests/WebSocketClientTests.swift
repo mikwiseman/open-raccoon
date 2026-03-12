@@ -8,7 +8,8 @@ import Testing
 @Suite("WebSocketClient Tests")
 struct WebSocketClientTests {
 
-    private let baseURL = URL(string: "https://waiagents.com")!
+    // Use localhost:1 to avoid real network connections that hang tests
+    private let baseURL = URL(string: "http://localhost:1")!
 
     // MARK: - Helpers
 
@@ -18,7 +19,7 @@ struct WebSocketClientTests {
     }
 
     private func makeClient(
-        baseURL: String = "https://waiagents.com",
+        baseURL: String = "http://localhost:1",
         accessToken: String = "test_token",
         authManager: AuthManager? = nil
     ) -> WebSocketClient {

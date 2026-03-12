@@ -824,16 +824,14 @@ function normalizeMarketplaceAgent(item: unknown): MarketplaceAgent {
   const record = isRecord(item) ? item : {};
   const ratingCount = asNumber(record.rating_count) ?? 0;
   const ratingSum = asNumber(record.rating_sum) ?? 0;
-  const averageRating =
-    asNumber(record.average_rating) ??
-    asNumber(record.rating_avg) ??
-    (ratingCount > 0 ? ratingSum / ratingCount : 0);
+  const ratingAvg = asNumber(record.rating_avg) ?? (ratingCount > 0 ? ratingSum / ratingCount : 0);
 
   return {
     ...(record as unknown as MarketplaceAgent),
+    rating_sum: ratingSum,
     rating_count: ratingCount,
     usage_count: asNumber(record.usage_count) ?? 0,
-    average_rating: averageRating,
+    rating_avg: ratingAvg,
   };
 }
 

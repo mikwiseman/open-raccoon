@@ -90,6 +90,125 @@ describe('FeedView edge cases', () => {
     vi.restoreAllMocks();
   });
 
+  /* ---- Tab rendering ---- */
+
+  it('renders all four feed tabs', () => {
+    render(<FeedView api={api} currentUser={currentUser} />);
+    expect(screen.getByRole('tab', { name: 'For You' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Trending' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Following' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'New' })).toBeInTheDocument();
+  });
+
+  it('sets "For You" tab as active by default', () => {
+    render(<FeedView api={api} currentUser={currentUser} />);
+    const forYouTab = screen.getByRole('tab', { name: 'For You' });
+    expect(forYouTab.getAttribute('aria-selected')).toBe('true');
+  });
+
+  /* ---- Tab switching ---- */
+
+  it('switches active tab when clicking Trending', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<FeedView api={api} currentUser={currentUser} />);
+    await waitFor(() => {
+      expect(screen.getByText('Cool AI Agent')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Trending' }));
+    expect(screen.getByRole('tab', { name: 'Trending' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('tab', { name: 'For You' }).getAttribute('aria-selected')).toBe(
+      'false',
+    );
+  });
+
+  it('fetches data for Following tab when clicked', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<FeedView api={api} currentUser={currentUser} />);
+    await waitFor(() => {
+      expect(screen.getByText('Cool AI Agent')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Following' }));
+    await waitFor(() => {
+      expect(api.listFeed).toHaveBeenCalledWith('following', expect.any(Object));
+    });
+  });
+
+  it('fetches data for New tab when clicked', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<FeedView api={api} currentUser={currentUser} />);
+    await waitFor(() => {
+      expect(screen.getByText('Cool AI Agent')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'New' }));
+    await waitFor(() => {
+      expect(api.listFeed).toHaveBeenCalledWith('new', expect.any(Object));
+    });
+  });
+
+  it('uses cached data when switching back to a previously loaded tab', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<FeedView api={api} currentUser={currentUser} />);
+    await waitFor(() => {
+      expect(screen.getByText('Cool AI Agent')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Trending' }));
+    await waitFor(() => {
+      expect(api.listFeed).toHaveBeenCalledWith('trending', expect.any(Object));
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'For You' }));
+
+    await waitFor(() => {
+      const forYouCalls = (api.listFeed as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (c: unknown[]) => c[0] === 'for_you',
+      );
+      expect(forYouCalls.length).toBe(1);
+    });
+  });
+
+  /* ---- Loading state ---- */
+
+  it('displays skeleton loader cards during initial load', () => {
+    const slowApi = createMockApi({
+      listFeed: vi.fn().mockReturnValue(new Promise(() => {})),
+    });
+    render(<FeedView api={slowApi} currentUser={currentUser} />);
+    const skeletons = document.querySelectorAll('.feed-skeleton');
+    expect(skeletons.length).toBe(6);
+  });
+
+  it('skeleton cards have aria-hidden for accessibility', () => {
+    const slowApi = createMockApi({
+      listFeed: vi.fn().mockReturnValue(new Promise(() => {})),
+    });
+    render(<FeedView api={slowApi} currentUser={currentUser} />);
+    const skeletons = document.querySelectorAll('.feed-skeleton');
+    for (const skeleton of skeletons) {
+      expect(skeleton.getAttribute('aria-hidden')).toBe('true');
+    }
+  });
+
+  /* ---- Empty state ---- */
+
+  it('shows "Nothing here yet" for empty feed', async () => {
+    const emptyApi = createMockApi({
+      listFeed: vi.fn().mockResolvedValue({
+        items: [],
+        page_info: { next_cursor: null, has_more: false },
+      }),
+    });
+    render(<FeedView api={emptyApi} currentUser={currentUser} />);
+    await waitFor(() => {
+      expect(screen.getByText('Nothing here yet')).toBeInTheDocument();
+    });
+  });
+
   /* ---- Feed items rendering ---- */
 
   it('renders feed items with titles', async () => {
@@ -124,7 +243,89 @@ describe('FeedView edge cases', () => {
     });
   });
 
-  /* ---- Like / unlike toggle ---- */
+  it('renders creator name in card', async () => {
+    render(<FeedView api={api} currentUser={currentUser} />);
+    await waitFor(() => {
+      expect(screen.getByText('Bob Builder')).toBeInTheDocument();
+      expect(screen.getByText('Carol')).toBeInTheDocument();
+    });
+  });
+
+  it('renders creator initials when no avatar', async () => {
+    render(<FeedView api={api} currentUser={currentUser} />);
+    await waitFor(() => {
+      expect(screen.getAllByText('BB').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('renders thumbnail image when provided', async () => {
+    const thumbApi = createMockApi({
+      listFeed: vi.fn().mockResolvedValue({
+        items: [makeFeedItem({ thumbnail_url: 'https://example.com/thumb.jpg' })],
+        page_info: { next_cursor: null, has_more: false },
+      }),
+    });
+    render(<FeedView api={thumbApi} currentUser={currentUser} />);
+    await waitFor(() => {
+      const img = screen.getByAltText('Cool AI Agent');
+      expect(img).toHaveAttribute('src', 'https://example.com/thumb.jpg');
+    });
+  });
+
+  it('renders type icon placeholder when no thumbnail', async () => {
+    render(<FeedView api={api} currentUser={currentUser} />);
+    await waitFor(() => {
+      const typeIcons = document.querySelectorAll('.feed-card-thumb-placeholder');
+      expect(typeIcons.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('renders fallback title when item has no title', async () => {
+    const noTitleApi = createMockApi({
+      listFeed: vi.fn().mockResolvedValue({
+        items: [makeFeedItem({ id: 'feed-no-title', title: null })],
+        page_info: { next_cursor: null, has_more: false },
+      }),
+    });
+    render(<FeedView api={noTitleApi} currentUser={currentUser} />);
+    await waitFor(() => {
+      const titleEl = document.querySelector('.feed-card-title');
+      expect(titleEl).not.toBeNull();
+      expect(titleEl?.textContent).toContain('feed-no-');
+    });
+  });
+
+  it('shows "Unknown" when creator data is missing', async () => {
+    const noCreatorApi = createMockApi({
+      listFeed: vi.fn().mockResolvedValue({
+        items: [makeFeedItem({ creator: undefined })],
+        page_info: { next_cursor: null, has_more: false },
+      }),
+    });
+    render(<FeedView api={noCreatorApi} currentUser={currentUser} />);
+    await waitFor(() => {
+      expect(screen.getAllByText('Unknown').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('shows username when display_name is null', async () => {
+    const usernameOnlyApi = createMockApi({
+      listFeed: vi.fn().mockResolvedValue({
+        items: [
+          makeFeedItem({
+            creator: { id: 'user-x', username: 'xenomorph', display_name: null, avatar_url: null },
+          }),
+        ],
+        page_info: { next_cursor: null, has_more: false },
+      }),
+    });
+    render(<FeedView api={usernameOnlyApi} currentUser={currentUser} />);
+    await waitFor(() => {
+      expect(screen.getAllByText('xenomorph').length).toBeGreaterThan(0);
+    });
+  });
+
+  /* ---- Like button ---- */
 
   it('toggles like state optimistically when clicking like button', async () => {
     const singleApi = createMockApi({
@@ -139,11 +340,9 @@ describe('FeedView edge cases', () => {
     });
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    // Like button shows "10" as count
     const likeBtn = screen.getByText('10').closest('button')!;
     await user.click(likeBtn);
 
-    // Count should increase to 11 optimistically
     await waitFor(() => {
       expect(screen.getByText('11')).toBeInTheDocument();
     });
@@ -189,38 +388,10 @@ describe('FeedView edge cases', () => {
     const likeBtn = screen.getByText('10').closest('button')!;
     await user.click(likeBtn);
 
-    // Should revert to original count after error
     await waitFor(() => {
       expect(screen.getByText('10')).toBeInTheDocument();
     });
-    // Error banner should appear
     expect(screen.getByText('Like failed')).toBeInTheDocument();
-  });
-
-  /* ---- Like animation timer cleanup ---- */
-
-  it('cleans up like animation timer on unmount', async () => {
-    const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
-    const singleApi = createMockApi({
-      listFeed: vi.fn().mockResolvedValue({
-        items: [makeFeedItem({ liked_by_me: false, like_count: 10 })],
-        page_info: { next_cursor: null, has_more: false },
-      }),
-    });
-    const { unmount } = render(<FeedView api={singleApi} currentUser={currentUser} />);
-    await waitFor(() => {
-      expect(screen.getByText('Cool AI Agent')).toBeInTheDocument();
-    });
-
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const likeBtn = screen.getByText('10').closest('button')!;
-    await user.click(likeBtn);
-
-    // Unmount while the animation timer is running
-    unmount();
-    // clearTimeout should have been called during cleanup
-    expect(clearTimeoutSpy).toHaveBeenCalled();
-    clearTimeoutSpy.mockRestore();
   });
 
   it('like-pop animation class is applied during animation', async () => {
@@ -239,11 +410,32 @@ describe('FeedView edge cases', () => {
     const likeBtn = screen.getByText('10').closest('button')!;
     await user.click(likeBtn);
 
-    // Immediately after click, the button should have like-pop class
     expect(likeBtn.classList.contains('like-pop')).toBe(true);
   });
 
-  /* ---- Fork action ---- */
+  it('cleans up like animation timer on unmount', async () => {
+    const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+    const singleApi = createMockApi({
+      listFeed: vi.fn().mockResolvedValue({
+        items: [makeFeedItem({ liked_by_me: false, like_count: 10 })],
+        page_info: { next_cursor: null, has_more: false },
+      }),
+    });
+    const { unmount } = render(<FeedView api={singleApi} currentUser={currentUser} />);
+    await waitFor(() => {
+      expect(screen.getByText('Cool AI Agent')).toBeInTheDocument();
+    });
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const likeBtn = screen.getByText('10').closest('button')!;
+    await user.click(likeBtn);
+
+    unmount();
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    clearTimeoutSpy.mockRestore();
+  });
+
+  /* ---- Fork button ---- */
 
   it('calls forkAgent when fork action is clicked in detail panel', async () => {
     render(<FeedView api={api} currentUser={currentUser} />);
@@ -317,120 +509,6 @@ describe('FeedView edge cases', () => {
     });
   });
 
-  /* ---- Tab switching ---- */
-
-  it('sets "For You" tab as active by default', () => {
-    render(<FeedView api={api} currentUser={currentUser} />);
-    const forYouTab = screen.getByRole('tab', { name: 'For You' });
-    expect(forYouTab.getAttribute('aria-selected')).toBe('true');
-  });
-
-  it('marks Trending tab as active when clicked', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<FeedView api={api} currentUser={currentUser} />);
-    await waitFor(() => {
-      expect(screen.getByText('Cool AI Agent')).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('tab', { name: 'Trending' }));
-    expect(screen.getByRole('tab', { name: 'Trending' }).getAttribute('aria-selected')).toBe(
-      'true',
-    );
-    expect(screen.getByRole('tab', { name: 'For You' }).getAttribute('aria-selected')).toBe(
-      'false',
-    );
-  });
-
-  it('fetches new data when switching to Following tab', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<FeedView api={api} currentUser={currentUser} />);
-    await waitFor(() => {
-      expect(screen.getByText('Cool AI Agent')).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('tab', { name: 'Following' }));
-    await waitFor(() => {
-      expect(api.listFeed).toHaveBeenCalledWith('following', expect.any(Object));
-    });
-  });
-
-  it('fetches new data when switching to New tab', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<FeedView api={api} currentUser={currentUser} />);
-    await waitFor(() => {
-      expect(screen.getByText('Cool AI Agent')).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('tab', { name: 'New' }));
-    await waitFor(() => {
-      expect(api.listFeed).toHaveBeenCalledWith('new', expect.any(Object));
-    });
-  });
-
-  it('uses cached data when switching back to a previously loaded tab', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<FeedView api={api} currentUser={currentUser} />);
-    await waitFor(() => {
-      expect(screen.getByText('Cool AI Agent')).toBeInTheDocument();
-    });
-
-    // Switch to Trending
-    await user.click(screen.getByRole('tab', { name: 'Trending' }));
-    await waitFor(() => {
-      expect(api.listFeed).toHaveBeenCalledWith('trending', expect.any(Object));
-    });
-
-    // Switch back to For You - should use cache, not re-fetch
-    const _callCountBefore = (api.listFeed as ReturnType<typeof vi.fn>).mock.calls.length;
-    await user.click(screen.getByRole('tab', { name: 'For You' }));
-
-    // The listFeed call count should NOT increase for for_you since it's cached
-    await waitFor(() => {
-      const forYouCalls = (api.listFeed as ReturnType<typeof vi.fn>).mock.calls.filter(
-        (c: unknown[]) => c[0] === 'for_you',
-      );
-      // Should only have the initial call, not a second one
-      expect(forYouCalls.length).toBe(1);
-    });
-  });
-
-  /* ---- Empty feed state ---- */
-
-  it('shows "Nothing here yet" for empty feed', async () => {
-    const emptyApi = createMockApi({
-      listFeed: vi.fn().mockResolvedValue({
-        items: [],
-        page_info: { next_cursor: null, has_more: false },
-      }),
-    });
-    render(<FeedView api={emptyApi} currentUser={currentUser} />);
-    await waitFor(() => {
-      expect(screen.getByText('Nothing here yet')).toBeInTheDocument();
-    });
-  });
-
-  /* ---- Loading skeletons ---- */
-
-  it('displays skeleton loader cards during initial load', () => {
-    const slowApi = createMockApi({
-      listFeed: vi.fn().mockReturnValue(new Promise(() => {})),
-    });
-    render(<FeedView api={slowApi} currentUser={currentUser} />);
-    const skeletons = document.querySelectorAll('.feed-skeleton');
-    expect(skeletons.length).toBe(6);
-  });
-
-  it('skeleton cards have aria-hidden for accessibility', () => {
-    const slowApi = createMockApi({
-      listFeed: vi.fn().mockReturnValue(new Promise(() => {})),
-    });
-    render(<FeedView api={slowApi} currentUser={currentUser} />);
-    const skeletons = document.querySelectorAll('.feed-skeleton');
-    skeletons.forEach((skeleton) => {
-      expect(skeleton.getAttribute('aria-hidden')).toBe('true');
-    });
-  });
-
   /* ---- Error state ---- */
 
   it('shows error banner when feed API fails', async () => {
@@ -466,7 +544,7 @@ describe('FeedView edge cases', () => {
     });
   });
 
-  /* ---- Load more / infinite scroll ---- */
+  /* ---- Load more ---- */
 
   it('shows "Load more" button when has_more is true', async () => {
     const pagedApi = createMockApi({
@@ -513,11 +591,10 @@ describe('FeedView edge cases', () => {
     await waitFor(() => {
       expect(screen.getByText('Third Agent')).toBeInTheDocument();
     });
-    // Both items should still be visible (merged)
     expect(screen.getByText('First Agent')).toBeInTheDocument();
   });
 
-  it('shows "Loading..." on Load more button while fetching', async () => {
+  it('shows "Loading..." and disables button while loading more', async () => {
     const pagedApi = createMockApi({
       listFeed: vi
         .fn()
@@ -537,77 +614,44 @@ describe('FeedView edge cases', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Loading...')).toBeInTheDocument();
+      const btn = screen.getByText('Loading...').closest('button');
+      expect(btn).toBeDisabled();
     });
   });
 
-  it('disables Load more button while loading more', async () => {
-    const pagedApi = createMockApi({
+  it('deduplicates feed items with the same id when loading more', async () => {
+    const dupeApi = createMockApi({
       listFeed: vi
         .fn()
         .mockResolvedValueOnce({
-          items: [makeFeedItem()],
-          page_info: { next_cursor: 'cursor-2', has_more: true },
+          items: [makeFeedItem({ id: 'feed-1', title: 'Agent Alpha' })],
+          page_info: { next_cursor: 'c2', has_more: true },
         })
-        .mockReturnValueOnce(new Promise(() => {})),
+        .mockResolvedValueOnce({
+          items: [
+            makeFeedItem({ id: 'feed-1', title: 'Agent Alpha' }),
+            makeFeedItem({ id: 'feed-2', title: 'Agent Beta' }),
+          ],
+          page_info: { next_cursor: null, has_more: false },
+        }),
     });
-    render(<FeedView api={pagedApi} currentUser={currentUser} />);
+    render(<FeedView api={dupeApi} currentUser={currentUser} />);
     await waitFor(() => {
-      expect(screen.getByText('Load more')).toBeInTheDocument();
+      expect(screen.getByText('Agent Alpha')).toBeInTheDocument();
     });
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await user.click(screen.getByText('Load more'));
 
     await waitFor(() => {
-      const btn = screen.getByText('Loading...').closest('button');
-      expect(btn).toBeDisabled();
+      expect(screen.getByText('Agent Beta')).toBeInTheDocument();
     });
-  });
-
-  /* ---- Feed item card rendering ---- */
-
-  it('renders creator initials when no avatar', async () => {
-    render(<FeedView api={api} currentUser={currentUser} />);
-    await waitFor(() => {
-      // "Bob Builder" -> initials "BB"
-      expect(screen.getAllByText('BB').length).toBeGreaterThan(0);
-    });
-  });
-
-  it('renders creator name in card', async () => {
-    render(<FeedView api={api} currentUser={currentUser} />);
-    await waitFor(() => {
-      expect(screen.getByText('Bob Builder')).toBeInTheDocument();
-      expect(screen.getByText('Carol')).toBeInTheDocument();
-    });
-  });
-
-  it('renders type icon as placeholder when no thumbnail', async () => {
-    render(<FeedView api={api} currentUser={currentUser} />);
-    await waitFor(() => {
-      // The TypeIcon renders an SVG with the first letter of the type
-      const typeIcons = document.querySelectorAll('.feed-card-thumb-placeholder');
-      expect(typeIcons.length).toBeGreaterThan(0);
-    });
-  });
-
-  it('renders thumbnail image when provided', async () => {
-    const thumbApi = createMockApi({
-      listFeed: vi.fn().mockResolvedValue({
-        items: [makeFeedItem({ thumbnail_url: 'https://example.com/thumb.jpg' })],
-        page_info: { next_cursor: null, has_more: false },
-      }),
-    });
-    render(<FeedView api={thumbApi} currentUser={currentUser} />);
-    await waitFor(() => {
-      const img = screen.getByAltText('Cool AI Agent');
-      expect(img).toHaveAttribute('src', 'https://example.com/thumb.jpg');
-    });
+    expect(screen.getAllByText('Agent Alpha').length).toBe(1);
   });
 
   /* ---- Detail panel ---- */
 
-  it('shows detail panel when a feed item is selected', async () => {
+  it('shows detail panel with stats when a feed item is selected', async () => {
     render(<FeedView api={api} currentUser={currentUser} />);
     await waitFor(() => {
       expect(screen.getByText('Cool AI Agent')).toBeInTheDocument();
@@ -617,7 +661,6 @@ describe('FeedView edge cases', () => {
     await user.click(screen.getByText('Cool AI Agent'));
 
     await waitFor(() => {
-      // Detail panel should show stats using class-based selectors
       const statsLabels = document.querySelectorAll('.feed-detail-stat-label');
       const labels = Array.from(statsLabels).map((el) => el.textContent);
       expect(labels).toContain('Views');
@@ -666,7 +709,6 @@ describe('FeedView edge cases', () => {
     await user.click(screen.getByText('Cool AI Agent'));
 
     await waitFor(() => {
-      // Share is the 3rd action button
       const shareBtn = document.querySelector('.feed-detail-actions .feed-action-btn:nth-child(3)');
       expect(shareBtn).not.toBeNull();
       expect(shareBtn?.textContent).toContain('Share');
@@ -680,70 +722,16 @@ describe('FeedView edge cases', () => {
     });
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    // Select an item
     await user.click(screen.getByText('Cool AI Agent'));
     await waitFor(() => {
       expect(screen.getByText('Views')).toBeInTheDocument();
     });
 
-    // Switch tabs should clear selection
     await user.click(screen.getByRole('tab', { name: 'Trending' }));
     await waitFor(() => {
       expect(screen.getByText('Select an item to view details')).toBeInTheDocument();
     });
   });
-
-  /* ---- Feed item without title ---- */
-
-  it('renders fallback title when item has no title', async () => {
-    const noTitleApi = createMockApi({
-      listFeed: vi.fn().mockResolvedValue({
-        items: [makeFeedItem({ id: 'feed-no-title', title: null })],
-        page_info: { next_cursor: null, has_more: false },
-      }),
-    });
-    render(<FeedView api={noTitleApi} currentUser={currentUser} />);
-    await waitFor(() => {
-      // Fallback: `${item.type} · ${item.id.slice(0, 8)}` = "agent · feed-no-"
-      const titleEl = document.querySelector('.feed-card-title');
-      expect(titleEl).not.toBeNull();
-      expect(titleEl?.textContent).toContain('feed-no-');
-    });
-  });
-
-  /* ---- Creator fallback ---- */
-
-  it('shows "Unknown" when creator data is missing', async () => {
-    const noCreatorApi = createMockApi({
-      listFeed: vi.fn().mockResolvedValue({
-        items: [makeFeedItem({ creator: undefined })],
-        page_info: { next_cursor: null, has_more: false },
-      }),
-    });
-    render(<FeedView api={noCreatorApi} currentUser={currentUser} />);
-    await waitFor(() => {
-      expect(screen.getAllByText('Unknown').length).toBeGreaterThan(0);
-    });
-  });
-
-  it('shows username when display_name is null', async () => {
-    const usernameOnlyApi = createMockApi({
-      listFeed: vi.fn().mockResolvedValue({
-        items: [
-          makeFeedItem({
-            creator: { id: 'user-x', username: 'xenomorph', display_name: null, avatar_url: null },
-          }),
-        ],
-        page_info: { next_cursor: null, has_more: false },
-      }),
-    });
-    render(<FeedView api={usernameOnlyApi} currentUser={currentUser} />);
-    await waitFor(() => {
-      expect(screen.getAllByText('xenomorph').length).toBeGreaterThan(0);
-    });
-  });
-
-  /* ---- Like button in detail panel ---- */
 
   it('shows "Like" text when not liked in detail panel', async () => {
     const singleApi = createMockApi({
@@ -761,7 +749,6 @@ describe('FeedView edge cases', () => {
     await user.click(screen.getByText('Cool AI Agent'));
 
     await waitFor(() => {
-      // Like is the 1st action button in detail panel
       const likeBtn = document.querySelector('.feed-detail-actions .feed-action-btn:nth-child(1)');
       expect(likeBtn).not.toBeNull();
       expect(likeBtn?.textContent).toContain('Like');
@@ -785,43 +772,9 @@ describe('FeedView edge cases', () => {
     await user.click(screen.getByText('Cool AI Agent'));
 
     await waitFor(() => {
-      // Like is the 1st action button in detail panel
       const likeBtn = document.querySelector('.feed-detail-actions .feed-action-btn:nth-child(1)');
       expect(likeBtn).not.toBeNull();
       expect(likeBtn?.textContent).toContain('Liked');
     });
-  });
-
-  /* ---- Duplicate prevention ---- */
-
-  it('deduplicates feed items with the same id when loading more', async () => {
-    const dupeApi = createMockApi({
-      listFeed: vi
-        .fn()
-        .mockResolvedValueOnce({
-          items: [makeFeedItem({ id: 'feed-1', title: 'Agent Alpha' })],
-          page_info: { next_cursor: 'c2', has_more: true },
-        })
-        .mockResolvedValueOnce({
-          items: [
-            makeFeedItem({ id: 'feed-1', title: 'Agent Alpha' }),
-            makeFeedItem({ id: 'feed-2', title: 'Agent Beta' }),
-          ],
-          page_info: { next_cursor: null, has_more: false },
-        }),
-    });
-    render(<FeedView api={dupeApi} currentUser={currentUser} />);
-    await waitFor(() => {
-      expect(screen.getByText('Agent Alpha')).toBeInTheDocument();
-    });
-
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    await user.click(screen.getByText('Load more'));
-
-    await waitFor(() => {
-      expect(screen.getByText('Agent Beta')).toBeInTheDocument();
-    });
-    // Agent Alpha should appear only once
-    expect(screen.getAllByText('Agent Alpha').length).toBe(1);
   });
 });

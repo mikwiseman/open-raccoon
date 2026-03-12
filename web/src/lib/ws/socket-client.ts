@@ -33,9 +33,11 @@ export class SocketClient {
       return;
     }
 
-    // Remove all listeners from previous socket before creating a new one
+    // Disconnect and clean up previous socket before creating a new one
     if (this.socket) {
       this.socket.removeAllListeners();
+      this.socket.disconnect();
+      this.socket = null;
     }
 
     const url = resolveSocketUrl();

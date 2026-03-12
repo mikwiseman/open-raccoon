@@ -7,9 +7,15 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
     steps:
       - uses: actions/checkout@v4
+      - name: Check required secrets
+        run: |
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "::error::SSH_PRIVATE_KEY secret is not configured. Add it in Settings > Secrets."
+            exit 1
+          fi
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}

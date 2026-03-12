@@ -226,6 +226,7 @@ describe('AgentDashboardView edge cases', () => {
       access_count: 5,
       last_accessed_at: '2026-03-10T12:00:00Z',
       embedding_key: null,
+      embedding_text: null,
       source_conversation_id: null,
       source_message_id: null,
       expires_at: null,

@@ -431,6 +431,13 @@ export function ChatView({
     return () => el.removeEventListener('scroll', onScroll);
   }, []);
 
+  /* -- Typing timeout cleanup ----------------------------------- */
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, []);
+
   /* ================================================================
      Actions
      ================================================================ */
