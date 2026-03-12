@@ -94,9 +94,6 @@ describe('socket — authentication middleware', () => {
     const socket = createMockSocket();
     const _io = createMockIO();
 
-    // Import and create the socket server to register middleware
-    const { createSocketServer } = await import('./socket.js');
-
     // We cannot call createSocketServer directly as it needs a real HTTP server.
     // Instead, we test the middleware logic from the source:
     const _jwtSecret = new TextEncoder().encode(JWT_SECRET_STRING);

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock DB connection
 vi.mock('../../db/connection.js', () => {
@@ -461,9 +461,7 @@ describe('collaboration.service-edge — getCollaborationChain', () => {
     const unsafeMock = vi.mocked(sqlMock.unsafe);
 
     // 1. assertCollaborationAccess: sql.unsafe SELECT collab
-    unsafeMock.mockResolvedValueOnce([
-      makeCollabRow({ parent_request_id: 'circular-ref' }),
-    ] as any);
+    unsafeMock.mockResolvedValueOnce([makeCollabRow({ parent_request_id: 'circular-ref' })] as any);
     // 2. assertCollaborationAccess: sql getAgentCreatorId(requester)
     sqlMock.mockResolvedValueOnce([{ creator_id: USER_ID }] as any);
     // 3. assertCollaborationAccess: sql getAgentCreatorId(responder)
@@ -480,9 +478,7 @@ describe('collaboration.service-edge — getCollaborationChain', () => {
     // 7. Walk down iter 1: sql SELECT children of 'circular-ref'
     sqlMock.mockResolvedValueOnce([{ id: COLLAB_ID }] as any);
     // 8. Walk down iter 2: sql.unsafe SELECT collab for COLLAB_ID
-    unsafeMock.mockResolvedValueOnce([
-      makeCollabRow({ parent_request_id: 'circular-ref' }),
-    ] as any);
+    unsafeMock.mockResolvedValueOnce([makeCollabRow({ parent_request_id: 'circular-ref' })] as any);
     // 9. Walk down iter 2: sql SELECT children of COLLAB_ID
     sqlMock.mockResolvedValueOnce([{ id: 'circular-ref' }] as any);
     // Walk down iter 3: 'circular-ref' already in seen → skip. Queue empty, done.
