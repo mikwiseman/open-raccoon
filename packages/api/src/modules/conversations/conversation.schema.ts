@@ -1,14 +1,16 @@
 import { ContentBlockSchema } from '@wai-agents/shared';
 import { z } from 'zod';
 
+const stripHtml = (v: string) => v.replace(/<[^>]*>/g, '');
+
 export const CreateConversationSchema = z.object({
-  title: z.string().max(255).optional(),
+  title: z.string().max(255).transform(stripHtml).optional(),
   type: z.enum(['dm', 'group', 'agent']),
   member_ids: z.array(z.string().uuid()).optional(),
 });
 
 export const UpdateConversationSchema = z.object({
-  title: z.string().max(255).optional(),
+  title: z.string().max(255).transform(stripHtml).optional(),
   avatar_url: z.string().url().optional(),
 });
 

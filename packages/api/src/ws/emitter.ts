@@ -80,6 +80,11 @@ export function emitWorkflowEvent(userId: string, event: WorkflowEvent): void {
   io.to(`user:${userId}`).emit('workflow:event', event);
 }
 
+export function emitWorkflowRunEvent(workflowId: string, event: WorkflowEvent): void {
+  if (!io) throw new Error('Socket.IO not initialized');
+  io.to(`workflow:${workflowId}`).emit('workflow:event', event);
+}
+
 export function emitMemoryEvent(userId: string, event: MemoryEvent): void {
   if (!io) throw new Error('Socket.IO not initialized');
   io.to(`user:${userId}`).emit('memory:event', event);

@@ -143,3 +143,44 @@ export type WorkflowEvent =
   | WorkflowStepCompletedEvent
   | WorkflowRunCompletedEvent
   | WorkflowRunFailedEvent;
+
+/* ---- Orchestrator Types ---- */
+
+export interface WorkflowStepConfig {
+  id: string;
+  name: string;
+  step_type: WorkflowStepType;
+  config: Record<string, unknown>;
+  position: number;
+  timeout_ms: number;
+  retry_config: Record<string, unknown> | null;
+  parallel_group: string | null;
+  condition: Record<string, unknown> | null;
+}
+
+export interface WorkflowContext {
+  workflow_id: string;
+  run_id: string;
+  input: Record<string, unknown>;
+  step_outputs: Record<string, Record<string, unknown>>;
+  aborted: boolean;
+}
+
+export interface StepResult {
+  step_id: string;
+  step_name: string;
+  status: WorkflowStepRunStatus;
+  output: Record<string, unknown> | null;
+  error_message: string | null;
+  duration_ms: number;
+}
+
+export interface WorkflowRunResult {
+  run_id: string;
+  workflow_id: string;
+  status: WorkflowRunStatus;
+  step_results: StepResult[];
+  result: Record<string, unknown> | null;
+  error_message: string | null;
+  total_duration_ms: number;
+}

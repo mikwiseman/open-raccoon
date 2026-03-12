@@ -1,4 +1,13 @@
-import { integer, jsonb, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import {
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core';
 import { agents } from './agents.js';
 import { users } from './users.js';
 
@@ -61,49 +70,62 @@ export const workflowEdges = pgTable('workflow_edges', {
 export type WorkflowEdge = typeof workflowEdges.$inferSelect;
 export type NewWorkflowEdge = typeof workflowEdges.$inferInsert;
 
-export const workflowRuns = pgTable('workflow_runs', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  workflowId: uuid('workflow_id')
-    .notNull()
-    .references(() => agentWorkflows.id, { onDelete: 'cascade' }),
-  agentId: uuid('agent_id')
-    .notNull()
-    .references(() => agents.id, { onDelete: 'cascade' }),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  conversationId: uuid('conversation_id'),
-  status: varchar('status', { length: 16 }).notNull().default('pending'),
-  input: jsonb('input').default({}),
-  result: jsonb('result'),
-  errorMessage: text('error_message'),
-  totalDurationMs: integer('total_duration_ms'),
-  startedAt: timestamp('started_at', { withTimezone: true }),
-  completedAt: timestamp('completed_at', { withTimezone: true }),
-  insertedAt: timestamp('inserted_at', { withTimezone: true }).defaultNow(),
-});
+export const workflowRuns = pgTable(
+  'workflow_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workflowId: uuid('workflow_id')
+      .notNull()
+      .references(() => agentWorkflows.id, { onDelete: 'cascade' }),
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    conversationId: uuid('conversation_id'),
+    status: varchar('status', { length: 16 }).notNull().default('pending'),
+    input: jsonb('input').default({}),
+    result: jsonb('result'),
+    errorMessage: text('error_message'),
+    totalDurationMs: integer('total_duration_ms'),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    insertedAt: timestamp('inserted_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    workflowIdIdx: index('workflow_runs_workflow_id_idx').on(table.workflowId),
+    statusIdx: index('workflow_runs_status_idx').on(table.status),
+  }),
+);
 
 export type WorkflowRun = typeof workflowRuns.$inferSelect;
 export type NewWorkflowRun = typeof workflowRuns.$inferInsert;
 
-export const workflowStepRuns = pgTable('workflow_step_runs', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  workflowRunId: uuid('workflow_run_id')
-    .notNull()
-    .references(() => workflowRuns.id, { onDelete: 'cascade' }),
-  stepId: uuid('step_id')
-    .notNull()
-    .references(() => workflowSteps.id, { onDelete: 'cascade' }),
-  status: varchar('status', { length: 16 }).notNull().default('pending'),
-  input: jsonb('input'),
-  output: jsonb('output'),
-  errorMessage: text('error_message'),
-  retryCount: integer('retry_count').default(0),
-  durationMs: integer('duration_ms'),
-  startedAt: timestamp('started_at', { withTimezone: true }),
-  completedAt: timestamp('completed_at', { withTimezone: true }),
-  insertedAt: timestamp('inserted_at', { withTimezone: true }).defaultNow(),
-});
+export const workflowStepRuns = pgTable(
+  'workflow_step_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workflowRunId: uuid('workflow_run_id')
+      .notNull()
+      .references(() => workflowRuns.id, { onDelete: 'cascade' }),
+    stepId: uuid('step_id')
+      .notNull()
+      .references(() => workflowSteps.id, { onDelete: 'cascade' }),
+    status: varchar('status', { length: 16 }).notNull().default('pending'),
+    input: jsonb('input'),
+    output: jsonb('output'),
+    errorMessage: text('error_message'),
+    retryCount: integer('retry_count').default(0),
+    durationMs: integer('duration_ms'),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    insertedAt: timestamp('inserted_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    runIdIdx: index('workflow_step_runs_run_id_idx').on(table.workflowRunId),
+  }),
+);
 
 export type WorkflowStepRun = typeof workflowStepRuns.$inferSelect;
 export type NewWorkflowStepRun = typeof workflowStepRuns.$inferInsert;

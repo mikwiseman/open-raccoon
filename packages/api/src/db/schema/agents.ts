@@ -3,6 +3,7 @@ import {
   boolean,
   customType,
   doublePrecision,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -98,28 +99,35 @@ export const agentSchedules = pgTable('agent_schedules', {
 export type AgentSchedule = typeof agentSchedules.$inferSelect;
 export type NewAgentSchedule = typeof agentSchedules.$inferInsert;
 
-export const agentMemories = pgTable('agent_memories', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  agentId: uuid('agent_id')
-    .notNull()
-    .references(() => agents.id, { onDelete: 'cascade' }),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  memoryType: varchar('memory_type', { length: 20 }).notNull().default('fact'),
-  content: text('content').notNull(),
-  embeddingKey: text('embedding_key'),
-  embedding: vector('embedding', { dimensions: 1536 }),
-  importance: doublePrecision('importance').default(0.5),
-  accessCount: integer('access_count').default(0),
-  lastAccessedAt: timestamp('last_accessed_at', { withTimezone: true }),
-  expiresAt: timestamp('expires_at', { withTimezone: true }),
-  tags: text('tags').array().default([]),
-  decayFactor: doublePrecision('decay_factor').default(1.0),
-  metadata: jsonb('metadata').default({}),
-  insertedAt: timestamp('inserted_at', { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-});
+export const agentMemories = pgTable(
+  'agent_memories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    memoryType: varchar('memory_type', { length: 20 }).notNull().default('fact'),
+    content: text('content').notNull(),
+    embeddingKey: text('embedding_key'),
+    embedding: vector('embedding', { dimensions: 1536 }),
+    importance: doublePrecision('importance').default(0.5),
+    accessCount: integer('access_count').default(0),
+    lastAccessedAt: timestamp('last_accessed_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    tags: text('tags').array().default([]),
+    decayFactor: doublePrecision('decay_factor').default(1.0),
+    metadata: jsonb('metadata').default({}),
+    insertedAt: timestamp('inserted_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    agentIdIdx: index('agent_memories_agent_id_idx').on(table.agentId),
+    memoryTypeIdx: index('agent_memories_memory_type_idx').on(table.memoryType),
+  }),
+);
 
 export type AgentMemory = typeof agentMemories.$inferSelect;
 export type NewAgentMemory = typeof agentMemories.$inferInsert;

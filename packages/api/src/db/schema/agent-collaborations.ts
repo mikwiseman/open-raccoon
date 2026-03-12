@@ -1,33 +1,54 @@
-import { integer, jsonb, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import {
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core';
 import { agents } from './agents.js';
 import { conversations } from './conversations.js';
 import { users } from './users.js';
 
-export const agentCollaborations = pgTable('agent_collaborations', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  requesterAgentId: uuid('requester_agent_id')
-    .notNull()
-    .references(() => agents.id, { onDelete: 'cascade' }),
-  responderAgentId: uuid('responder_agent_id')
-    .notNull()
-    .references(() => agents.id, { onDelete: 'cascade' }),
-  requesterUserId: uuid('requester_user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  conversationId: uuid('conversation_id')
-    .notNull()
-    .references(() => conversations.id, { onDelete: 'cascade' }),
-  status: varchar('status', { length: 20 }).notNull().default('pending'),
-  priority: varchar('priority', { length: 10 }).notNull().default('normal'),
-  taskDescription: text('task_description').notNull(),
-  context: jsonb('context'),
-  taskResult: text('task_result'),
-  parentRequestId: uuid('parent_request_id'),
-  metadata: jsonb('metadata').default({}),
-  insertedAt: timestamp('inserted_at', { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-  completedAt: timestamp('completed_at', { withTimezone: true }),
-});
+export const agentCollaborations = pgTable(
+  'agent_collaborations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    requesterAgentId: uuid('requester_agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'cascade' }),
+    responderAgentId: uuid('responder_agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'cascade' }),
+    requesterUserId: uuid('requester_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    priority: varchar('priority', { length: 10 }).notNull().default('normal'),
+    taskDescription: text('task_description').notNull(),
+    context: jsonb('context'),
+    taskResult: text('task_result'),
+    parentRequestId: uuid('parent_request_id'),
+    metadata: jsonb('metadata').default({}),
+    insertedAt: timestamp('inserted_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+  },
+  (table) => ({
+    requesterAgentIdIdx: index('agent_collaborations_requester_agent_id_idx').on(
+      table.requesterAgentId,
+    ),
+    responderAgentIdIdx: index('agent_collaborations_responder_agent_id_idx').on(
+      table.responderAgentId,
+    ),
+    statusIdx: index('agent_collaborations_status_idx').on(table.status),
+  }),
+);
 
 export type AgentCollaboration = typeof agentCollaborations.$inferSelect;
 export type NewAgentCollaboration = typeof agentCollaborations.$inferInsert;

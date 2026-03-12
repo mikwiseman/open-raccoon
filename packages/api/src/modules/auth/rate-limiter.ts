@@ -5,6 +5,15 @@ interface RateLimitEntry {
   resetAt: number;
 }
 
+/**
+ * In-memory sliding-window rate limiter.
+ *
+ * NOTE: This implementation uses a process-local Map, which means rate limit
+ * counters are NOT shared across multiple server instances. It is suitable for
+ * single-instance deployments only. For horizontal scaling (multiple processes
+ * or containers), replace the in-memory Map with a Redis-backed store (e.g.
+ * using INCR + EXPIRE) so that rate limit state is shared across all instances.
+ */
 export function createRateLimiter(maxRequests: number, windowMs: number): MiddlewareHandler {
   const store = new Map<string, RateLimitEntry>();
 

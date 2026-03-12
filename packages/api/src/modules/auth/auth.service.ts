@@ -1,4 +1,4 @@
-import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import * as argon2 from 'argon2';
 import { jwtVerify, SignJWT } from 'jose';
@@ -289,14 +289,19 @@ export async function logout(_userId: string, token: string): Promise<void> {
   }
 }
 
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
 export async function createMagicLink(email: string): Promise<{ token: string }> {
   const token = randomBytes(32).toString('base64url');
+  const tokenHash = hashToken(token);
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
 
-  // Store token in magic_link_tokens table
+  // Store hashed token in magic_link_tokens table (never store plaintext)
   await sql`
     INSERT INTO magic_link_tokens (email, token, expires_at, used, inserted_at)
-    VALUES (${email}, ${token}, ${expiresAt}, false, NOW())
+    VALUES (${email}, ${tokenHash}, ${expiresAt}, false, NOW())
   `;
 
   return { token };
@@ -306,12 +311,14 @@ export async function verifyMagicLink(token: string): Promise<{
   user: ReturnType<typeof formatUser>;
   tokens: { access_token: string; refresh_token: string; expires_in: number };
 }> {
+  const tokenHash = hashToken(token);
+
   const rows = await sql`
     SELECT mlt.id AS token_id, mlt.expires_at, mlt.used,
            u.id, u.username, u.display_name, u.email, u.avatar_url, u.bio, u.status, u.role, u.settings, u.plan, u.inserted_at, u.updated_at
     FROM magic_link_tokens mlt
     JOIN users u ON u.email = mlt.email
-    WHERE mlt.token = ${token}
+    WHERE mlt.token = ${tokenHash}
     LIMIT 1
   `;
 
