@@ -106,7 +106,7 @@ Commands:
     const feedback = ctx.match?.trim() ?? "";
     if (feedback) {
       const { log } = await import("@wai/core");
-      log.info({ service: "feedback", action: "received", userId: String(ctx.from.id), feedback });
+      log.info({ service: "feedback", action: "received", userId: String(ctx.from?.id ?? 0), feedback });
       await ctx.reply("💬 Thanks for the feedback!");
     } else {
       await ctx.reply("Usage: `/feedback your message here`", { parse_mode: "Markdown" });
