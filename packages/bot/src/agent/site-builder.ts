@@ -201,6 +201,7 @@ export async function generateSiteHtml(
   plan?: SitePlan,
   onProgress?: ProgressCallback,
   extraHints?: string,
+  memoryContext?: string,
 ): Promise<string | null> {
   const client = new Anthropic({ apiKey: config.anthropicApiKey });
 
@@ -208,6 +209,12 @@ export async function generateSiteHtml(
 
   // Build prompt with optional plan context
   let prompt = SITE_PROMPT.replace("{description}", description.slice(0, 3000));
+
+  // Inject user memory (brand, style, preferences)
+  if (memoryContext) {
+    prompt += `\n\n${memoryContext}\n\nApply these preferences to the site design.`;
+  }
+
   if (plan) {
     prompt += `\n\n## Site Plan (follow this structure)
 - Sections: ${plan.sections.join(" → ")}
@@ -248,9 +255,10 @@ export async function generateSiteHtmlWithRetry(
   plan?: SitePlan,
   onProgress?: ProgressCallback,
   extraHints?: string,
+  memoryContext?: string,
 ): Promise<string | null> {
   // Attempt 1: full generation
-  const html = await generateSiteHtml(description, plan, onProgress, extraHints);
+  const html = await generateSiteHtml(description, plan, onProgress, extraHints, memoryContext);
   if (html) return html;
 
   // Attempt 2: retry with simplified instructions
@@ -582,6 +590,10 @@ export async function editAndDeploySite(
     return { success: false, error: "No site to edit. Use /build first to create one." };
   }
 
+  // Extract memories from edit (learn preferences)
+  const { extractMemoriesFromEdit } = await import("./memory.js");
+  extractMemoriesFromEdit(userId, editRequest);
+
   await onProgress?.("editing", `Editing ${stored.slug}.wai.computer...`);
 
   const updatedHtml = await editSite(stored.html, editRequest, onProgress);
@@ -649,17 +661,29 @@ export async function buildSite(
     await onProgress?.("planned", `Plan ready: ${plan.sections.length} sections, ${plan.interactiveElements.length} interactive elements`);
   }
 
-  // Step 2: Generate HTML with retry on failure
-  const html = await generateSiteHtmlWithRetry(description, plan, onProgress, extraPromptHints);
+  // Step 2: Load user memory for personalization
+  let memoryContext = "";
+  if (userId) {
+    const { buildMemoryContext, extractMemoriesFromBuild } = await import("./memory.js");
+    memoryContext = buildMemoryContext(userId);
+    if (memoryContext) {
+      log.info({ service: "site-builder", action: "memory-injected", userId, memorySize: memoryContext.length });
+    }
+    // Extract memories from this build (async, fire-and-forget)
+    extractMemoriesFromBuild(userId, description, slug);
+  }
+
+  // Step 3: Generate HTML with retry on failure
+  const html = await generateSiteHtmlWithRetry(description, plan, onProgress, extraPromptHints, memoryContext);
   if (!html) {
     return { success: false, slug, error: "Failed to generate HTML after 2 attempts", plan };
   }
 
-  // Step 3: Deploy
+  // Step 4: Deploy
   await onProgress?.("deploying", `Deploying to ${slug}.wai.computer...`);
   const result = await deployToCloudflare(slug, html);
 
-  // Step 4: Store for future edits
+  // Step 5: Store for future edits
   if (result.success && userId) {
     storeSite(userId, slug, html, description);
   }

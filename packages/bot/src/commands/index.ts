@@ -75,6 +75,47 @@ Commands:
     await ctx.reply("🗑️ Conversation cleared. Fresh start!");
   });
 
+  // /memory — show what the bot remembers about the user
+  bot.command("memory", async (ctx) => {
+    const userId = String(ctx.from?.id ?? 0);
+    log.info({ service: "command", action: "memory", userId });
+    const { getUserMemory } = await import("../agent/memory.js");
+    const mem = getUserMemory(userId);
+
+    if (mem.identity.length === 0 && mem.working.length === 0) {
+      await ctx.reply("🧠 I don't have any memories about you yet. Start using /build and I'll learn your preferences!");
+      return;
+    }
+
+    const parts: string[] = ["🧠 *What I remember about you:*\n"];
+
+    if (mem.identity.length > 0) {
+      parts.push("*Permanent:*");
+      for (const e of mem.identity) {
+        parts.push(`• ${e.key}: ${e.value}`);
+      }
+    }
+
+    if (mem.working.length > 0) {
+      parts.push("\n*Recent:*");
+      for (const e of mem.working.slice(-5)) {
+        parts.push(`• ${e.key}: ${e.value}`);
+      }
+    }
+
+    parts.push("\n_Use /forget to clear all memories._");
+    await ctx.reply(parts.join("\n"), { parse_mode: "Markdown" });
+  });
+
+  // /forget — clear all memories
+  bot.command("forget", async (ctx) => {
+    const userId = String(ctx.from?.id ?? 0);
+    log.info({ service: "command", action: "forget", userId });
+    const { clearMemory } = await import("../agent/memory.js");
+    clearMemory(userId);
+    await ctx.reply("🗑️ All memories cleared. Fresh start!");
+  });
+
   // /commitments
   bot.command("commitments", async (ctx) => {
     log.info({ service: "command", action: "commitments", userId: String(ctx.from?.id ?? 0) });
