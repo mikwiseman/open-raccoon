@@ -17,21 +17,71 @@ import { createHash } from "node:crypto";
 
 const DOMAIN = "wai.computer";
 
-const SITE_PROMPT = `You are a web developer. Generate a complete, beautiful, modern single-page website.
+/**
+ * SITE_PROMPT — the core prompt that determines site quality.
+ *
+ * Uses Tailwind CSS (CDN), Google Fonts, and Lucide Icons for professional output.
+ * Few-shot structure ensures consistent, high-quality results.
+ */
+const SITE_PROMPT = `You are an elite frontend developer creating production-ready websites.
+Your sites rival those built by Lovable.dev and Vercel's v0 — stunning, interactive, and professional.
 
-Description: {description}
+## Project: {description}
 
-Requirements:
-- Single HTML file with embedded CSS and JavaScript
-- Modern, clean, responsive design (mobile-first)
-- Beautiful typography and spacing, professional color scheme
-- Smooth animations and hover effects
-- Use emoji for icons (no external dependencies)
-- Include a footer: "Made with Wai ✨"
-- Do NOT use any external CDN, fonts, or frameworks
-- The file must be self-contained and look stunning
+## Tech Stack (MANDATORY — use ALL of these)
+- Tailwind CSS via CDN: <script src="https://cdn.tailwindcss.com"></script>
+- Google Fonts: Inter for body, plus one accent font that fits the project
+- Lucide Icons via CDN: <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  Use <i data-lucide="icon-name"></i> then call lucide.createIcons() at the end
+- Alpine.js for interactivity: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
 
-Respond with ONLY the HTML code starting with <!DOCTYPE html>. No markdown, no explanation.`;
+## Design System
+- Color palette: define a cohesive palette in Tailwind config (primary, secondary, accent colors)
+- Typography: Inter as base, headings with tracking-tight, proper hierarchy (text-4xl → text-base)
+- Spacing: generous padding (py-20, px-6), sections with clear visual separation
+- Rounded corners: rounded-2xl for cards, rounded-full for avatars/badges
+- Shadows: shadow-lg for cards, shadow-xl on hover with transition
+- Gradients: use gradient backgrounds for hero sections (from-primary-600 to-primary-800)
+- Dark mode: implement dark mode toggle with Alpine.js + Tailwind dark: prefix
+
+## Interactive Elements (use Alpine.js x-data, x-show, x-on, x-transition)
+- Mobile hamburger menu with smooth slide-in animation
+- Smooth scroll navigation between sections
+- FAQ accordion with expand/collapse animations
+- Tabs for content switching
+- Modal dialogs for CTAs
+- Form validation with real-time feedback
+- Toast notifications
+- Counter animations (numbers counting up on scroll)
+- Image lightbox/gallery with navigation
+
+## Required Sections (adapt to project context)
+1. Hero — bold headline, subtext, CTA button with hover animation, optional background image/gradient
+2. Features/Services — 3-4 cards with icons, hover lift effect
+3. Social Proof — testimonials carousel or grid, star ratings
+4. Pricing/Menu — clean pricing table or product grid
+5. FAQ — accordion with smooth animations
+6. Contact/CTA — form with validation, or strong call-to-action
+7. Footer — links, social icons, "Made with Wai ✨"
+
+## Quality Checklist
+✓ Mobile-first responsive (looks perfect on phone AND desktop)
+✓ Smooth transitions on ALL interactive elements (transition-all duration-300)
+✓ Accessible (proper heading hierarchy, alt text, aria labels, focus states)
+✓ Fast loading (no heavy images, use SVG/icons, lazy load if needed)
+✓ Scroll animations (elements fade/slide in as user scrolls — use IntersectionObserver)
+✓ Professional copywriting (generate realistic, compelling text — NOT "Lorem ipsum")
+✓ Consistent spacing and alignment throughout
+✓ Hover states on ALL clickable elements
+
+## Output Rules
+- Single HTML file with ALL CSS/JS inline or via CDN links above
+- Start with <!DOCTYPE html> — no markdown wrapping, no explanation
+- Tailwind config customization via <script> block before the CDN script
+- Initialize Lucide icons and Alpine.js at end of body
+- Generate REAL content that fits the project description — realistic names, prices, descriptions
+
+Respond with ONLY the HTML code. No markdown, no explanation, no \`\`\` blocks.`;
 
 /**
  * Generate a URL-safe slug from a name.
@@ -237,24 +287,35 @@ export async function buildSiteWithAgent(description: string, slug: string): Pro
     const { query } = await import("@anthropic-ai/claude-agent-sdk");
 
     for await (const message of query({
-      prompt: `Create a beautiful, modern static website based on this description:
-${description}
+      prompt: `Create a production-quality static website. Write ALL files to the current directory.
+
+Project: ${description}
+
+Tech stack:
+- Tailwind CSS via CDN (cdn.tailwindcss.com)
+- Alpine.js for interactivity (cdn.jsdelivr.net/npm/alpinejs@3)
+- Lucide Icons (unpkg.com/lucide@latest)
+- Google Fonts: Inter + one accent font
+
+Create these files:
+1. index.html — main page with all sections (hero, features, testimonials, pricing, FAQ, contact, footer)
+2. style.css — custom styles beyond Tailwind (animations, scroll effects)
+3. app.js — Alpine.js components, scroll animations, form handling, dark mode toggle
 
 Requirements:
-- Write index.html, style.css, and any needed JS files
-- Mobile-responsive design with modern aesthetics
-- Good typography, spacing, and color scheme
-- Smooth animations and transitions
-- All assets inline or CDN-linked (no local images)
-- Include footer: "Made with Wai ✨"
-- The site must work as a standalone static site
-- Write ALL files to the current directory`,
+- Mobile-first responsive design
+- Dark mode support
+- Smooth animations and transitions on all interactive elements
+- Real content (not lorem ipsum) — generate compelling copy that fits the project
+- Professional color palette defined in Tailwind config
+- Accessible (aria labels, focus states, semantic HTML)
+- Footer: "Made with Wai ✨"`,
       options: {
         cwd: workdir,
         allowedTools: ["Write", "Read"],
         permissionMode: "bypassPermissions",
         allowDangerouslySkipPermissions: true,
-        maxTurns: 15,
+        maxTurns: 20,
         model: "claude-haiku-4-5",
       },
     })) {

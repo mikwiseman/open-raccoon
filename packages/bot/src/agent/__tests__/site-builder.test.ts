@@ -1,4 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// Mock dependencies so we can import SITE_PROMPT
+vi.mock("@wai/core", () => ({
+  config: { anthropicApiKey: "", cloudflareApiToken: "", cloudflareAccountId: "" },
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}));
+vi.mock("@anthropic-ai/sdk", () => ({
+  default: vi.fn().mockImplementation(() => ({ messages: { create: vi.fn() } })),
+}));
+
 import { generateSlug } from "../site-builder.js";
 
 describe("generateSlug", () => {
