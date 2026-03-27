@@ -200,6 +200,7 @@ export async function generateSiteHtml(
   description: string,
   plan?: SitePlan,
   onProgress?: ProgressCallback,
+  extraHints?: string,
 ): Promise<string | null> {
   const client = new Anthropic({ apiKey: config.anthropicApiKey });
 
@@ -213,6 +214,10 @@ export async function generateSiteHtml(
 - Color scheme: ${plan.colorScheme}
 - Typography: ${plan.typography}
 - Interactive elements: ${plan.interactiveElements.join(", ")}`;
+  }
+
+  if (extraHints) {
+    prompt += `\n\n## Additional Requirements\n${extraHints}`;
   }
 
   await onProgress?.("generating", "Writing HTML, CSS, and JavaScript...");
@@ -242,9 +247,10 @@ export async function generateSiteHtmlWithRetry(
   description: string,
   plan?: SitePlan,
   onProgress?: ProgressCallback,
+  extraHints?: string,
 ): Promise<string | null> {
   // Attempt 1: full generation
-  const html = await generateSiteHtml(description, plan, onProgress);
+  const html = await generateSiteHtml(description, plan, onProgress, extraHints);
   if (html) return html;
 
   // Attempt 2: retry with simplified instructions
@@ -625,13 +631,26 @@ export async function buildSite(
     return { ...result, slug };
   }
 
-  // Step 1: Plan the site
-  await onProgress?.("planning", "Analyzing your description and planning the site architecture...");
-  const plan = await planSite(description);
-  await onProgress?.("planned", `Plan ready: ${plan.sections.length} sections, ${plan.interactiveElements.length} interactive elements`);
+  // Step 1: Detect template or plan from scratch
+  const { detectTemplate } = await import("./templates.js");
+  const template = detectTemplate(description);
+
+  let plan: SitePlan;
+  let extraPromptHints = "";
+
+  if (template) {
+    plan = template.plan;
+    extraPromptHints = template.promptHints;
+    await onProgress?.("planning", `Using "${template.name}" template — ${plan.sections.length} sections, ${plan.interactiveElements.length} interactive elements`);
+    log.info({ service: "site-builder", action: "template-matched", template: template.id, slug });
+  } else {
+    await onProgress?.("planning", "Analyzing your description and planning the site architecture...");
+    plan = await planSite(description);
+    await onProgress?.("planned", `Plan ready: ${plan.sections.length} sections, ${plan.interactiveElements.length} interactive elements`);
+  }
 
   // Step 2: Generate HTML with retry on failure
-  const html = await generateSiteHtmlWithRetry(description, plan, onProgress);
+  const html = await generateSiteHtmlWithRetry(description, plan, onProgress, extraPromptHints);
   if (!html) {
     return { success: false, slug, error: "Failed to generate HTML after 2 attempts", plan };
   }

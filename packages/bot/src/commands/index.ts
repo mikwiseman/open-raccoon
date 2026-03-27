@@ -81,6 +81,16 @@ Commands:
     await ctx.reply("No open commitments found.");
   });
 
+  // /templates — list available site templates
+  bot.command("templates", async (ctx) => {
+    log.info({ service: "command", action: "templates", userId: String(ctx.from?.id ?? 0) });
+    const { listTemplates } = await import("../agent/templates.js");
+    await ctx.reply(
+      `🎨 *Available Templates*\n\n${listTemplates()}\n\n💡 Use: \`/build Landing page for my restaurant\` — template auto-detected!`,
+      { parse_mode: "Markdown" },
+    );
+  });
+
   // /build — generate and deploy a website
   bot.command("build", async (ctx) => {
     const userId = String(ctx.from?.id ?? 0);
@@ -268,6 +278,7 @@ Commands:
     { command: "search", description: "Search messages by meaning" },
     { command: "build", description: "Create & publish a website" },
     { command: "edit", description: "Edit the last built site" },
+    { command: "templates", description: "Browse site templates" },
     { command: "digest", description: "Daily activity digest" },
     { command: "commitments", description: "Track promises" },
     { command: "briefing", description: "Morning briefing" },
