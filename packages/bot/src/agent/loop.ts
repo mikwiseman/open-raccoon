@@ -80,9 +80,12 @@ export async function runAgent(opts: {
   voiceTranscript?: string;
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>;
 }): Promise<AgentResult> {
+  log.info({ service: "agent", action: "run-start", userId: opts.userId, messageLength: opts.message.length });
+
   // 1. Classify intent
   const intent = classifyIntent(opts.message, opts.hasVoice);
   const model = getModelForIntent(intent);
+  log.debug({ service: "agent", action: "classified", intent, model });
 
   // 2. Build soul prompt
   const systemPrompt = buildSoulPrompt({
@@ -129,6 +132,7 @@ export async function runAgent(opts: {
       for (const block of response.content) {
         if (block.type === "tool_use") {
           toolCallCount++;
+          log.info({ service: "agent", action: "tool-call", tool: block.name, turn, userId: opts.userId });
           const result = await executeTool(block.name, block.input as Record<string, unknown>);
           toolResults.push({
             type: "tool_result",
@@ -149,6 +153,12 @@ export async function runAgent(opts: {
       }
     }
 
+    log.info({
+      service: "agent", action: "run-complete", userId: opts.userId,
+      intent, inputTokens: totalInputTokens, outputTokens: totalOutputTokens,
+      toolCalls: toolCallCount, turns: turn + 1,
+    });
+
     return {
       response: textParts.join("\n") || "I processed your request.",
       intent,
@@ -158,6 +168,8 @@ export async function runAgent(opts: {
       toolCalls: toolCallCount,
     };
   }
+
+  log.warn({ service: "agent", action: "max-turns", userId: opts.userId, toolCalls: toolCallCount });
 
   return {
     response: "I've been working on this but reached my turn limit.",

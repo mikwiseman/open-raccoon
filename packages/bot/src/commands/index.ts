@@ -3,11 +3,13 @@
  */
 
 import type { Bot } from "grammy";
+import { log } from "@wai/core";
 import { detectLanguage } from "../agent/language.js";
 
 export function setupCommands(bot: Bot) {
   // /start and /help
   bot.command(["start", "help"], async (ctx) => {
+    log.info({ service: "command", action: "help", userId: String(ctx.from?.id ?? 0) });
     const lang = detectLanguage(ctx.from?.first_name ?? "");
     const isRu = lang === "ru";
 
@@ -54,6 +56,7 @@ Commands:
 
   // /status
   bot.command("status", async (ctx) => {
+    log.info({ service: "command", action: "status", userId: String(ctx.from?.id ?? 0) });
     const uptime = Math.floor(process.uptime());
     const h = Math.floor(uptime / 3600);
     const m = Math.floor((uptime % 3600) / 60);
@@ -65,38 +68,59 @@ Commands:
 
   // /clear
   bot.command("clear", async (ctx) => {
+    log.info({ service: "command", action: "clear", userId: String(ctx.from?.id ?? 0) });
     // TODO: clear conversation history
     await ctx.reply("🗑️ Conversation cleared. Fresh start!");
   });
 
   // /commitments
   bot.command("commitments", async (ctx) => {
+    log.info({ service: "command", action: "commitments", userId: String(ctx.from?.id ?? 0) });
     await ctx.reply("No open commitments found.");
   });
 
   // /build — generate and deploy a website
   bot.command("build", async (ctx) => {
-    const description = ctx.match?.trim() ?? "";
+    const userId = String(ctx.from?.id ?? 0);
+    let description = ctx.match?.trim() ?? "";
+
+    // Check for --agent flag
+    const useAgent = description.includes("--agent");
+    if (useAgent) {
+      description = description.replace("--agent", "").trim();
+    }
+
     if (!description || description.length < 10) {
       await ctx.reply(
         "🚀 Usage: `/build <description>`\n\n" +
-        "Example: `/build Landing page for cafe Sunrise. Menu: coffee $3, latte $4.`",
+        "Examples:\n" +
+        "• `/build Landing page for cafe Sunrise. Menu: coffee $3, latte $4.`\n" +
+        "• `/build --agent Portfolio site for photographer with gallery and contact form`",
         { parse_mode: "Markdown" },
       );
       return;
     }
 
+    const mode = useAgent ? "agent" : "simple";
+    log.info({ service: "command", action: "build", userId, mode, descriptionLength: description.length });
     await ctx.replyWithChatAction("typing");
+    if (useAgent) {
+      await ctx.reply("🤖 Agent mode: building multi-file site...");
+    }
+
     const { buildSite } = await import("../agent/site-builder.js");
     const name = description.includes(".") ? description.split(".")[0]?.slice(0, 40) : description.slice(0, 40);
-    const result = await buildSite(description, name);
+    const result = await buildSite(description, name, mode);
 
     if (result.success) {
+      log.info({ service: "command", action: "build-success", userId, slug: result.slug, url: result.url });
+      const fileInfo = result.fileCount && result.fileCount > 1 ? `\n📂 Files: ${result.fileCount}` : "";
       await ctx.reply(
-        `🚀 *Site deployed!*\n\n🌐 URL: ${result.url}\n📁 Slug: \`${result.slug}\``,
+        `🚀 *Site deployed!*\n\n🌐 URL: ${result.url}\n📁 Slug: \`${result.slug}\`${fileInfo}`,
         { parse_mode: "Markdown" },
       );
     } else {
+      log.error({ service: "command", action: "build-failed", userId, error: result.error });
       await ctx.reply(`❌ ${result.error}\n\nTry a more detailed description.`);
     }
   });

@@ -3,12 +3,15 @@
  */
 
 import type { Bot } from "grammy";
+import { log, captureError } from "@wai/core";
 import { runAgent } from "../agent/loop.js";
 import { detectLanguage } from "../agent/language.js";
 
 export function setupHandlers(bot: Bot) {
   // Voice messages → transcribe + summarize
   bot.on("message:voice", async (ctx) => {
+    const userId = String(ctx.from?.id ?? 0);
+    log.info({ service: "handler", action: "voice-received", userId });
     await ctx.replyWithChatAction("typing");
     // TODO: Download voice, transcribe with Deepgram, summarize
     await ctx.reply("🎤 Voice message received. Transcription coming soon!");
@@ -16,6 +19,8 @@ export function setupHandlers(bot: Bot) {
 
   // Photos → Claude Vision description
   bot.on("message:photo", async (ctx) => {
+    const userId = String(ctx.from?.id ?? 0);
+    log.info({ service: "handler", action: "photo-received", userId });
     await ctx.replyWithChatAction("typing");
     // TODO: Download photo, describe with Claude Vision
     await ctx.reply("📷 Photo received. Analysis coming soon!");
@@ -23,8 +28,10 @@ export function setupHandlers(bot: Bot) {
 
   // Documents → text extraction
   bot.on("message:document", async (ctx) => {
-    await ctx.replyWithChatAction("typing");
+    const userId = String(ctx.from?.id ?? 0);
     const fileName = ctx.message.document.file_name ?? "unknown";
+    log.info({ service: "handler", action: "document-received", userId, fileName });
+    await ctx.replyWithChatAction("typing");
     await ctx.reply(`📄 Document received: *${fileName}*. Processing coming soon!`, {
       parse_mode: "Markdown",
     });
@@ -32,7 +39,9 @@ export function setupHandlers(bot: Bot) {
 
   // Forwarded messages → remember
   bot.on("message:forward_origin", async (ctx) => {
+    const userId = String(ctx.from?.id ?? 0);
     const text = ctx.message.text ?? ctx.message.caption ?? "";
+    log.info({ service: "handler", action: "forward-received", userId, hasText: !!text });
     if (!text) {
       await ctx.reply("📝 Content received and saved.");
       return;
@@ -51,14 +60,24 @@ export function setupHandlers(bot: Bot) {
     // Skip if it's a command (handled by command handlers)
     if (text.startsWith("/")) return;
 
+    const userId = String(ctx.from.id);
+    const lang = detectLanguage(text);
+    log.info({ service: "handler", action: "text-received", userId, lang, length: text.length });
+
     await ctx.replyWithChatAction("typing");
 
     try {
       const result = await runAgent({
         message: text,
-        userId: String(ctx.from.id),
+        userId,
         userName: ctx.from.first_name,
-        userLanguage: detectLanguage(text),
+        userLanguage: lang,
+      });
+
+      log.info({
+        service: "handler", action: "agent-response", userId,
+        intent: result.intent, tokens: result.inputTokens + result.outputTokens,
+        toolCalls: result.toolCalls,
       });
 
       await ctx.reply(result.response, { parse_mode: "Markdown" }).catch(() => {
@@ -66,8 +85,8 @@ export function setupHandlers(bot: Bot) {
         ctx.reply(result.response);
       });
     } catch (error) {
-      console.error("Agent error:", error);
-      const lang = detectLanguage(text);
+      log.error({ service: "handler", action: "agent-error", userId, error: String(error) });
+      captureError(error instanceof Error ? error : new Error(String(error)), { userId });
       const errorMsg = lang === "ru"
         ? "⚠️ Произошла ошибка. Попробуйте ещё раз."
         : "⚠️ Something went wrong. Please try again.";

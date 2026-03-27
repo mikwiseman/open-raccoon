@@ -3,13 +3,17 @@
  *
  * Two modes:
  * 1. Simple: Claude generates single HTML file → deploy to Cloudflare Pages
- * 2. Agent: Claude Agent SDK builds full React app → deploy to Cloudflare Pages
+ * 2. Agent: Claude Agent SDK builds multi-file site → deploy to Cloudflare Pages
  *
  * All sites deployed to {slug}.wai.computer via Cloudflare Pages.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import { config, log } from "@wai/core";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createHash } from "node:crypto";
 
 const DOMAIN = "wai.computer";
 
@@ -137,21 +141,170 @@ export async function deployToCloudflare(slug: string, html: string): Promise<{
 }
 
 /**
- * Build and deploy a site — the main entry point.
+ * Deploy a directory of files to Cloudflare Pages.
+ * Reads all files recursively, builds manifest with MD5 hashes.
  */
-export async function buildSite(description: string, name?: string): Promise<{
+export async function deployDirectoryToCloudflare(slug: string, dir: string): Promise<{
+  success: boolean;
+  url?: string;
+  error?: string;
+}> {
+  const { cloudflareApiToken, cloudflareAccountId } = config;
+
+  if (!cloudflareApiToken || !cloudflareAccountId) {
+    return { success: false, error: "Cloudflare credentials not configured" };
+  }
+
+  log.info({ service: "site-builder", action: "deploying-directory", slug, dir });
+
+  try {
+    const files = await collectFiles(dir, dir);
+
+    if (files.length === 0) {
+      return { success: false, error: "No files generated" };
+    }
+
+    const manifest: Record<string, string> = {};
+    const formData = new FormData();
+
+    for (const file of files) {
+      const content = await readFile(file.absolutePath);
+      const hash = createHash("md5").update(content).digest("hex");
+      manifest[file.relativePath] = hash;
+      formData.append(hash, new Blob([content]), file.relativePath.slice(1));
+    }
+
+    formData.append("manifest", JSON.stringify(manifest));
+
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/pages/projects/wai-sites/deployments`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${cloudflareApiToken}` },
+        body: formData,
+      },
+    );
+
+    const data = await response.json() as { success: boolean; result?: { url: string } };
+
+    if (data.success) {
+      const url = `https://${slug}.${DOMAIN}`;
+      log.info({ service: "site-builder", action: "deployed-directory", slug, url, fileCount: files.length });
+      return { success: true, url };
+    }
+
+    log.error({ service: "site-builder", action: "deploy-directory-failed", error: JSON.stringify(data) });
+    return { success: false, error: "Cloudflare deploy failed" };
+  } catch (error) {
+    log.error({ service: "site-builder", action: "deploy-directory-error", error: String(error) });
+    return { success: false, error: String(error) };
+  }
+}
+
+/** Recursively collect files from a directory. */
+async function collectFiles(dir: string, root: string): Promise<Array<{ absolutePath: string; relativePath: string }>> {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files: Array<{ absolutePath: string; relativePath: string }> = [];
+
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await collectFiles(fullPath, root));
+    } else if (entry.isFile()) {
+      const rel = "/" + fullPath.slice(root.length + 1);
+      files.push({ absolutePath: fullPath, relativePath: rel });
+    }
+  }
+
+  return files;
+}
+
+/**
+ * Build a multi-file site using Claude Agent SDK.
+ * Agent writes files to a temp directory, then we deploy all of them.
+ */
+export async function buildSiteWithAgent(description: string, slug: string): Promise<{
+  success: boolean;
+  url?: string;
+  error?: string;
+  fileCount?: number;
+}> {
+  const workdir = await mkdtemp(join(tmpdir(), "wai-site-"));
+
+  log.info({ service: "site-builder", action: "agent-build-start", slug, workdir });
+
+  try {
+    const { query } = await import("@anthropic-ai/claude-agent-sdk");
+
+    for await (const message of query({
+      prompt: `Create a beautiful, modern static website based on this description:
+${description}
+
+Requirements:
+- Write index.html, style.css, and any needed JS files
+- Mobile-responsive design with modern aesthetics
+- Good typography, spacing, and color scheme
+- Smooth animations and transitions
+- All assets inline or CDN-linked (no local images)
+- Include footer: "Made with Wai ✨"
+- The site must work as a standalone static site
+- Write ALL files to the current directory`,
+      options: {
+        cwd: workdir,
+        allowedTools: ["Write", "Read"],
+        permissionMode: "bypassPermissions",
+        allowDangerouslySkipPermissions: true,
+        maxTurns: 15,
+        model: "claude-haiku-4-5",
+      },
+    })) {
+      if ("result" in message) {
+        log.info({ service: "site-builder", action: "agent-build-done", slug });
+      }
+    }
+
+    const files = await collectFiles(workdir, workdir);
+    log.info({ service: "site-builder", action: "agent-files-generated", slug, fileCount: files.length });
+
+    if (files.length === 0) {
+      return { success: false, error: "Agent produced no files" };
+    }
+
+    const result = await deployDirectoryToCloudflare(slug, workdir);
+    return { ...result, fileCount: files.length };
+  } catch (error) {
+    log.error({ service: "site-builder", action: "agent-build-error", slug, error: String(error) });
+    return { success: false, error: String(error) };
+  } finally {
+    // Clean up temp directory
+    await rm(workdir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
+ * Build and deploy a site — the main entry point.
+ * Uses simple mode (single HTML) by default, agent mode for complex descriptions.
+ */
+export async function buildSite(description: string, name?: string, mode: "simple" | "agent" = "simple"): Promise<{
   success: boolean;
   url?: string;
   slug?: string;
   error?: string;
+  fileCount?: number;
 }> {
   const slug = generateSlug(name ?? description.split(".")[0] ?? description.slice(0, 30));
 
+  if (mode === "agent") {
+    const result = await buildSiteWithAgent(description, slug);
+    return { ...result, slug };
+  }
+
+  // Simple mode: single HTML file
   const html = await generateSiteHtml(description);
   if (!html) {
     return { success: false, slug, error: "Failed to generate HTML" };
   }
 
   const result = await deployToCloudflare(slug, html);
-  return { ...result, slug };
+  return { ...result, slug, fileCount: 1 };
 }
