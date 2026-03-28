@@ -1041,7 +1041,9 @@ export async function buildSite(
     return { success: false, slug, error: "Failed to generate HTML after 2 attempts", plan };
   }
 
-  // Step 4: Inject analytics + form handler
+  // Step 4: Inject SEO + analytics + form handler
+  const { injectSeoTags } = await import("./seo.js");
+  html = injectSeoTags(html, slug, description);
   html = injectAnalytics(html, slug);
   html = injectFormHandler(html, slug);
 
