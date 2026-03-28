@@ -111,8 +111,15 @@ export function setupHandlers(bot: Bot) {
 
     const userId = String(ctx.from.id);
     const chatId = ctx.chat.id;
+    const userName = ctx.from.first_name;
     const lang = detectLanguage(text);
-    log.info({ service: "handler", action: "text-received", userId, lang, length: text.length });
+
+    // Use effective owner ID — groups share a site, private chats are per-user
+    const { getEffectiveOwnerId, isGroupChat, recordContribution } = await import("../agent/collab.js");
+    const ownerId = getEffectiveOwnerId(chatId, userId);
+    const isGroup = isGroupChat(chatId);
+
+    log.info({ service: "handler", action: "text-received", userId, ownerId, isGroup, lang, length: text.length });
 
     await ctx.replyWithChatAction("typing");
 
@@ -148,7 +155,8 @@ export function setupHandlers(bot: Bot) {
 
           // Remove the URL from description for slug generation
           const cleanDesc = text.replace(/https?:\/\/[^\s]+/g, "").replace(/[\w-]+\.(?:com|org|net|io|dev)/g, "").trim();
-          const result = await buildSite(cleanDesc || `Inspired by ${analysis.title}`, undefined, "simple", onProgress, userId);
+          const result = await buildSite(cleanDesc || `Inspired by ${analysis.title}`, undefined, "simple", onProgress, ownerId);
+          if (result.success && isGroup) recordContribution(String(chatId), userId, userName, "build", `Clone: ${analysis.title}`);
 
           if (result.success) {
             try {
@@ -174,8 +182,8 @@ export function setupHandlers(bot: Bot) {
       const { isSiteEditIntent } = await import("../agent/router.js");
       const { getStoredSite, editAndDeploySite } = await import("../agent/site-builder.js");
 
-      if (isSiteEditIntent(text) && getStoredSite(userId)) {
-        log.info({ service: "handler", action: "auto-edit-detected", userId, text: text.slice(0, 60) });
+      if (isSiteEditIntent(text) && getStoredSite(ownerId)) {
+        log.info({ service: "handler", action: "auto-edit-detected", userId, ownerId, text: text.slice(0, 60) });
 
         const progressMsg = await ctx.reply("✏️ *Editing your site...*", { parse_mode: "Markdown" });
 
@@ -187,7 +195,8 @@ export function setupHandlers(bot: Bot) {
           } catch { /* ignore */ }
         };
 
-        const result = await editAndDeploySite(userId, text, onProgress);
+        const result = await editAndDeploySite(ownerId, text, onProgress);
+        if (result.success && isGroup) recordContribution(String(chatId), userId, userName, "edit", text.slice(0, 80));
 
         if (result.success) {
           log.info({ service: "handler", action: "auto-edit-success", userId, slug: result.slug });
