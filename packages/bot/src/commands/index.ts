@@ -411,6 +411,24 @@ Commands:
     await ctx.reply(lines.join("\n"), { parse_mode: "Markdown" });
   });
 
+  // /stats — show site visitor analytics
+  bot.command("stats", async (ctx) => {
+    const userId = String(ctx.from?.id ?? 0);
+    log.info({ service: "command", action: "stats", userId });
+
+    const { getStoredSite } = await import("../agent/site-builder.js");
+    const stored = getStoredSite(userId);
+
+    if (!stored) {
+      await ctx.reply("📊 No site to show stats for. Use /build first.");
+      return;
+    }
+
+    const { getSiteStats, formatStats } = await import("../agent/analytics.js");
+    const stats = getSiteStats(stored.slug);
+    await ctx.reply(formatStats(stats), { parse_mode: "Markdown" });
+  });
+
   // /feedback
   bot.command("feedback", async (ctx) => {
     const feedback = ctx.match?.trim() ?? "";
@@ -432,6 +450,7 @@ Commands:
     { command: "undo", description: "Revert to previous version" },
     { command: "redo", description: "Restore next version" },
     { command: "history", description: "Site version history" },
+    { command: "stats", description: "Site visitor analytics" },
     { command: "templates", description: "Browse site templates" },
     { command: "memory", description: "What I remember about you" },
     { command: "status", description: "Stats & health" },

@@ -16,6 +16,23 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 
 const DOMAIN = "wai.computer";
+const TRACKING_ENDPOINT = "https://telegram.waiwai.is/api/v1/track";
+
+/**
+ * Inject analytics snippet into generated HTML.
+ * Inserts lightweight tracking JS before </body>.
+ * Privacy-first: no cookies, no personal data, ~200 bytes.
+ */
+export function injectAnalytics(html: string, slug: string): string {
+  const snippet = `<script>
+(function(){var s='${slug}',e='${TRACKING_ENDPOINT}';var d={s:s,p:location.hash||'/',r:document.referrer||'direct',u:navigator.userAgent};try{navigator.sendBeacon(e,JSON.stringify(d))}catch(x){var i=new Image();i.src=e+'?d='+encodeURIComponent(JSON.stringify(d));}window.addEventListener('hashchange',function(){d.p=location.hash||'/';try{navigator.sendBeacon(e,JSON.stringify(d))}catch(x){}});})();
+</script>`;
+
+  if (html.includes("</body>")) {
+    return html.replace("</body>", `${snippet}\n</body>`);
+  }
+  return html + snippet;
+}
 
 /**
  * SITE_PROMPT — the core prompt that determines site quality.
@@ -1005,7 +1022,10 @@ export async function buildSite(
     return { success: false, slug, error: "Failed to generate HTML after 2 attempts", plan };
   }
 
-  // Step 4: Deploy
+  // Step 4: Inject analytics snippet
+  html = injectAnalytics(html, slug);
+
+  // Step 5: Deploy
   await onProgress?.("deploying", `Deploying to ${slug}.wai.computer...`);
   const result = await deployToCloudflare(slug, html);
 
