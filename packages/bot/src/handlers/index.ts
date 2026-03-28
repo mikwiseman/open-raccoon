@@ -117,6 +117,59 @@ export function setupHandlers(bot: Bot) {
     await ctx.replyWithChatAction("typing");
 
     try {
+      // Check if this is a clone/inspiration request (URL + "like/как у")
+      const { isCloneRequest, extractUrls, analyzeReferenceUrl, analysisToSitePlan, buildClonePromptHints } = await import("../agent/cloner.js");
+
+      if (isCloneRequest(text)) {
+        const urls = extractUrls(text);
+        if (urls.length > 0) {
+          log.info({ service: "handler", action: "clone-detected", userId, url: urls[0] });
+
+          const progressMsg = await ctx.reply("🔍 *Analyzing reference site...*", { parse_mode: "Markdown" });
+
+          const analysis = await analyzeReferenceUrl(urls[0]);
+          try {
+            await ctx.api.editMessageText(ctx.chat.id, progressMsg.message_id,
+              `🔍 *Analyzed ${analysis.title}*\n\n📐 ${analysis.sections.length} sections, ${analysis.features.length} features\n⚡ Generating your version...`,
+              { parse_mode: "Markdown" });
+          } catch { /* ignore */ }
+
+          const plan = analysisToSitePlan(analysis);
+          const hints = buildClonePromptHints(analysis, text);
+
+          const { buildSite } = await import("../agent/site-builder.js");
+          const onProgress = async (stage: string, detail: string) => {
+            try {
+              await ctx.api.editMessageText(ctx.chat.id, progressMsg.message_id,
+                `🔍 *Cloning ${analysis.title} style...*\n\n${stage === "deploying" ? "🚀" : "⚡"} ${detail}`,
+                { parse_mode: "Markdown" });
+            } catch { /* ignore */ }
+          };
+
+          // Remove the URL from description for slug generation
+          const cleanDesc = text.replace(/https?:\/\/[^\s]+/g, "").replace(/[\w-]+\.(?:com|org|net|io|dev)/g, "").trim();
+          const result = await buildSite(cleanDesc || `Inspired by ${analysis.title}`, undefined, "simple", onProgress, userId);
+
+          if (result.success) {
+            try {
+              await ctx.api.editMessageText(ctx.chat.id, progressMsg.message_id,
+                `🚀 *Site deployed!*\n\n🌐 ${result.url}\n🎨 Inspired by: ${analysis.title}\n📐 ${analysis.sections.length} sections`,
+                { parse_mode: "Markdown" });
+            } catch {
+              await ctx.reply(`🚀 Site deployed! ${result.url}\nInspired by: ${analysis.title}`);
+            }
+          } else {
+            try {
+              await ctx.api.editMessageText(ctx.chat.id, progressMsg.message_id, `❌ ${result.error}`);
+            } catch { await ctx.reply(`❌ ${result.error}`); }
+          }
+
+          addToHistory(chatId, "user", text);
+          addToHistory(chatId, "assistant", result.success ? `Cloned site: ${result.url}` : `Clone failed: ${result.error}`);
+          return;
+        }
+      }
+
       // Check if this is a site edit intent (user has a stored site)
       const { isSiteEditIntent } = await import("../agent/router.js");
       const { getStoredSite, editAndDeploySite } = await import("../agent/site-builder.js");
