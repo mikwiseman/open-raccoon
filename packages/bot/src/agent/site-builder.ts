@@ -17,6 +17,7 @@ import { createHash } from "node:crypto";
 
 const DOMAIN = "wai.computer";
 const TRACKING_ENDPOINT = "https://telegram.waiwai.is/api/v1/track";
+const FORM_ENDPOINT = "https://telegram.waiwai.is/api/v1/form";
 
 /**
  * Inject analytics snippet into generated HTML.
@@ -26,6 +27,24 @@ const TRACKING_ENDPOINT = "https://telegram.waiwai.is/api/v1/track";
 export function injectAnalytics(html: string, slug: string): string {
   const snippet = `<script>
 (function(){var s='${slug}',e='${TRACKING_ENDPOINT}';var d={s:s,p:location.hash||'/',r:document.referrer||'direct',u:navigator.userAgent};try{navigator.sendBeacon(e,JSON.stringify(d))}catch(x){var i=new Image();i.src=e+'?d='+encodeURIComponent(JSON.stringify(d));}window.addEventListener('hashchange',function(){d.p=location.hash||'/';try{navigator.sendBeacon(e,JSON.stringify(d))}catch(x){}});})();
+</script>`;
+
+  if (html.includes("</body>")) {
+    return html.replace("</body>", `${snippet}\n</body>`);
+  }
+  return html + snippet;
+}
+
+/**
+ * Inject form handler into generated HTML.
+ * Intercepts all form submissions, POSTs data to API → forwarded to Telegram.
+ */
+export function injectFormHandler(html: string, slug: string): string {
+  // Only inject if the site has forms
+  if (!/<form[\s>]/i.test(html)) return html;
+
+  const snippet = `<script>
+(function(){var slug='${slug}',ep='${FORM_ENDPOINT}';document.addEventListener('submit',function(e){var f=e.target;if(f.tagName!=='FORM')return;e.preventDefault();var d={},fd=new FormData(f);fd.forEach(function(v,k){d[k]=v;});var b=f.querySelector('[type=submit]');if(b){b.disabled=true;b.textContent='Sending...';}fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:slug,formId:f.id||'form',fields:d,page:location.hash||'/',ua:navigator.userAgent})}).then(function(r){return r.json()}).then(function(){if(b){b.textContent='✓ Sent!';b.style.background='#22c55e';b.style.color='#fff';}var m=document.createElement('div');m.style.cssText='position:fixed;top:20px;right:20px;background:#22c55e;color:#fff;padding:16px 24px;border-radius:12px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);';m.textContent='✓ Message sent!';document.body.appendChild(m);setTimeout(function(){m.remove()},4000);f.reset();setTimeout(function(){if(b){b.disabled=false;b.textContent='Send';}},3000);}).catch(function(){if(b){b.disabled=false;b.textContent='Send';}alert('Failed to send. Please try again.');});},true);})();
 </script>`;
 
   if (html.includes("</body>")) {
@@ -1022,16 +1041,19 @@ export async function buildSite(
     return { success: false, slug, error: "Failed to generate HTML after 2 attempts", plan };
   }
 
-  // Step 4: Inject analytics snippet
+  // Step 4: Inject analytics + form handler
   html = injectAnalytics(html, slug);
+  html = injectFormHandler(html, slug);
 
   // Step 5: Deploy
   await onProgress?.("deploying", `Deploying to ${slug}.wai.computer...`);
   const result = await deployToCloudflare(slug, html);
 
-  // Step 5: Store as version 1 for future edits + undo
+  // Step 6: Store version + register owner for form notifications
   if (result.success && userId) {
     storeSite(userId, slug, html, description, "build", description.slice(0, 100));
+    const { registerSiteOwner } = await import("./forms.js");
+    registerSiteOwner(slug, userId);
   }
 
   return { ...result, slug, fileCount: 1, plan };
